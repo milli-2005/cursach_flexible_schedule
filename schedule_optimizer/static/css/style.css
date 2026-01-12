@@ -1,0 +1,78 @@
+/* Основные стили для системы планирования смен */
+
+/* Улучшаем внешний вид навигации */
+.navbar-brand {
+    font-weight: bold;
+}
+
+/* Карточки с тенями */
+.card {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border: none;
+    margin-bottom: 20px;
+}
+
+.card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+/* Стили для статусов */
+.status-badge {
+    padding: 0.25em 0.6em;
+    font-size: 0.85em;
+    border-radius: 10px;
+}
+
+/* Стили для календаря и графиков */
+.calendar-day {
+    border: 1px solid #dee2e6;
+    min-height: 100px;
+    padding: 5px;
+}
+
+.calendar-day.today {
+    background-color: #e3f2fd;
+}
+
+.calendar-day.weekend {
+    background-color: #f8f9fa;
+}
+
+/* Адаптивные таблицы */
+.table-responsive {
+    overflow-x: auto;
+}
+
+/* Стили для форм */
+.form-control:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+/* Анимации */
+.fade-in {
+    animation: fadeIn 0.5s;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Стили для ролей */
+.role-employee { border-left: 4px solid #0d6efd; }
+.role-manager { border-left: 4px solid #ffc107; }
+.role-planner { border-left: 4px solid #198754; }
+.role-admin { border-left: 4px solid #dc3545; }
+
+/* Улучшаем отображение на мобильных */
+@media (max-width: 768px) {
+    .container {
+        padding-left: 15px;
+        padding-right: 15px;
+    }
+
+    .card-body {
+        padding: 15px;
+    }
+}
