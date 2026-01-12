@@ -31,31 +31,24 @@
                     </li>
 
                     <!-- Показываем ссылки только авторизованным пользователям -->
-                    {% if user.is_authenticated %}
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
-                                Меню
-                            </a>
-                            <ul class="dropdown-menu">
-                                {% if user.is_staff or user.role == 'admin' %}
-                                    <li><a class="dropdown-item" href="/admin/">Админ-панель</a></li>
-                                    <li><hr class="dropdown-divider"></li>
-                                {% endif %}
+                    <!-- В блоке меню для авторизованных пользователей -->
+{% if user.is_authenticated %}
+    <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+            Меню
+        </a>
+        <ul class="dropdown-menu">
+            <!-- Существующие пункты... -->
 
-                                {% if user.role == 'employee' or user.role == 'manager' or user.role == 'planner' %}
-                                    <li><a class="dropdown-item" href="{% url 'dashboard' %}">Личный кабинет</a></li>
-                                {% endif %}
-
-                                {% if user.role == 'manager' or user.role == 'planner' %}
-                                    <li><a class="dropdown-item" href="{% url 'schedule_view' %}">Графики смен</a></li>
-                                {% endif %}
-
-                                {% if user.role == 'planner' %}
-                                    <li><a class="dropdown-item" href="{% url 'optimization' %}">Оптимизация</a></li>
-                                {% endif %}
-                            </ul>
-                        </li>
-                    {% endif %}
+            {% if user.profile.role == 'admin' or user.is_staff %}
+                <li><hr class="dropdown-divider"></li>
+                <li><h6 class="dropdown-header">Администрирование</h6></li>
+                <li><a class="dropdown-item" href="{% url 'user_management' %}">👥 Управление пользователями</a></li>
+                <li><a class="dropdown-item" href="/admin/">⚙️ Админ-панель Django</a></li>
+            {% endif %}
+        </ul>
+    </li>
+{% endif %}
                 </ul>
 
                 <!-- Правая часть навигации -->

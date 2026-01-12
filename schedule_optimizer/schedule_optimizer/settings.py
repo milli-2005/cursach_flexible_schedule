@@ -112,3 +112,16 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
 LOGIN_URL = '/login/'
+
+
+# Настройки email для разработки
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'    #адрес почтового сервера - gmail, yandex, mail
+EMAIL_PORT = 587       #587 - стандартный порт для защищенной отправки почты (TLS) или 465
+EMAIL_USE_TLS = True   #Включает шифрование соединения (как HTTPS для почты), чтобы пароли и письма нельзя было перехватить
+EMAIL_HOST_USER = 'milena9470st@gmail.com'
+EMAIL_HOST_PASSWORD = 'dmwfojpsrxzrrtft'  # Пароль приложения (не пароль от почты!)
+DEFAULT_FROM_EMAIL = 'schedule.system@gmail.com'  #Имя отправителя, которое увидят пользователи
+
+# В режиме разработки можно использовать консольный бэкенд
+# EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'

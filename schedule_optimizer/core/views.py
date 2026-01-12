@@ -10,8 +10,150 @@ from django.contrib.auth.forms import AuthenticationForm
 from .models import *
 import logging
 
+"""
+Представления для приглашения пользователей.
+"""
+from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib import messages
+from django.contrib.auth.models import User
+from .forms import UserInvitationForm
+from .utils import generate_random_password, send_user_invitation
+import logging
+
 logger = logging.getLogger(__name__)
 
+
+def is_admin(user):
+    """Проверяет, является ли пользователь администратором."""
+    if not hasattr(user, 'profile'):
+        return False
+    return user.profile.role == 'admin' or user.is_superuser
+
+
+@login_required
+@user_passes_test(is_admin)
+def invite_user(request):
+    """
+    Страница для приглашения нового пользователя.
+    Доступна только администраторам.
+    """
+    if request.method == 'POST':
+        form = UserInvitationForm(request.POST)
+        if form.is_valid():
+            try:
+                # Генерируем случайный пароль
+                raw_password = generate_random_password()
+
+                # Создаем пользователя
+                user = User.objects.create_user(
+                    username=form.cleaned_data['username'],
+                    email=form.cleaned_data['email'],
+                    password=raw_password,
+                    first_name=form.cleaned_data.get('first_name', ''),
+                    last_name=form.cleaned_data.get('last_name', ''),
+                )
+
+                # Создаем профиль пользователя
+                from .models import UserProfile
+                profile = UserProfile.objects.get(user=user)
+                profile.role = form.cleaned_data['role']
+                profile.department = form.cleaned_data.get('department', '')
+                profile.position = form.cleaned_data.get('position', '')
+                profile.phone = form.cleaned_data.get('phone', '')
+                profile.save()
+
+                # Отправляем приглашение на email
+                try:
+                    send_user_invitation(user, raw_password)
+                    messages.success(
+                        request,
+                        f'Пользователь {user.username} успешно создан. '
+                        f'Приглашение отправлено на {user.email}.'
+                    )
+
+                    # Логируем действие
+                    logger.info(f'Администратор {request.user.username} создал пользователя {user.username}')
+
+                except Exception as e:
+                    # Если email не отправился, все равно создаем пользователя
+                    # и показываем пароль администратору
+                    messages.warning(
+                        request,
+                        f'Пользователь {user.username} создан, но email не отправлен. '
+                        f'Ошибка: {str(e)}. Пароль пользователя: {raw_password}'
+                    )
+                    logger.error(f'Ошибка отправки email для пользователя {user.username}: {str(e)}')
+
+                return redirect('user_management')
+
+            except Exception as e:
+                messages.error(request, f'Ошибка при создании пользователя: {str(e)}')
+                logger.error(f'Ошибка создания пользователя: {str(e)}')
+    else:
+        form = UserInvitationForm()
+
+    return render(request, 'core/invite_user.html', {'form': form})
+
+
+@login_required
+@user_passes_test(is_admin)
+def user_management(request):
+    """
+    Страница управления пользователями для администратора.
+    """
+    users = User.objects.all().select_related('profile')
+
+    context = {
+        'users': users,
+    }
+    return render(request, 'core/user_management.html', context)
+
+
+@login_required
+@user_passes_test(is_admin)
+def reset_user_password(request, user_id):
+    """
+    Сброс пароля пользователя и отправка нового на email.
+    """
+    try:
+        user = User.objects.get(id=user_id)
+
+        if request.method == 'POST':
+            # Генерируем новый случайный пароль
+            raw_password = generate_random_password()
+
+            # Устанавливаем новый пароль
+            user.set_password(raw_password)
+            user.save()
+
+            # Отправляем email с новым паролем
+            try:
+                send_user_invitation(user, raw_password)
+                messages.success(
+                    request,
+                    f'Новый пароль для пользователя {user.username} отправлен на {user.email}.'
+                )
+                logger.info(f'Администратор {request.user.username} сбросил пароль для {user.username}')
+
+            except Exception as e:
+                # Если email не отправился, показываем пароль администратору
+                messages.warning(
+                    request,
+                    f'Пароль сброшен, но email не отправлен. '
+                    f'Ошибка: {str(e)}. Новый пароль: {raw_password}'
+                )
+
+            return redirect('user_management')
+
+        context = {
+            'user': user,
+        }
+        return render(request, 'core/reset_password_confirm.html', context)
+
+    except User.DoesNotExist:
+        messages.error(request, 'Пользователь не найден.')
+        return redirect('user_management')
 
 def index(request):
     """Главная страница сайта."""

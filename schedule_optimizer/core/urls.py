@@ -1,6 +1,5 @@
 """
 URL-адреса приложения core.
-Здесь определяем маршруты для страниц приложения.
 """
 from django.urls import path
 from django.contrib.auth import views as auth_views
@@ -14,6 +13,11 @@ urlpatterns = [
     # Аутентификация
     path('login/', views.custom_login, name='login'),
     path('logout/', views.custom_logout, name='logout'),
+
+    # Управление пользователями (только для администраторов)
+    path('admin/users/', views.user_management, name='user_management'),
+    path('admin/users/invite/', views.invite_user, name='invite_user'),
+    path('admin/users/reset-password/<int:user_id>/', views.reset_user_password, name='reset_user_password'),
 
     # Личный кабинет и профиль
     path('dashboard/', views.dashboard, name='dashboard'),

@@ -1,0 +1,229 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Управление пользователями{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>Управление пользователями</h1>
+            <a href="{% url 'invite_user' %}" class="btn btn-primary">
+                + Пригласить пользователя
+            </a>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Список пользователей</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Имя пользователя</th>
+                                <th>Имя/Фамилия</th>
+                                <th>Email</th>
+                                <th>Роль</th>
+                                <th>Должность</th>
+                                <th>Дата регистрации</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for user in users %}
+                            <tr>
+                                <td>
+                                    <strong>{{ user.username }}</strong>
+                                    {% if user.is_superuser %}
+                                        <span class="badge bg-danger ms-1">SU</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if user.first_name or user.last_name %}
+                                        {{ user.first_name }} {{ user.last_name }}
+                                    {% else %}
+                                        <span class="text-muted">Не указано</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ user.email }}</td>
+                                <td>
+                                    {% if user.profile %}
+                                        <span class="badge
+                                            {% if user.profile.role == 'admin' %}bg-danger
+                                            {% elif user.profile.role == 'planner' %}bg-success
+                                            {% elif user.profile.role == 'manager' %}bg-warning
+                                            {% else %}bg-primary{% endif %}">
+                                            {{ user.profile.get_role_display }}
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Нет профиля</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if user.profile and user.profile.position %}
+                                        {{ user.profile.position }}
+                                    {% else %}
+                                        <span class="text-muted">—</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ user.date_joined|date:"d.m.Y" }}</td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        {% if user.profile %}
+                                            <a href="{% url 'admin:core_userprofile_change' user.profile.id %}"
+                                               class="btn btn-outline-primary" target="_blank">
+                                                Редактировать
+                                            </a>
+                                        {% endif %}
+
+                                        <button type="button" class="btn btn-outline-warning"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#resetModal{{ user.id }}">
+                                            Сбросить пароль
+                                        </button>
+                                    </div>
+
+                                    <!-- Модальное окно для сброса пароля -->
+                                    <div class="modal fade" id="resetModal{{ user.id }}" tabindex="-1">
+                                        <div class="modal-dialog">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title">Сброс пароля</h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <p>Вы уверены, что хотите сбросить пароль для пользователя
+                                                    <strong>{{ user.username }}</strong>?</p>
+                                                    <p>На email <strong>{{ user.email }}</strong> будет отправлен новый пароль.</p>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                                                    <form method="post" action="{% url 'reset_user_password' user.id %}" style="display: inline;">
+                                                        {% csrf_token %}
+                                                        <button type="submit" class="btn btn-warning">Сбросить пароль</button>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="7" class="text-center text-muted">
+                                    Пользователи не найдены
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">Статистика</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 col-6">
+                        <div class="card bg-primary text-white text-center">
+                            <div class="card-body">
+                                <h2 class="card-title">{{ users.count }}</h2>
+                                <p class="card-text">Всего пользователей</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-3 col-6">
+                        <div class="card bg-success text-white text-center">
+                            <div class="card-body">
+                                <h2 class="card-title">{{ users.filter|length }}</h2>
+                                <p class="card-text">Сотрудников</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-3 col-6">
+                        <div class="card bg-warning text-white text-center">
+                            <div class="card-body">
+                                <h2 class="card-title">0</h2>
+                                <p class="card-text">Менеджеров</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-3 col-6">
+                        <div class="card bg-danger text-white text-center">
+                            <div class="card-body">
+                                <h2 class="card-title">0</h2>
+                                <p class="card-text">Администраторов</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">Процесс онбординга пользователей</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card h-100">
+                            <div class="card-body text-center">
+                                <div class="display-1 mb-3">1</div>
+                                <h5>Администратор создает учетную запись</h5>
+                                <p class="card-text">
+                                    Вводит основные данные пользователя и назначает роль
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="card h-100">
+                            <div class="card-body text-center">
+                                <div class="display-1 mb-3">2</div>
+                                <h5>Система отправляет приглашение</h5>
+                                <p class="card-text">
+                                    На email пользователя приходит письмо с временным паролем
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="card h-100">
+                            <div class="card-body text-center">
+                                <div class="display-1 mb-3">3</div>
+                                <h5>Пользователь входит в систему</h5>
+                                <p class="card-text">
+                                    Использует временный пароль и устанавливает постоянный
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert alert-info mt-4">
+                    <h6>Для описания в дипломе (раздел "Проектирование подсистемы безопасности"):</h6>
+                    <p class="mb-0">
+                        <strong>Процесс onboarding пользователей:</strong> Добавление нового сотрудника
+                        в систему является исключительной прерогативой пользователя с ролью Администратор
+                        системы. Администратор вводит обязательные атрибуты сотрудника (ФИО, должность,
+                        email, назначает одну или несколько бизнес-ролей). Система автоматически
+                        генерирует уникальную учетную запись и отправляет на указанный email одноразовую
+                        ссылку-приглашение с временным паролем. Новый пользователь, перейдя по ссылке,
+                        завершает процесс регистрации, устанавливая свой постоянный пароль.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
