@@ -1,127 +1,19 @@
-{% extends 'core/base.html' %}
+<!-- templates/core/profile.html -->
+{% extends "core/base.html" %}
 
-{% block title %}Мой профиль{% endblock %}
+{% block title %}Профиль - {{ block.super }}{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-md-8 offset-md-2">
-        <div class="card">
-            <div class="card-header">
-                <h4 class="mb-0">Мой профиль</h4>
-            </div>
-            <div class="card-body">
-                <form method="post">
-                    {% csrf_token %}
-
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Имя пользователя</label>
-                            <input type="text" class="form-control" value="{{ user.username }}" readonly>
-                            <small class="form-text text-muted">Имя пользователя нельзя изменить</small>
-                        </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label">Email</label>
-                            <input type="email" class="form-control" value="{{ user.email|default:'Не указан' }}" readonly>
-                        </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Имя</label>
-                            <input type="text" class="form-control" value="{{ user.first_name|default:'Не указано' }}" readonly>
-                        </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label">Фамилия</label>
-                            <input type="text" class="form-control" value="{{ user.last_name|default:'Не указана' }}" readonly>
-                        </div>
-                    </div>
-
-                    {% if user.profile %}
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Роль в системе</label>
-                            <input type="text" class="form-control"
-                                   value="{{ user.profile.get_role_display }}" readonly>
-                        </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label">Текущая активная роль</label>
-                            <input type="text" class="form-control"
-                                   value="{{ user.profile.get_current_role_display }}" readonly>
-                        </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Должность</label>
-                            <input type="text" class="form-control"
-                                   value="{{ user.profile.position|default:'Не указана' }}" readonly>
-                        </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label">Отдел</label>
-                            <input type="text" class="form-control"
-                                   value="{{ user.profile.department|default:'Не указан' }}" readonly>
-                        </div>
-                    </div>
-
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <label class="form-label">Телефон</label>
-                            <input type="text" class="form-control"
-                                   value="{{ user.profile.phone|default:'Не указан' }}" readonly>
-                        </div>
-                    </div>
-                    {% endif %}
-
-                    <div class="d-flex justify-content-between">
-                        <a href="{% url 'dashboard' %}" class="btn btn-secondary">
-                            ← Назад в кабинет
-                        </a>
-
-                        {% if user.profile.current_role == 'admin' or user.is_staff %}
-                            <a href="/admin/auth/user/{{ user.id }}/change/" class="btn btn-primary">
-                                Редактировать в админке
-                            </a>
-                        {% else %}
-                            <button type="button" class="btn btn-primary" disabled>
-                                Для редактирования обратитесь к администратору
-                            </button>
-                        {% endif %}
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <div class="card mt-4">
-            <div class="card-header">
-                <h5 class="mb-0">Информация о системе регистрации</h5>
-            </div>
-            <div class="card-body">
-                <div class="alert alert-info">
-                    <h6>Как работает регистрация в системе:</h6>
-                    <p class="mb-2">
-                        Система использует модель <strong>"приглашение от администратора"</strong>.
-                        Это стандартный подход для корпоративных систем.
-                    </p>
-                    <ul class="mb-0">
-                        <li>Администратор создает учетную запись для нового сотрудника</li>
-                        <li>Система отправляет приглашение на email сотрудника</li>
-                        <li>Сотрудник переходит по ссылке и устанавливает пароль</li>
-                        <li>Администратор назначает роли (сотрудник, менеджер, планировщик)</li>
-                        <li>Один пользователь может иметь несколько ролей и переключаться между ними</li>
-                    </ul>
-                </div>
-
-                <p class="mb-0 small text-muted">
-                    <strong>Обоснование для диплома:</strong> Такой подход обеспечивает контроль
-                    целостности данных, безопасность и избавляет от необходимости синхронизации
-                    с внешними системами учета персонала на начальном этапе.
-                </p>
-            </div>
-        </div>
-    </div>
-</div>
+<h2>Профиль пользователя</h2>
+<ul>
+    <li><strong>Имя пользователя:</strong> {{ user.username }}</li>
+    <li><strong>Email:</strong> {{ user.email }}</li>
+    <li><strong>Имя:</strong> {{ user.first_name }}</li>
+    <li><strong>Фамилия:</strong> {{ user.last_name }}</li>
+    <li><strong>Роль:</strong> {{ user.profile.get_role_display }}</li>
+    <li><strong>Текущая роль:</strong> {{ user.profile.get_current_role_display }}</li>
+    <li><strong>Отдел:</strong> {{ user.profile.department }}</li>
+    <li><strong>Должность:</strong> {{ user.profile.position }}</li>
+    <li><strong>Телефон:</strong> {{ user.profile.phone }}</li>
+</ul>
 {% endblock %}

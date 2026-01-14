@@ -1,78 +1,138 @@
-/* Основные стили для системы планирования смен */
+/* static/css/style.css */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f4f4f4;
+}
 
-/* Улучшаем внешний вид навигации */
-.navbar-brand {
+.container {
+    width: 80%;
+    margin: auto;
+    overflow: hidden;
+    padding: 20px;
+    background-color: white;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    border-radius: 5px;
+    margin-top: 20px;
+}
+
+header {
+    background: #333;
+    color: white;
+    padding: 20px 0;
+    text-align: center;
+}
+
+nav ul {
+    padding: 0;
+    list-style: none;
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+}
+
+nav a {
+    color: white;
+    text-decoration: none;
     font-weight: bold;
 }
 
-/* Карточки с тенями */
-.card {
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+nav a:hover {
+    text-decoration: underline;
+}
+
+h1, h2, h3 {
+    color: #333;
+}
+
+form {
+    margin: 20px 0;
+}
+
+form label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+form input[type="text"],
+form input[type="email"],
+form input[type="password"],
+form select,
+form textarea {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+form input[type="submit"] {
+    background: #333;
+    color: white;
+    padding: 10px 20px;
     border: none;
-    margin-bottom: 20px;
+    border-radius: 4px;
+    cursor: pointer;
 }
 
-.card:hover {
-    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+form input[type="submit"]:hover {
+    background: #555;
 }
 
-/* Стили для статусов */
-.status-badge {
-    padding: 0.25em 0.6em;
-    font-size: 0.85em;
-    border-radius: 10px;
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
 }
 
-/* Стили для календаря и графиков */
-.calendar-day {
-    border: 1px solid #dee2e6;
-    min-height: 100px;
-    padding: 5px;
+table, th, td {
+    border: 1px solid #ddd;
 }
 
-.calendar-day.today {
-    background-color: #e3f2fd;
+th, td {
+    padding: 12px;
+    text-align: left;
 }
 
-.calendar-day.weekend {
-    background-color: #f8f9fa;
+th {
+    background-color: #f2f2f2;
 }
 
-/* Адаптивные таблицы */
-.table-responsive {
-    overflow-x: auto;
+tr:nth-child(even) {
+    background-color: #f9f9f9;
 }
 
-/* Стили для форм */
-.form-control:focus {
-    border-color: #0d6efd;
-    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+.alert {
+    padding: 15px;
+    margin: 20px 0;
+    border-radius: 4px;
 }
 
-/* Анимации */
-.fade-in {
-    animation: fadeIn 0.5s;
+.alert-success {
+    background-color: #d4edda;
+    color: #155724;
+    border-color: #c3e6cb;
 }
 
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+.alert-error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border-color: #f5c6cb;
 }
 
-/* Стили для ролей */
-.role-employee { border-left: 4px solid #0d6efd; }
-.role-manager { border-left: 4px solid #ffc107; }
-.role-planner { border-left: 4px solid #198754; }
-.role-admin { border-left: 4px solid #dc3545; }
+.alert-info {
+    background-color: #d1ecf1;
+    color: #0c5460;
+    border-color: #bee5eb;
+}
 
-/* Улучшаем отображение на мобильных */
-@media (max-width: 768px) {
-    .container {
-        padding-left: 15px;
-        padding-right: 15px;
-    }
-
-    .card-body {
-        padding: 15px;
-    }
+footer {
+    background: #333;
+    color: white;
+    text-align: center;
+    padding: 10px 0;
+    margin-top: 20px;
 }

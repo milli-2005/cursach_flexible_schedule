@@ -1,49 +1,13 @@
-{% extends 'core/base.html' %}
+<!-- templates/core/login.html -->
+{% extends "core/base.html" %}
 
-{% block title %}Вход в систему{% endblock %}
+{% block title %}Вход - {{ block.super }}{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">
-                <h4 class="mb-0">Вход в систему</h4>
-            </div>
-            <div class="card-body">
-                <form method="post">
-                    {% csrf_token %}
-
-                    <div class="mb-3">
-                        <label for="id_username" class="form-label">Имя пользователя</label>
-                        <input type="text" name="username" class="form-control" id="id_username" required>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="id_password" class="form-label">Пароль</label>
-                        <input type="password" name="password" class="form-control" id="id_password" required>
-                    </div>
-
-                    <div class="d-grid gap-2">
-                        <button type="submit" class="btn btn-primary">Войти</button>
-                        <a href="{% url 'index' %}" class="btn btn-secondary">На главную</a>
-                    </div>
-                </form>
-
-                <hr>
-
-                <div class="alert alert-info">
-                    <h6>Информация для тестирования:</h6>
-                    <p class="mb-1">
-                        Для доступа в систему создайте суперпользователя:<br>
-                        <code>python manage.py createsuperuser</code>
-                    </p>
-                    <p class="mb-0 small">
-                        После создания пользователя, в админ-панели (/admin/)
-                        вы можете назначить ему роль в профиле пользователя.
-                    </p>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+<h2>Вход в систему</h2>
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <input type="submit" value="Войти">
+</form>
 {% endblock %}

@@ -1,12 +1,8 @@
-"""
-Формы для приложения core.
-Здесь определяем формы для ввода данных.
-"""
+# core/forms.py
 from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import UserCreationForm
 from .models import UserProfile
-
 
 class UserInvitationForm(forms.Form):
     """
@@ -17,18 +13,15 @@ class UserInvitationForm(forms.Form):
         label="Имя пользователя",
         help_text="Латинские буквы, цифры и символы @/./+/-/_"
     )
-
     email = forms.EmailField(
         label="Email",
         help_text="На этот email будет отправлено приглашение"
     )
-
     first_name = forms.CharField(
         max_length=30,
         required=False,
         label="Имя"
     )
-
     last_name = forms.CharField(
         max_length=30,
         required=False,
@@ -41,25 +34,21 @@ class UserInvitationForm(forms.Form):
         ('planner', 'Планировщик'),
         ('admin', 'Администратор системы'),
     ]
-
     role = forms.ChoiceField(
         choices=ROLE_CHOICES,
         label="Роль в системе",
         initial='employee'
     )
-
     department = forms.CharField(
         max_length=100,
         required=False,
         label="Отдел"
     )
-
     position = forms.CharField(
         max_length=100,
         required=False,
         label="Должность"
     )
-
     phone = forms.CharField(
         max_length=20,
         required=False,
@@ -78,12 +67,10 @@ class UserInvitationForm(forms.Form):
             raise forms.ValidationError("Пользователь с таким email уже существует.")
         return email
 
-
 class UserProfileForm(forms.ModelForm):
     """
     Форма для редактирования профиля пользователя.
     """
-
     class Meta:
         model = UserProfile
         fields = ['role', 'phone', 'department', 'position']

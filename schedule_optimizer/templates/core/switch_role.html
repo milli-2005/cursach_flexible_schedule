@@ -1,0 +1,20 @@
+<!-- templates/core/switch_role.html -->
+{% extends "core/base.html" %}
+
+{% block title %}Сменить роль - {{ block.super }}{% endblock %}
+
+{% block content %}
+<h2>Сменить роль</h2>
+<p>Текущая роль: {{ current_role }}</p>
+<form method="post">
+    {% csrf_token %}
+    <select name="role" id="id_role">
+        {% for role_value, role_label in available_roles %}
+            <option value="{{ role_value }}" {% if role_value == current_role %}selected{% endif %}>
+                {{ role_label }}
+            </option>
+        {% endfor %}
+    </select>
+    <input type="submit" value="Сменить роль">
+</form>
+{% endblock %}

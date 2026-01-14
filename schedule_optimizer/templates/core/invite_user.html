@@ -1,133 +1,14 @@
-{% extends 'core/base.html' %}
+<!-- templates/core/invite_user.html -->
+{% extends "core/base.html" %}
 
-{% block title %}Пригласить пользователя{% endblock %}
+{% block title %}Пригласить пользователя - {{ block.super }}{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-8">
-        <div class="card">
-            <div class="card-header">
-                <h4 class="mb-0">Пригласить нового пользователя</h4>
-            </div>
-            <div class="card-body">
-                <form method="post">
-                    {% csrf_token %}
-
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label">{{ form.username.label }}</label>
-                            {{ form.username }}
-                            {% if form.username.errors %}
-                                <div class="text-danger">{{ form.username.errors }}</div>
-                            {% endif %}
-                            <small class="form-text text-muted">{{ form.username.help_text }}</small>
-                        </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label">{{ form.email.label }}</label>
-                            {{ form.email }}
-                            {% if form.email.errors %}
-                                <div class="text-danger">{{ form.email.errors }}</div>
-                            {% endif %}
-                            <small class="form-text text-muted">{{ form.email.help_text }}</small>
-                        </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label">{{ form.first_name.label }}</label>
-                            {{ form.first_name }}
-                        </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label">{{ form.last_name.label }}</label>
-                            {{ form.last_name }}
-                        </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label">{{ form.role.label }}</label>
-                            {{ form.role }}
-                        </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label">{{ form.position.label }}</label>
-                            {{ form.position }}
-                        </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label">{{ form.department.label }}</label>
-                            {{ form.department }}
-                        </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label">{{ form.phone.label }}</label>
-                            {{ form.phone }}
-                        </div>
-                    </div>
-
-                    <div class="alert alert-info">
-                        <h6>Как это работает:</h6>
-                        <ul class="mb-0">
-                            <li>Система создаст учетную запись с указанными данными</li>
-                            <li>Будет сгенерирован случайный безопасный пароль</li>
-                            <li>Пароль будет отправлен на указанный email</li>
-                            <li>Пользователь сможет войти и изменить пароль</li>
-                        </ul>
-                    </div>
-
-                    <div class="d-flex justify-content-between">
-                        <a href="{% url 'user_management' %}" class="btn btn-secondary">
-                            ← Назад к списку пользователей
-                        </a>
-                        <button type="submit" class="btn btn-primary">
-                            📧 Отправить приглашение
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <div class="card mt-4">
-            <div class="card-header">
-                <h5 class="mb-0">Информация для диплома</h5>
-            </div>
-            <div class="card-body">
-                <p>
-                    <strong>Модель регистрации "приглашение от администратора"</strong> —
-                    это стандартный подход для корпоративных информационных систем.
-                </p>
-
-                <h6>Преимущества данного подхода:</h6>
-                <ol>
-                    <li><strong>Контроль доступа:</strong> Только администратор может создавать учетные записи</li>
-                    <li><strong>Безопасность:</strong> Исключается самопроизвольная регистрация</li>
-                    <li><strong>Целостность данных:</strong> Все пользователи проходят предварительную верификацию</li>
-                    <li><strong>Удобство администрирования:</strong> Централизованное управление пользователями</li>
-                    <li><strong>Автоматизация онбординга:</strong> Автоматическая отправка учетных данных</li>
-                </ol>
-
-                <p class="mb-0 text-muted small">
-                    <strong>Для тестирования:</strong> Если email не настроен, система покажет
-                    сгенерированный пароль на экране, и вы сможете вручную передать его пользователю.
-                </p>
-            </div>
-        </div>
-    </div>
-</div>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-// Добавляем стили Bootstrap к полям формы
-document.addEventListener('DOMContentLoaded', function() {
-    const formInputs = document.querySelectorAll('input, select');
-    formInputs.forEach(input => {
-        input.classList.add('form-control');
-    });
-});
-</script>
+<h2>Пригласить нового пользователя</h2>
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <input type="submit" value="Пригласить">
+</form>
+<a href="{% url 'user_management' %}">Назад к списку пользователей</a>
 {% endblock %}

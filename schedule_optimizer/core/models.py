@@ -1,8 +1,6 @@
+# core/models.py
 from django.db import models
 from django.contrib.auth.models import User
-from django.db.models.signals import post_save
-from django.dispatch import receiver
-
 
 class UserProfile(models.Model):
     """
@@ -23,8 +21,8 @@ class UserProfile(models.Model):
     department = models.CharField(max_length=100, blank=True, verbose_name="Отдел")
     position = models.CharField(max_length=100, blank=True, verbose_name="Должность")
 
-    # Поля для хранения текущей активной роли (если у пользователя несколько ролей)
-    current_role = models.CharField(max_length=20, choices=ROLE_CHOICES, blank=True)
+    # Поле для хранения текущей активной роли (если у пользователя несколько ролей)
+    current_role = models.CharField(max_length=20, choices=ROLE_CHOICES, blank=True, verbose_name="Текущая роль")
 
     class Meta:
         verbose_name = "Профиль пользователя"
@@ -38,19 +36,6 @@ class UserProfile(models.Model):
         if not self.current_role:
             self.current_role = self.role
         super().save(*args, **kwargs)
-
-
-# Сигнал для автоматического создания профиля при создании пользователя
-@receiver(post_save, sender=User)
-def create_user_profile(sender, instance, created, **kwargs):
-    if created:
-        UserProfile.objects.create(user=instance)
-
-
-@receiver(post_save, sender=User)
-def save_user_profile(sender, instance, **kwargs):
-    if hasattr(instance, 'profile'):
-        instance.profile.save()
 
 
 class Employee(models.Model):
@@ -78,7 +63,6 @@ class Employee(models.Model):
     def __str__(self):
         return f"{self.user_profile.user.get_full_name() or self.user_profile.user.username}"
 
-
 class Shift(models.Model):
     """
     Модель смены (тип смены).
@@ -103,7 +87,6 @@ class Shift(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.get_shift_type_display()})"
-
 
 class Schedule(models.Model):
     """
@@ -132,7 +115,6 @@ class Schedule(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.start_date} - {self.end_date})"
-
 
 class ShiftAssignment(models.Model):
     """
@@ -163,7 +145,6 @@ class ShiftAssignment(models.Model):
     def __str__(self):
         return f"{self.employee} - {self.shift} ({self.date})"
 
-
 class TimeOffRequest(models.Model):
     """
     Заявка на отгул/отпуск.
@@ -187,7 +168,6 @@ class TimeOffRequest(models.Model):
     end_date = models.DateField(verbose_name="Дата окончания")
     reason = models.TextField(verbose_name="Причина")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
-
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата создания")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Дата обновления")
 
@@ -197,7 +177,6 @@ class TimeOffRequest(models.Model):
 
     def __str__(self):
         return f"{self.employee} - {self.get_request_type_display()} ({self.start_date} - {self.end_date})"
-
 
 class ShiftSwapRequest(models.Model):
     """
@@ -216,7 +195,6 @@ class ShiftSwapRequest(models.Model):
         ('rejected', 'Отклонено'),
     ]
     status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='pending')
-
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата создания")
 
     class Meta:
@@ -225,7 +203,6 @@ class ShiftSwapRequest(models.Model):
 
     def __str__(self):
         return f"Обмен: {self.from_employee} -> {self.to_employee}"
-
 
 class OptimizationRule(models.Model):
     """

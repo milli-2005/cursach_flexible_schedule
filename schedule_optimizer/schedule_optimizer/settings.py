@@ -26,7 +26,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'core',
+    'core.apps.CoreConfig',
 ]
 
 MIDDLEWARE = [
@@ -101,6 +101,8 @@ STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),  # добавляем папку static
 ]
 
+STATIC_ROOT = BASE_DIR / 'staticfiles' # Папка для собранной статики (для production)
+
 # Media files (загружаемые пользователями)
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
@@ -122,6 +124,3 @@ EMAIL_USE_TLS = True   #Включает шифрование соединени
 EMAIL_HOST_USER = 'milena9470st@gmail.com'
 EMAIL_HOST_PASSWORD = 'dmwfojpsrxzrrtft'  # Пароль приложения (не пароль от почты!)
 DEFAULT_FROM_EMAIL = 'schedule.system@gmail.com'  #Имя отправителя, которое увидят пользователи
-
-# В режиме разработки можно использовать консольный бэкенд
-# EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'

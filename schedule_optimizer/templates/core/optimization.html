@@ -1,0 +1,18 @@
+<!-- templates/core/optimization.html -->
+{% extends "core/base.html" %}
+
+{% block title %}Оптимизация - {{ block.super }}{% endblock %}
+
+{% block content %}
+<h2>Оптимизация графика</h2>
+<p>Здесь будет форма для настройки правил оптимизации и запуска алгоритма.</p>
+
+<h3>Активные правила:</h3>
+<ul>
+    {% for rule in rules %}
+        <li>{{ rule.name }} ({{ rule.get_rule_type_display }}): {{ rule.description }}</li>
+    {% empty %}
+        <li>Нет активных правил.</li>
+    {% endfor %}
+</ul>
+{% endblock %}

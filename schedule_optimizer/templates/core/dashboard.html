@@ -1,187 +1,29 @@
-{% extends 'core/base.html' %}
+<!-- templates/core/dashboard.html -->
+{% extends "core/base.html" %}
 
-{% block title %}Личный кабинет{% endblock %}
+{% block title %}Дашборд - {{ block.super }}{% endblock %}
 
 {% block content %}
-<div class="row">
-    <div class="col-md-4">
-        <div class="card mb-4">
-            <div class="card-body text-center">
-                <div class="mb-3">
-                    <div class="bg-primary rounded-circle d-inline-flex align-items-center justify-content-center"
-                         style="width: 100px; height: 100px;">
-                        <span class="text-white fs-1">{{ user.username|first|upper }}</span>
-                    </div>
-                </div>
+<h2>Личный кабинет</h2>
+<p>Привет, {{ user.username }}! Текущая роль: {{ user.profile.get_current_role_display }}</p>
 
-                <h5 class="card-title">{{ user.get_full_name|default:user.username }}</h5>
-                <p class="card-text">
-                    {% if user.profile %}
-                        <span class="badge bg-primary">{{ user.profile.get_current_role_display }}</span><br>
-                        <small>{{ user.profile.position|default:"Должность не указана" }}</small>
-                    {% endif %}
-                </p>
-            </div>
-        </div>
+{% if user.profile.role == 'admin' %}
+    <h3>Статистика системы</h3>
+    <p>Всего пользователей: {{ user_count }}</p>
+{% endif %}
 
-        <div class="card">
-            <div class="card-header">
-                <h6 class="mb-0">Быстрые действия</h6>
-            </div>
-            <div class="card-body">
-                <div class="list-group list-group-flush">
-                    <a href="{% url 'profile' %}" class="list-group-item list-group-item-action">
-                        ✏️ Редактировать профиль
-                    </a>
+{% if user.profile.current_role == 'planner' %}
+    <h3>Последние графики</h3>
+    {% if schedules %}
+        <ul>
+        {% for schedule in schedules %}
+            <li><a href="#">{{ schedule.name }} ({{ schedule.start_date }} - {{ schedule.end_date }})</a></li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p>Графики не найдены.</p>
+    {% endif %}
+{% endif %}
 
-                    {% if user.profile and user.profile.role == 'employee' %}
-                        <a href="{% url 'employee_schedule' %}" class="list-group-item list-group-item-action">
-                            📅 Мой график
-                        </a>
-                        <a href="{% url 'timeoff_requests' %}" class="list-group-item list-group-item-action">
-                            🏖️ Заявки на отгул
-                        </a>
-                        <a href="{% url 'shift_swaps' %}" class="list-group-item list-group-item-action">
-                            🔄 Обмен сменами
-                        </a>
-                    {% endif %}
-
-                    {% if user.profile and user.profile.role == 'manager' %}
-                        <a href="{% url 'schedule_view' %}" class="list-group-item list-group-item-action">
-                            👥 Управление графиком
-                        </a>
-                    {% endif %}
-
-                    {% if user.profile and user.profile.role == 'planner' %}
-                        <a href="{% url 'optimization' %}" class="list-group-item list-group-item-action">
-                            ⚙️ Оптимизация графиков
-                        </a>
-                        <a href="{% url 'reports' %}" class="list-group-item list-group-item-action">
-                            📊 Отчеты
-                        </a>
-                    {% endif %}
-
-                    {% if user.profile and user.profile.role == 'admin' %}
-                        <a href="/admin/" class="list-group-item list-group-item-action">
-                            ⚙️ Админ-панель
-                        </a>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-8">
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="mb-0">Добро пожаловать, {{ user.username }}!</h5>
-            </div>
-            <div class="card-body">
-                <p>Вы вошли в систему как
-                    <strong>{{ user.profile.get_current_role_display|default:"пользователь" }}</strong>.
-                </p>
-
-                {% if user.profile.current_role == 'employee' %}
-                    <div class="alert alert-info">
-                        <h6>Ваши возможности как сотрудника:</h6>
-                        <ul class="mb-0">
-                            <li>Просмотр своего графика работы</li>
-                            <li>Указание предпочтений по сменам</li>
-                            <li>Подача заявок на отпуск и отгулы</li>
-                            <li>Предложение обмена сменами с коллегами</li>
-                            <li>Получение уведомлений об изменениях в графике</li>
-                        </ul>
-                    </div>
-
-                {% elif user.profile.current_role == 'manager' %}
-                    <div class="alert alert-warning">
-                        <h6>Ваши возможности как менеджера:</h6>
-                        <ul class="mb-0">
-                            <li>Управление графиком вашей команды</li>
-                            <li>Внесение изменений в смены сотрудников</li>
-                            <li>Согласование заявок на отгулы и обмены</li>
-                            <li>Контроль фактической явки и отработанных часов</li>
-                            <li>Визуальный контроль укомплектованности смен</li>
-                        </ul>
-                    </div>
-
-                {% elif user.profile.current_role == 'planner' %}
-                    <div class="alert alert-success">
-                        <h6>Ваши возможности как планировщика:</h6>
-                        <ul class="mb-0">
-                            <li>Создание оптимальных графиков с помощью алгоритмов</li>
-                            <li>Настройка правил и ограничений для планирования</li>
-                            <li>Утверждение и публикация графиков работы</li>
-                            <li>Анализ эффективности использования ресурсов</li>
-                            <li>Формирование отчетов по ключевым показателям</li>
-                        </ul>
-                    </div>
-
-                    {% if schedules %}
-                        <h6 class="mt-4">Последние графики:</h6>
-                        <div class="list-group">
-                            {% for schedule in schedules %}
-                                <div class="list-group-item">
-                                    <div class="d-flex w-100 justify-content-between">
-                                        <h6 class="mb-1">{{ schedule.name }}</h6>
-                                        <small class="text-muted">{{ schedule.status }}</small>
-                                    </div>
-                                    <p class="mb-1">
-                                        {{ schedule.start_date }} - {{ schedule.end_date }}
-                                    </p>
-                                </div>
-                            {% endfor %}
-                        </div>
-                    {% endif %}
-
-                {% elif user.profile.current_role == 'admin' %}
-                    <div class="alert alert-danger">
-                        <h6>Ваши возможности как администратора:</h6>
-                        <ul class="mb-0">
-                            <li>Управление пользователями и их ролями</li>
-                            <li>Контроль безопасности системы</li>
-                            <li>Ведение корпоративных справочников</li>
-                            <li>Мониторинг активности пользователей</li>
-                            <li>Настройка системных параметров</li>
-                        </ul>
-                    </div>
-
-                    {% if user_count %}
-                        <div class="row mt-4">
-                            <div class="col-md-6">
-                                <div class="card bg-primary text-white">
-                                    <div class="card-body text-center">
-                                        <h2 class="card-title">{{ user_count }}</h2>
-                                        <p class="card-text">Пользователей в системе</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    {% endif %}
-                {% endif %}
-            </div>
-        </div>
-
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">Системные уведомления</h5>
-            </div>
-            <div class="card-body">
-                <div class="alert alert-light">
-                    <p class="mb-0">
-                        <strong>Информация:</strong> Система находится в стадии разработки.<br>
-                        <small>Некоторые функции могут быть временно недоступны.</small>
-                    </p>
-                </div>
-
-                {% if user.profile.current_role == 'employee' %}
-                    <div class="alert alert-warning">
-                        <strong>Напоминание:</strong> Не забудьте указать ваши предпочтения
-                        по сменам до конца недели.
-                    </div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-</div>
+<!-- Добавьте сюда контент для других ролей -->
 {% endblock %}
