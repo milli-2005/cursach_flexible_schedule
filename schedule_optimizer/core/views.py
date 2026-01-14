@@ -1,13 +1,21 @@
 # core/views.py
-import logging
+import secrets
+import string
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.contrib.auth import login, logout
+from django.contrib.auth import login, logout, update_session_auth_hash
 from django.contrib import messages
 from django.contrib.auth.models import User
-from django.contrib.auth.forms import AuthenticationForm
-from django.http import JsonResponse # Импортируем, если планируете использовать AJAX
-from django.conf import settings # Импортируем, если нужен доступ к настройкам (например, DEBUG)
+from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm
+from django.core.mail import send_mail
+from django.template.loader import render_to_string
+from django.utils.html import strip_tags
+from django.conf import settings
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
+from .models import *
+from .forms import UserInvitationForm, UserProfileForm, CustomSetPasswordForm # Импортируем новые формы
+import logging
 
 from .models import (
     UserProfile, Employee, Shift, Schedule, ShiftAssignment,
@@ -222,14 +230,68 @@ def dashboard(request):
     return render(request, 'core/dashboard.html', context)
 
 
+
 @login_required
 def profile_view(request):
-    """Страница профиля пользователя."""
+    """
+    Просмотр профиля пользователя.
+    """
     user = request.user
+    profile = user.profile # Предполагается, что профиль всегда существует
     context = {
         'user': user,
+        'profile': profile,
     }
-    return render(request, 'core/profile.html', context)
+    return render(request, 'core/profile/view.html', context)
+
+@login_required
+def profile_edit(request):
+    """
+    Редактирование профиля пользователя.
+    """
+    user = request.user
+    profile = user.profile # Предполагается, что профиль всегда существует
+
+    if request.method == 'POST':
+        form = UserProfileForm(request.POST, instance=profile)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Профиль успешно обновлён.")
+            return redirect('profile_view') # Перенаправляем на просмотр после сохранения
+    else:
+        form = UserProfileForm(instance=profile)
+
+    context = {
+        'form': form,
+    }
+    return render(request, 'core/profile/edit.html', context)
+
+def change_password(request):
+    """
+    Смена пароля после регистрации по приглашению.
+    Предполагается, что пользователь уже вошёл в систему с временным паролем.
+    """
+    user = request.user
+    if not user.is_authenticated:
+        # Если пользователь не вошёл, перенаправляем на страницу входа
+        # или показываем сообщение о том, что нужно сначала войти по временному паролю
+        messages.error(request, "Пожалуйста, войдите в систему, используя временный пароль из письма.")
+        return redirect('login')
+
+    if request.method == 'POST':
+        form = CustomSetPasswordForm(user, request.POST) # Передаём текущего пользователя
+        if form.is_valid():
+            user = form.save()
+            update_session_auth_hash(request, user)  # Важно: обновляем сессию, чтобы пользователь не вышел
+            messages.success(request, "Ваш пароль был успешно изменён.")
+            return redirect('profile_view') # Перенаправляем на профиль после смены пароля
+    else:
+        form = CustomSetPasswordForm(user) # Передаём текущего пользователя
+
+    context = {
+        'form': form,
+    }
+    return render(request, 'core/profile/change_password.html', context)
 
 
 @login_required

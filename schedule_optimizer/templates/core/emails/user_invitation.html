@@ -11,8 +11,9 @@
         <li><strong>Имя пользователя:</strong> {{ user.username }}</li>
         <li><strong>Временный пароль:</strong> {{ raw_password }}</li>
     </ul>
-    <p>Пожалуйста, <a href="{{ login_url }}">войдите</a> в систему и измените пароль после первого входа.</p>
-    <p>Ссылка для входа: <a href="{{ login_url }}">{{ site_url }}/login/</a></p>
+    <p>Пожалуйста, <a href="{{ login_url }}">войдите</a> в систему, используя временный пароль, и затем <a href="{{ change_password_url }}">смените его</a> на постоянный.</p>
+    <p>Ссылка для входа: <a href="{{ login_url }}">{{ login_url }}</a></p>
+    <p>Ссылка для смены пароля: <a href="{{ change_password_url }}">{{ change_password_url }}</a></p>
     <p>С уважением,<br/>Команда системы планирования смен</p>
 </body>
 </html>

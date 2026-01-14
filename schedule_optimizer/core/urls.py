@@ -19,7 +19,9 @@ urlpatterns = [
 
     # Личный кабинет и профиль
     path('dashboard/', views.dashboard, name='dashboard'),
-    path('profile/', views.profile_view, name='profile'),
+    path('profile/', views.profile_view, name='profile_view'),
+    path('profile/edit/', views.profile_edit, name='profile_edit'),
+    path('profile/change-password/', views.change_password, name='change_password'),
     path('switch-role/', views.switch_role, name='switch_role'),
 
     # Графики и планирование

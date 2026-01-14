@@ -1,7 +1,7 @@
 # core/forms.py
 from django import forms
 from django.contrib.auth.models import User
-from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.forms import UserCreationForm, SetPasswordForm # Импортируем SetPasswordForm
 from .models import UserProfile
 
 class UserInvitationForm(forms.Form):
@@ -67,10 +67,33 @@ class UserInvitationForm(forms.Form):
             raise forms.ValidationError("Пользователь с таким email уже существует.")
         return email
 
+
 class UserProfileForm(forms.ModelForm):
     """
     Форма для редактирования профиля пользователя.
     """
     class Meta:
         model = UserProfile
-        fields = ['role', 'phone', 'department', 'position']
+        fields = ['phone', 'department', 'position']  # Убрали role, так как она управляется админом
+        labels = {
+            'phone': 'Телефон',
+            'department': 'Отдел',
+            'position': 'Должность',
+        }
+        widgets = {
+            'phone': forms.TextInput(attrs={'class': 'form-control'}),
+            'department': forms.TextInput(attrs={'class': 'form-control'}),
+            'position': forms.TextInput(attrs={'class': 'form-control'}),
+        }
+
+
+class CustomSetPasswordForm(SetPasswordForm):
+    """
+    Кастомная форма для смены пароля, наследуется от SetPasswordForm.
+    Можно добавить стили Bootstrap.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field_name in ['new_password1', 'new_password2']:
+            self.fields[field_name].widget.attrs.update({'class': 'form-control'})
