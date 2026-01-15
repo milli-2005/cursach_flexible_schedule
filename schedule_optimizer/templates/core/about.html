@@ -1,9 +1,80 @@
 <!-- templates/core/about.html -->
 {% extends "core/base.html" %}
 
-{% block title %}О системе - {{ block.super }}{% endblock %}
+{% block title %}О нас - {{ block.super }}{% endblock %}
 
 {% block content %}
-<h2>О системе</h2>
-<p>Система планирования смен разработана для автоматизации и оптимизации процесса составления графиков работы.</p>
+<div class="about-container">
+    <section class="hero-section">
+        <div class="hero-content">
+            <h1>О нашей системе</h1>
+            <p class="hero-subtitle">Революция в планировании смен для вашего бизнеса</p>
+            <p class="hero-description">
+                Мы создали интуитивно понятную и мощную платформу, которая автоматизирует и оптимизирует процессы составления графиков работы.
+                Наша цель — освободить ваше время и повысить эффективность управления персоналом.
+            </p>
+            <a href="/contact/" class="cta-button">Связаться с нами</a>
+        </div>
+        <!-- Абстрактный фон -->
+        <div class="hero-background-shapes">
+            <div class="shape shape-1"></div>
+            <div class="shape shape-2"></div>
+            <div class="shape shape-3"></div>
+        </div>
+    </section>
+
+    <section class="features-section">
+        <div class="section-header">
+            <h2>Наши возможности</h2>
+            <p>Почему выбирают нас</p>
+        </div>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="bi bi-lightning-charge"></i>
+                </div>
+                <h3>Быстрое планирование</h3>
+                <p>Создавайте сложные графики за считанные минуты с помощью наших инструментов.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="bi bi-shield-check"></i>
+                </div>
+                <h3>Соблюдение норм</h3>
+                <p>Автоматическая проверка на соответствие трудовому законодательству.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="bi bi-phone"></i>
+                </div>
+                <h3>Доступ с мобильных</h3>
+                <p>Просматривайте и управляйте графиками в любое время, с любого устройства.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="team-section">
+        <div class="section-header">
+            <h2>Наша команда</h2>
+            <p>Люди, создающие будущее HR-технологий</p>
+        </div>
+        <div class="team-grid">
+            <div class="team-member">
+                <div class="member-image-placeholder"></div>
+                <h3>Иван Петров</h3>
+                <p>CEO</p>
+            </div>
+            <div class="team-member">
+                <div class="member-image-placeholder"></div>
+                <h3>Мария Сидорова</h3>
+                <p>CTO</p>
+            </div>
+            <div class="team-member">
+                <div class="member-image-placeholder"></div>
+                <h3>Алексей Козлов</h3>
+                <p>Lead Developer</p>
+            </div>
+        </div>
+    </section>
+</div>
 {% endblock %}
