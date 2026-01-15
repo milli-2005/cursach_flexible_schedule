@@ -1,13 +1,11 @@
 # core/forms.py
 from django import forms
 from django.contrib.auth.models import User
-from django.contrib.auth.forms import UserCreationForm, SetPasswordForm # Импортируем SetPasswordForm
+from django.contrib.auth.forms import UserCreationForm, SetPasswordForm
 from .models import UserProfile
 
 class UserInvitationForm(forms.Form):
-    """
-    Форма для приглашения нового пользователя администратором.
-    """
+    # ... (остаётся как было)
     username = forms.CharField(
         max_length=150,
         label="Имя пользователя",
@@ -30,9 +28,8 @@ class UserInvitationForm(forms.Form):
 
     ROLE_CHOICES = [
         ('employee', 'Сотрудник'),
-        ('manager', 'Менеджер'),
-        ('planner', 'Планировщик'),
-        ('admin', 'Администратор системы'),
+        ('studio_admin', 'Администратор студии'),
+        ('manager', 'Руководитель'),
     ]
     role = forms.ChoiceField(
         choices=ROLE_CHOICES,
@@ -67,14 +64,14 @@ class UserInvitationForm(forms.Form):
             raise forms.ValidationError("Пользователь с таким email уже существует.")
         return email
 
-
-class UserProfileForm(forms.ModelForm):
+# Новая форма для редактирования профиля
+class UserProfileEditForm(forms.ModelForm):
     """
-    Форма для редактирования профиля пользователя.
+    Форма для редактирования профиля пользователя (без роли).
     """
     class Meta:
         model = UserProfile
-        fields = ['phone', 'department', 'position']  # Убрали role, так как она управляется админом
+        fields = ['phone', 'department', 'position'] # Убрали role
         labels = {
             'phone': 'Телефон',
             'department': 'Отдел',
@@ -86,13 +83,12 @@ class UserProfileForm(forms.ModelForm):
             'position': forms.TextInput(attrs={'class': 'form-control'}),
         }
 
-
+# Оставим SetPasswordForm как есть, если используется
 class CustomSetPasswordForm(SetPasswordForm):
     """
     Кастомная форма для смены пароля, наследуется от SetPasswordForm.
     Можно добавить стили Bootstrap.
     """
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for field_name in ['new_password1', 'new_password2']:

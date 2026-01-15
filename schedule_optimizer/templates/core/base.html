@@ -1,3 +1,4 @@
+<!-- templates/core/base.html -->
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -25,15 +26,43 @@
                 <h2 class="logo">Logo</h2>
             </div>
             <nav class="sidebar-nav">
-                <ul class="nav-list">
-                    <li><a href="/" class="nav-link"><i class="bi bi-house-door"></i> Главная</a></li>
-                    <li><a href="/about/" class="nav-link"><i class="bi bi-info-circle"></i> О нас</a></li>
-                    <li><a href="/services/" class="nav-link"><i class="bi bi-briefcase"></i> Услуги</a></li>
-                    <li><a href="/blog/" class="nav-link"><i class="bi bi-journal-text"></i> Блог</a></li>
-                    <li><a href="/profile/" class="nav-link"><i class="bi bi-person-circle"></i> Профиль</a></li>
-                    <li><a href="/settings/" class="nav-link"><i class="bi bi-gear"></i> Настройки</a></li>
-                </ul>
-            </nav>
+    <ul class="nav-list">
+        <li><a href="{% url 'dashboard' %}" class="nav-link"><i class="bi bi-house-door"></i> Дашборд</a></li>
+        <li><a href="{% url 'about' %}" class="nav-link"><i class="bi bi-info-circle"></i> О нас</a></li>
+
+        {% if user.is_authenticated %}
+            {% if user.profile.role == 'employee' %}
+                <!-- Навигация для Сотрудника -->
+                <li><a href="{% url 'profile_view' %}" class="nav-link"><i class="bi bi-person-circle"></i> Профиль</a></li>
+                <li><a href="{% url 'employee_schedule' %}" class="nav-link"><i class="bi bi-calendar-event"></i> Мой график</a></li>
+                <li><a href="{% url 'timeoff_requests' %}" class="nav-link"><i class="bi bi-card-text"></i> Заявки на отгул</a></li>
+                <li><a href="{% url 'shift_swaps' %}" class="nav-link"><i class="bi bi-arrow-left-right"></i> Обмены сменами</a></li>
+            {% else %}
+                {% if user.profile.role == 'studio_admin' %}
+                    <!-- Навигация для Администратора студии -->
+                    <li><a href="{% url 'profile_view' %}" class="nav-link"><i class="bi bi-person-circle"></i> Профиль</a></li>
+                    <li><a href="{% url 'schedule_view' %}" class="nav-link"><i class="bi bi-calendar-week"></i> Управление графиками</a></li>
+                    <li><a href="{% url 'reports' %}" class="nav-link"><i class="bi bi-file-earmark-bar-graph"></i> Отчеты</a></li>
+                    <li><a href="{% url 'employee_schedule' %}" class="nav-link"><i class="bi bi-calendar-event"></i> Фактическая явка</a></li>
+                {% else %}
+                    {% if user.profile.role == 'manager' %}
+                        <!-- Навигация для Руководителя -->
+                        <li><a href="{% url 'profile_view' %}" class="nav-link"><i class="bi bi-person-circle"></i> Профиль</a></li>
+                        <li><a href="{% url 'schedule_view' %}" class="nav-link"><i class="bi bi-calendar-week"></i> Управление графиками</a></li>
+                        <li><a href="{% url 'optimization' %}" class="nav-link"><i class="bi bi-gear-wide-connected"></i> Оптимизация</a></li>
+                        <li><a href="{% url 'reports' %}" class="nav-link"><i class="bi bi-file-earmark-bar-graph"></i> Отчеты</a></li>
+                        <li><a href="{% url 'timeoff_requests' %}" class="nav-link"><i class="bi bi-card-text"></i> Заявки на отгул</a></li>
+                        <li><a href="{% url 'shift_swaps' %}" class="nav-link"><i class="bi bi-arrow-left-right"></i> Обмены сменами</a></li>
+                        <li><a href="{% url 'user_management' %}" class="nav-link"><i class="bi bi-people"></i> Управление пользователями</a></li>
+                    {% endif %}
+                {% endif %}
+            {% endif %}
+        {% else %}
+            <!-- Навигация для неавторизованного пользователя -->
+            <li><a href="{% url 'login' %}" class="nav-link"><i class="bi bi-box-arrow-in-right"></i> Вход</a></li>
+        {% endif %}
+    </ul>
+</nav>
         </aside>
 
         <!-- Main Content Area -->
@@ -44,6 +73,13 @@
                     <button class="menu-toggle-btn" id="menuToggleBtn">
                         <i class="bi bi-list"></i>
                     </button>
+                    <!-- Отображение текущей роли -->
+                    {% if user.is_authenticated %}
+                        <div class="current-role-display">
+                            <i class="bi bi-person-badge"></i>
+                            <span>Роль: {{ user.profile.get_role_display }}</span>
+                        </div>
+                    {% endif %}
                 </div>
                 <div class="header-right">
                     <div class="user-profile">

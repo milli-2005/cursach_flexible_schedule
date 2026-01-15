@@ -1,0 +1,8 @@
+{% extends "core/base.html" %}
+
+{% block title %}Debug Dashboard{% endblock %}
+
+{% block content %}
+    <h1>Dashboard for {{ user.username }}</h1>
+    <p>Role: {{ profile.get_role_display }}</p>
+{% endblock %}

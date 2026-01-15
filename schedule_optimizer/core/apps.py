@@ -15,26 +15,15 @@ class CoreConfig(AppConfig):
             """
             Сигнал, который срабатывает при сохранении User.
             Если пользователь был создан (created=True), создаем ему профиль.
-            Если пользователь просто сохранен, проверяем, является ли он суперпользователем,
-            и если да, и у него нет профиля с ролью admin, устанавливаем её.
+            Если это суперпользователь и он был создан, устанавливаем ему роль admin.
             """
             if created:
                 # Создаем профиль при создании пользователя
                 profile = UserProfile.objects.create(user=instance)
-                # Если это суперпользователь, сразу устанавливаем роль администратора
+
                 if instance.is_superuser:
-                    profile.role = 'admin'
-                    profile.current_role = 'admin'
+                    profile.role = 'manager'
                     profile.save()
-            else:
-                # При обновлении пользователя проверяем, не стал ли он суперпользователем
-                # и существует ли уже профиль
-                if instance.is_superuser:
-                    profile, created = UserProfile.objects.get_or_create(user=instance)
-                    if profile.role != 'admin':
-                        profile.role = 'admin'
-                        profile.current_role = 'admin'
-                        profile.save()
 
         # Подключаем сигнал при готовности приложения
         post_save.connect(create_or_update_user_profile, sender=User)

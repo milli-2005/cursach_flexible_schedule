@@ -1,3 +1,4 @@
+// static/js/base_script.js
 document.addEventListener('DOMContentLoaded', function () {
     const menuToggleBtn = document.getElementById('menuToggleBtn');
     const sidebar = document.querySelector('.sidebar');

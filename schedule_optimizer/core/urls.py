@@ -12,17 +12,11 @@ urlpatterns = [
     path('login/', views.custom_login, name='login'),
     path('logout/', views.custom_logout, name='logout'),
 
-    # Управление пользователями (только для администраторов)
-    path('admin-panel/users/', views.user_management, name='user_management'),
-    path('admin-panel/users/invite/', views.invite_user, name='invite_user'),
-    path('admin-panel/users/reset-password/<int:user_id>/', views.reset_user_password, name='reset_user_password'),
-
     # Личный кабинет и профиль
     path('dashboard/', views.dashboard, name='dashboard'),
     path('profile/', views.profile_view, name='profile_view'),
     path('profile/edit/', views.profile_edit, name='profile_edit'),
     path('profile/change-password/', views.change_password, name='change_password'),
-    path('switch-role/', views.switch_role, name='switch_role'),
 
     # Графики и планирование
     path('schedules/', views.schedule_view, name='schedule_view'),

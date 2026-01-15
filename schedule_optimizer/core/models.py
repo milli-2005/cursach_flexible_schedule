@@ -1,6 +1,8 @@
 # core/models.py
 from django.db import models
 from django.contrib.auth.models import User
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 class UserProfile(models.Model):
     """
@@ -10,9 +12,8 @@ class UserProfile(models.Model):
     # Роли пользователей
     ROLE_CHOICES = [
         ('employee', 'Сотрудник'),
-        ('manager', 'Менеджер'),
-        ('planner', 'Планировщик'),
-        ('admin', 'Администратор системы'),
+        ('studio_admin', 'Администратор'),
+        ('manager', 'Руководитель'),
     ]
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
@@ -20,9 +21,6 @@ class UserProfile(models.Model):
     phone = models.CharField(max_length=20, blank=True, verbose_name="Телефон")
     department = models.CharField(max_length=100, blank=True, verbose_name="Отдел")
     position = models.CharField(max_length=100, blank=True, verbose_name="Должность")
-
-    # Поле для хранения текущей активной роли (если у пользователя несколько ролей)
-    current_role = models.CharField(max_length=20, choices=ROLE_CHOICES, blank=True, verbose_name="Текущая роль")
 
     class Meta:
         verbose_name = "Профиль пользователя"
@@ -32,10 +30,14 @@ class UserProfile(models.Model):
         return f"{self.user.username} ({self.get_role_display()})"
 
     def save(self, *args, **kwargs):
-        # При сохранении, если текущая роль не установлена, используем основную роль
-        if not self.current_role:
-            self.current_role = self.role
         super().save(*args, **kwargs)
+
+
+
+@receiver(post_save, sender=User)
+def save_user_profile(sender, instance, **kwargs):
+    if hasattr(instance, 'profile'):
+        instance.profile.save()
 
 
 class Employee(models.Model):

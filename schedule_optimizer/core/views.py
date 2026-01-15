@@ -3,36 +3,69 @@ import secrets
 import string
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.contrib.auth import login, logout, update_session_auth_hash
+from django.contrib.auth import login, logout
 from django.contrib import messages
-from django.contrib.auth.models import User
-from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm
+from django.contrib.auth.forms import AuthenticationForm
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from django.conf import settings
 from django.http import JsonResponse
-from django.views.decorators.http import require_POST
 from .models import *
-from .forms import UserInvitationForm, UserProfileForm, CustomSetPasswordForm # Импортируем новые формы
+from .forms import UserInvitationForm # Убираем UserProfileForm, если она не нужна для редактирования
+from django.contrib.auth.models import User
 import logging
 
-from .models import (
-    UserProfile, Employee, Shift, Schedule, ShiftAssignment,
-    TimeOffRequest, ShiftSwapRequest, OptimizationRule
-)
-from .forms import UserInvitationForm, UserProfileForm # Убедитесь, что импортировали UserProfileForm, если будете использовать
-from .utils import generate_random_password, send_user_invitation # Импортируем наши утилиты
+logger = logging.getLogger(__name__)
 
-logger = logging.getLogger(__name__) # Инициализируем логгер
+def generate_random_password(length=12):
+    """Генерирует случайный безопасный пароль."""
+    alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
+    password = ''.join(secrets.choice(alphabet) for _ in range(length))
+    return password
+
+def send_user_invitation(user, raw_password):
+    """Отправляет приглашение новому пользователю с паролем."""
+    subject = 'Приглашение в систему планирования смен'
+    # HTML сообщение
+    html_message = render_to_string('core/emails/user_invitation.html', {
+        'user': user,
+        'raw_password': raw_password,
+        'site_url': 'http://localhost:8000',  # Замените на ваш домен
+        'login_url': 'http://localhost:8000/login/',
+    })
+
+    # !!! ВАЖНО: ЗАМЕНИТЕ НА ВАШ ПУБЛИЧНЫЙ URL (например, от ngrok) !!! надо спросить вместе верхнего блоква
+    # site_url = getattr(settings, 'PUBLIC_SITE_URL', 'http://localhost:8000')  # Используем переменную из settings
+    # html_message = render_to_string('core/emails/user_invitation.html', {
+    #     'user': user,
+    #     'raw_password': raw_password,
+    #     'site_url': site_url,
+    #     'login_url': f'{site_url}/login/',
+    #     'change_password_url': f'{site_url}/profile/change-password/'  # Ссылка на смену пароля
+    # })
+
+
+    # Текстовое сообщение (для клиентов без поддержки HTML)
+    plain_message = strip_tags(html_message)
+
+    # Отправляем email
+    send_mail(
+        subject,
+        plain_message,
+        settings.DEFAULT_FROM_EMAIL,
+        [user.email], # Отправляем на email нового пользователя
+        html_message=html_message,
+        fail_silently=False,
+    )
+
 
 
 def is_admin(user):
     """Проверяет, является ли пользователь администратором."""
     if not hasattr(user, 'profile'):
         return False
-    # Проверяем как роль в профиле, так и is_superuser
-    return user.profile.role == 'admin' or user.is_superuser
+    return user.profile.role == 'manager' or user.is_superuser
 
 
 @login_required
@@ -63,8 +96,6 @@ def invite_user(request):
                 profile.department = form.cleaned_data.get('department', '')
                 profile.position = form.cleaned_data.get('position', '')
                 profile.phone = form.cleaned_data.get('phone', '')
-                # current_role автоматически установится в save() в модели
-                # если не установлен явно, то на основе role
                 profile.save()
 
                 # Отправляем приглашение на email
@@ -166,16 +197,13 @@ def about(request):
 def custom_login(request):
     """Кастомная страница входа в систему."""
     if request.user.is_authenticated:
-        return redirect('index')
+        return redirect('dashboard')
 
     if request.method == 'POST':
         form = AuthenticationForm(data=request.POST)
         if form.is_valid():
             user = form.get_user()
             login(request, user)
-            # Устанавливаем текущую роль из профиля в сессию
-            if hasattr(user, 'profile'):
-                request.session['current_role'] = user.profile.current_role or user.profile.role
             messages.success(request, f"Добро пожаловать, {user.username}!")
             return redirect('dashboard') # Перенаправляем на дашборд после входа
         else:
@@ -198,37 +226,50 @@ def custom_logout(request):
 def dashboard(request):
     """Личный кабинет пользователя."""
     user = request.user
+    profile = user.profile
     context = {
         'user': user,
+        'profile': profile,
     }
 
-    # В зависимости от роли показываем разную информацию
-    if hasattr(user, 'profile'):
-        role = user.profile.current_role or user.profile.role
-        if role == 'employee':
-            # Для сотрудника показываем его смены и заявки
-            try:
-                employee = Employee.objects.get(user_profile=user.profile)
-                context['employee'] = employee
-                # Здесь можно добавить логику для получения смен сотрудника
-            except Employee.DoesNotExist:
-                # Если профиль сотрудника не создан, возможно, стоит создать его автоматически или вывести предупреждение
-                pass
-        elif role == 'manager':
-            # Для менеджера показываем его команду и смены
-            # TODO: Реализовать логику для менеджера
+    # В зависимости от роли показываем разную информацию и перенаправляем или рендерим
+    if profile.role == 'employee':
+        # Для сотрудника показываем его смены и заявки
+        try:
+            employee_model = Employee.objects.get(user_profile=profile)
+            context['employee'] = employee_model
+            # Здесь можно добавить логику для получения смен сотрудника
+        except Employee.DoesNotExist:
             pass
-        elif role == 'planner':
-            # Для планировщика показываем графики и инструменты оптимизации
-            schedules = Schedule.objects.all()[:5] # Последние 5 графиков
-            context['schedules'] = schedules
-        elif role == 'admin':
-            # Для админа показываем статистику системы
-            user_count = User.objects.count()
-            context['user_count'] = user_count
+        return render(request, 'core/dashboard/dashboard_employee.html', context)
+    elif profile.role == 'studio_admin':
+        # Для администратора студии
+        # Здесь можно добавить логику для получения графиков, отчетов и т.д.
+        schedules = Schedule.objects.all()[:5]  # Пример
+        context['schedules'] = schedules
+        return render(request, 'core/dashboard/dashboard_studio_admin.html', context)
+    elif profile.role == 'manager':
+        # Для менеджера
+        schedules = Schedule.objects.all()[:5]  # Пример
+        context['schedules'] = schedules
+        return render(request, 'core/dashboard/dashboard_manager.html', context)
+    else:
+        # На всякий случай, если роль неизвестна
+        messages.error(request, "Неизвестная роль пользователя.")
+        return redirect('index')
 
-    return render(request, 'core/dashboard.html', context)
 
+# # core/views.py
+# @login_required
+# def dashboard(request):
+#     user = request.user
+#     profile = user.profile
+#     # Просто рендерим базовый шаблон с минимальным содержимым
+#     context = {
+#         'user': user,
+#         'profile': profile,
+#     }
+#     return render(request, 'core/debug_dashboard.html', context)
 
 
 @login_required
@@ -249,44 +290,47 @@ def profile_edit(request):
     """
     Редактирование профиля пользователя.
     """
+    from .forms import UserProfileEditForm  # Импортируем форму редактирования
     user = request.user
-    profile = user.profile # Предполагается, что профиль всегда существует
+    profile = user.profile  # Предполагается, что профиль всегда существует
 
     if request.method == 'POST':
-        form = UserProfileForm(request.POST, instance=profile)
+        form = UserProfileEditForm(request.POST, instance=profile)
         if form.is_valid():
             form.save()
             messages.success(request, "Профиль успешно обновлён.")
-            return redirect('profile_view') # Перенаправляем на просмотр после сохранения
+            return redirect('profile_view')  # Перенаправляем на просмотр после сохранения
     else:
-        form = UserProfileForm(instance=profile)
+        form = UserProfileEditForm(instance=profile)
 
     context = {
         'form': form,
     }
     return render(request, 'core/profile/edit.html', context)
 
+
 def change_password(request):
     """
     Смена пароля после регистрации по приглашению.
     Предполагается, что пользователь уже вошёл в систему с временным паролем.
     """
+    from django.contrib.auth.forms import SetPasswordForm  # Импортируем стандартную форму
+    from django.contrib.auth import update_session_auth_hash  # Для обновления сессии
+
     user = request.user
     if not user.is_authenticated:
-        # Если пользователь не вошёл, перенаправляем на страницу входа
-        # или показываем сообщение о том, что нужно сначала войти по временному паролю
         messages.error(request, "Пожалуйста, войдите в систему, используя временный пароль из письма.")
         return redirect('login')
 
     if request.method == 'POST':
-        form = CustomSetPasswordForm(user, request.POST) # Передаём текущего пользователя
+        form = SetPasswordForm(user, request.POST)  # Передаём текущего пользователя
         if form.is_valid():
             user = form.save()
             update_session_auth_hash(request, user)  # Важно: обновляем сессию, чтобы пользователь не вышел
             messages.success(request, "Ваш пароль был успешно изменён.")
-            return redirect('profile_view') # Перенаправляем на профиль после смены пароля
+            return redirect('profile_view')  # Перенаправляем на профиль после смены пароля
     else:
-        form = CustomSetPasswordForm(user) # Передаём текущего пользователя
+        form = SetPasswordForm(user)  # Передаём текущего пользователя
 
     context = {
         'form': form,
@@ -294,56 +338,21 @@ def change_password(request):
     return render(request, 'core/profile/change_password.html', context)
 
 
-@login_required
-def switch_role(request):
-    """Смена текущей роли пользователя."""
-    if request.method == 'POST':
-        new_role = request.POST.get('role')
-        if new_role in dict(UserProfile.ROLE_CHOICES):
-            if hasattr(request.user, 'profile'):
-                request.user.profile.current_role = new_role
-                request.user.profile.save()
-                request.session['current_role'] = new_role # Обновляем сессию
-                messages.success(request, f"Роль изменена на {request.user.profile.get_current_role_display()}")
-            else:
-                messages.error(request, "Профиль пользователя не найден.")
-            return redirect('dashboard') # Возвращаемся на дашборд
-
-    # GET запрос - показываем форму выбора роли
-    if hasattr(request.user, 'profile'):
-        # В текущей реализации пользователь имеет одну основную роль,
-        # и current_role - это то, чем он хочет пользоваться сейчас.
-        # Доступные роли для переключения могут быть те же, или ограниченный список.
-        # В простом варианте - показываем только текущую и основную.
-        # Для более сложной логики (например, пользователь может быть и сотрудником и менеджером)
-        # понадобится изменить модель UserProfile.
-        # Пока покажем все возможные роли (это позволяет легко переключаться).
-        available_roles = UserProfile.ROLE_CHOICES
-        current_role = request.user.profile.current_role or request.user.profile.role
-    else:
-        available_roles = []
-        current_role = None
-
-    context = {
-        'available_roles': available_roles,
-        'current_role': current_role,
-    }
-    return render(request, 'core/switch_role.html', context)
-
 
 @login_required
 def schedule_view(request):
     """Просмотр графиков смен."""
+
     # Проверяем права доступа
     if not hasattr(request.user, 'profile'):
         messages.error(request, "Профиль пользователя не найден.")
         return redirect('dashboard')
 
     user_profile = request.user.profile
-    current_role = user_profile.current_role or user_profile.role
+    current_role = user_profile.role  # Берём роль из профиля
 
     # Только менеджеры, планировщики и админы могут просматривать графики
-    if current_role not in ['manager', 'planner', 'admin']:
+    if current_role not in ['studio_admin', 'manager']:
         messages.error(request, "У вас нет доступа к этому разделу.")
         return redirect('dashboard')
 
@@ -357,6 +366,7 @@ def schedule_view(request):
 @login_required
 def optimization_view(request):
     """Страница оптимизации графиков."""
+
     # Проверяем права доступа
     if not hasattr(request.user, 'profile'):
         messages.error(request, "Профиль пользователя не найден.")
@@ -366,11 +376,10 @@ def optimization_view(request):
     current_role = user_profile.current_role or user_profile.role
 
     # Только планировщики и админы могут использовать оптимизацию
-    if current_role not in ['planner', 'admin']:
+    if current_role not in ['manager']:
         messages.error(request, "У вас нет доступа к этому разделу.")
         return redirect('dashboard')
 
-    # Получаем активные правила оптимизации
     rules = OptimizationRule.objects.filter(is_active=True)
     context = {
         'rules': rules,
@@ -378,23 +387,86 @@ def optimization_view(request):
     return render(request, 'core/optimization.html', context)
 
 
-# Простые заглушки для остальных страниц
+
 @login_required
 def employee_schedule(request):
-    """График сотрудника (заглушка)."""
-    return render(request, 'core/employee_schedule.html')
+    if not hasattr(request.user, 'profile'):
+        messages.error(request, "Профиль пользователя не найден.")
+        return redirect('dashboard')
+
+    user_profile = request.user.profile
+    current_role = user_profile.role # Берём роль из профиля
+
+    # Права доступа могут отличаться для сотрудника и админа студии
+    # Например, сотрудник видит только свой график, админ студии - всех
+    context = {
+        'current_role': current_role,
+    }
+    return render(request, 'core/employee_schedule.html', context)
+
+
 
 @login_required
 def timeoff_requests(request):
-    """Заявки на отгул (заглушка)."""
-    return render(request, 'core/timeoff_requests.html')
+    if not hasattr(request.user, 'profile'):
+        messages.error(request, "Профиль пользователя не найден.")
+        return redirect('dashboard')
+
+    user_profile = request.user.profile
+    current_role = user_profile.role # Берём роль из профиля
+
+    # Права доступа могут отличаться
+    # Сотрудник видит свои заявки, менеджер - все на согласование
+    context = {
+        'current_role': current_role,
+    }
+    return render(request, 'core/timeoff_requests.html', context)
+
+
 
 @login_required
 def shift_swaps(request):
-    """Обмены сменами (заглушка)."""
-    return render(request, 'core/shift_swaps.html')
+    if not hasattr(request.user, 'profile'):
+        messages.error(request, "Профиль пользователя не найден.")
+        return redirect('dashboard')
+
+    user_profile = request.user.profile
+    current_role = user_profile.role # Берём роль из профиля
+
+    # Права доступа могут отличаться
+    context = {
+        'current_role': current_role,
+    }
+    return render(request, 'core/shift_swaps.html', context)
+
+
 
 @login_required
 def reports(request):
-    """Отчеты (заглушка)."""
-    return render(request, 'core/reports.html')
+    if not hasattr(request.user, 'profile'):
+        messages.error(request, "Профиль пользователя не найден.")
+        return redirect('dashboard')
+
+    user_profile = request.user.profile
+    current_role = user_profile.role # Берём роль из профиля
+
+    if current_role not in ['studio_admin', 'manager']:
+        messages.error(request, "У вас нет доступа к этому разделу.")
+        return redirect('dashboard')
+
+    # Здесь будет логика генерации отчетов
+    context = {}
+    return render(request, 'core/reports.html', context)
+
+
+def dashboard_employee(request):
+    # Логика для дашборда сотрудника
+    return render(request, 'core/dashboard_employee.html')
+
+def dashboard_studio_admin(request):
+    # Логика для дашборда админа студии
+    return render(request, 'core/dashboard_studio_admin.html')
+
+def dashboard_manager(request):
+    # Логика для дашборда менеджера
+    return render(request, 'core/dashboard_manager.html')
