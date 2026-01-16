@@ -3,6 +3,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.utils import timezone  #Для рассчета времени смены пароля
 
 class UserProfile(models.Model):
     """
@@ -22,6 +23,9 @@ class UserProfile(models.Model):
     department = models.CharField(max_length=100, blank=True, verbose_name="Отдел")
     position = models.CharField(max_length=100, blank=True, verbose_name="Должность")
 
+    # Поле для хранения времени приглашения/сброса пароля
+    invitation_timestamp = models.DateTimeField(null=True, blank=True, verbose_name="Время приглашения/сброса пароля")
+
     class Meta:
         verbose_name = "Профиль пользователя"
         verbose_name_plural = "Профили пользователей"
@@ -31,6 +35,19 @@ class UserProfile(models.Model):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
+
+
+    def is_temporary_password_expired(self, timeout_minutes=5):
+        """
+        Проверяет, истёк ли срок действия временного пароля.
+        :param timeout_minutes: Время в минутах, после которого пароль становится недействительным.
+        :return: True, если срок действия истёк, False в противном случае.
+        """
+        if not self.invitation_timestamp:
+            # Если временная метка не установлена, считаем, что пароль не временный или срок не ограничен
+            return False
+        expiration_time = self.invitation_timestamp + timezone.timedelta(minutes=timeout_minutes)
+        return timezone.now() > expiration_time
 
 
 

@@ -12,9 +12,10 @@ from django.utils.html import strip_tags
 from django.conf import settings
 from django.http import JsonResponse
 from .models import *
-from .forms import UserInvitationForm # Убираем UserProfileForm, если она не нужна для редактирования
+from .forms import UserInvitationForm
 from django.contrib.auth.models import User
 import logging
+from django.utils import timezone #для времени сброса пароля
 
 logger = logging.getLogger(__name__)
 
@@ -96,6 +97,9 @@ def invite_user(request):
                 profile.department = form.cleaned_data.get('department', '')
                 profile.position = form.cleaned_data.get('position', '')
                 profile.phone = form.cleaned_data.get('phone', '')
+
+                # УСТАНАВЛИВАЕМ ВРЕМЕННУЮ МЕТКУ
+                profile.invitation_timestamp = timezone.now()
                 profile.save()
 
                 # Отправляем приглашение на email
@@ -151,9 +155,14 @@ def reset_user_password(request, user_id):
             user.set_password(raw_password)
             user.save()
 
+            # УСТАНАВЛИВАЕМ ВРЕМЕННУЮ МЕТКУ ДЛЯ СБРОСА
+            profile = user.profile
+            profile.invitation_timestamp = timezone.now()
+            profile.save()
+
             # Отправляем email с новым паролем
             try:
-                send_user_invitation(user, raw_password) # Та же функция, но с новым паролем
+                send_user_invitation(user, raw_password)
                 messages.success(
                     request,
                     f'Новый пароль для пользователя {user.username} отправлен на {user.email}.'
@@ -203,6 +212,14 @@ def custom_login(request):
         form = AuthenticationForm(data=request.POST)
         if form.is_valid():
             user = form.get_user()
+
+            # Проверяем, не истёк ли срок действия временного пароля
+            if hasattr(user, 'profile') and user.profile.is_temporary_password_expired():
+                messages.error(request,
+                               "Временный пароль устарел. Пожалуйста, свяжитесь с администратором для получения нового.")
+                # Важно: не логиним пользователя, если пароль истёк
+                return render(request, 'core/login.html', {'form': form})
+
             login(request, user)
             messages.success(request, f"Добро пожаловать, {user.username}!")
             return redirect('dashboard') # Перенаправляем на дашборд после входа
@@ -322,11 +339,22 @@ def change_password(request):
         messages.error(request, "Пожалуйста, войдите в систему, используя временный пароль из письма.")
         return redirect('login')
 
+    # Проверяем, не истёк ли срок действия временного пароля при доступе к странице смены пароля
+    if hasattr(user, 'profile') and user.profile.is_temporary_password_expired():
+        messages.error(request, "Срок действия временного пароля истёк. Пожалуйста, свяжитесь с администратором для получения нового.")
+        return redirect('login') # Или на главную, если не хочет логиниться снова
+
     if request.method == 'POST':
         form = SetPasswordForm(user, request.POST)  # Передаём текущего пользователя
         if form.is_valid():
             user = form.save()
             update_session_auth_hash(request, user)  # Важно: обновляем сессию, чтобы пользователь не вышел
+
+            # СБРАСЫВАЕМ ВРЕМЕННУЮ МЕТКУ ПОСЛЕ УСПЕШНОЙ СМЕНЫ ПАРОЛЯ
+            if hasattr(user, 'profile'):
+                user.profile.invitation_timestamp = None
+                user.profile.save()
+
             messages.success(request, "Ваш пароль был успешно изменён.")
             return redirect('profile_view')  # Перенаправляем на профиль после смены пароля
     else:

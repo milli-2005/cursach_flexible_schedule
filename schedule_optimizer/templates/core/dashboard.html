@@ -5,7 +5,7 @@
 
 {% block content %}
 <div class="dashboard-container">
-    <h2>Добро пожаловать, {{ user.username }}!</h2>
+    <h2>Добро пожаловать, {{ user.username }}</h2>
     <p>Текущая роль: {{ user.profile.get_current_role_display }}</p>
 
     <div class="dashboard-grid">

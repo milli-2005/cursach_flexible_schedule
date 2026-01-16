@@ -11,6 +11,7 @@
         <li><strong>Имя пользователя:</strong> {{ user.username }}</li>
         <li><strong>Временный пароль:</strong> {{ raw_password }}</li>
     </ul>
+    <p><strong>Важно:</strong> Временный пароль действителен в течение <strong>10 минут</strong> с момента получения этого письма.</p>
     <p>Пожалуйста, <a href="{{ login_url }}">войдите</a> в систему, используя временный пароль, и затем <a href="{{ change_password_url }}">смените его</a> на постоянный.</p>
     <p>Ссылка для входа: <a href="{{ login_url }}">{{ login_url }}</a></p>
     <p>Ссылка для смены пароля: <a href="{{ change_password_url }}">{{ change_password_url }}</a></p>
