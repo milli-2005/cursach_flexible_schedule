@@ -1,41 +1,186 @@
-<!-- templates/core/user_management.html -->
 {% extends "core/base.html" %}
 
 {% block title %}Управление пользователями - {{ block.super }}{% endblock %}
 
 {% block content %}
-<div class="management-container">
-    <div class="management-header">
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
         <h2>Управление пользователями</h2>
-        <a href="{% url 'invite_user' %}" class="btn btn-primary">Пригласить нового пользователя</a>
+        <button type="button" class="btn btn-primary" onclick="openCreateUserModal()">
+            Пригласить нового пользователя
+        </button>
     </div>
-    <table class="management-table">
-        <thead>
-            <tr>
-                <th>Имя пользователя</th>
-                <th>Email</th>
-                <th>Роль</th>
-                <th>Отдел</th>
-                <th>Действия</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for user in users %}
-            <tr>
-                <td data-label="Имя пользователя">{{ user.username }}</td>
-                <td data-label="Email">{{ user.email }}</td>
-                <td data-label="Роль">{{ user.profile.get_role_display }}</td>
-                <td data-label="Отдел">{{ user.profile.department }}</td>
-                <td data-label="Действия" class="management-actions">
-                    <a href="{% url 'reset_user_password' user.id %}" class="btn btn-danger">Сбросить пароль</a>
-                </td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="5">Нет пользователей.</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+
+    <div class="table-responsive">
+        <table class="table table-dark table-striped">
+            <thead>
+                <tr>
+                    <th>Имя пользователя</th>
+                    <th>Email</th>
+                    <th>Роль</th>
+                    <th>Отдел</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody id="userTableBody">
+                <!-- Содержимое таблицы будет загружаться через AJAX -->
+            </tbody>
+        </table>
+    </div>
 </div>
+{% endblock %}
+
+{% block modals %}
+<!-- Модальное окно для создания пользователя -->
+<div class="modal fade" id="createUserModal" tabindex="-1" aria-labelledby="createUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createUserModalLabel">Пригласить нового пользователя</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createUserForm">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_username" class="form-label">Имя пользователя *</label>
+                                <input type="text" class="form-control" id="id_username" name="username" required>
+                                <div class="invalid-feedback"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_email" class="form-label">Email *</label>
+                                <input type="email" class="form-control" id="id_email" name="email" required>
+                                <div class="invalid-feedback"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_first_name" class="form-label">Имя</label>
+                                <input type="text" class="form-control" id="id_first_name" name="first_name">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_last_name" class="form-label">Фамилия</label>
+                                <input type="text" class="form-control" id="id_last_name" name="last_name">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_role" class="form-label">Роль *</label>
+                                <select class="form-select" id="id_role" name="role" required>
+                                    <option value="employee">Сотрудник</option>
+                                    <option value="studio_admin">Администратор</option>
+                                    <option value="manager">Руководитель</option>
+                                </select>
+                                <div class="invalid-feedback"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_department" class="form-label">Отдел</label>
+                                <input type="text" class="form-control" id="id_department" name="department">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_position" class="form-label">Должность</label>
+                                <input type="text" class="form-control" id="id_position" name="position">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_phone" class="form-label">Телефон</label>
+                                <input type="text" class="form-control" id="id_phone" name="phone">
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" onclick="submitCreateUser()">Пригласить</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        loadUsers();
+    });
+
+    function openCreateUserModal() {
+        const modal = new bootstrap.Modal(document.getElementById('createUserModal'));
+        modal.show();
+    }
+
+    function loadUsers() {
+        fetch('/api/users/')
+            .then(response => response.json())
+            .then(data => {
+                const tbody = document.getElementById('userTableBody');
+                tbody.innerHTML = '';
+                data.forEach(user => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${user.username}</td>
+                        <td>${user.email}</td>
+                        <td>${user.profile.role_display}</td>
+                        <td>${user.profile.department || '-'}</td>
+                        <td>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="alert('Edit ${user.id}')">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="alert('Delete ${user.id}')">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-warning" onclick="alert('Reset ${user.id}')">
+                                <i class="bi bi-key"></i>
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            })
+            .catch(error => console.error('Error loading users:', error));
+    }
+
+    function submitCreateUser() {
+        const form = document.getElementById('createUserForm');
+        const formData = new FormData(form);
+
+        fetch('/api/invite-user/', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Пользователь успешно приглашен.');
+                bootstrap.Modal.getInstance(document.getElementById('createUserModal')).hide();
+                form.reset();
+                loadUsers();
+            } else {
+                alert('Ошибка при создании пользователя.');
+            }
+        })
+        .catch(error => console.error('Error creating user:', error));
+    }
+</script>
 {% endblock %}

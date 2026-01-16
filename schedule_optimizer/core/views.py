@@ -131,15 +131,18 @@ def invite_user(request):
     return render(request, 'core/invite_user.html', {'form': form})
 
 
+
+""" КРУДЫ ПОЛЬЗОВАТЕЛЕЙ"""
 @login_required
 @user_passes_test(is_admin)
 def user_management(request):
-    """Страница управления пользователями для администратора."""
-    users = User.objects.all().select_related('profile')
-    context = {
-        'users': users,
-    }
+    # Страница управления пользователями для администратора.
+    # Страница теперь загружает данные через AJAX
+    # Можно передать дополнительные контексты, если нужно
+    context = {}
     return render(request, 'core/user_management.html', context)
+
+
 
 
 @login_required

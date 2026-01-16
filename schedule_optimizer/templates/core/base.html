@@ -1,4 +1,3 @@
-<!-- templates/core/base.html -->
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -14,89 +13,77 @@
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
     <!-- Custom CSS -->
     <link rel="stylesheet" href="/static/css/base_style.css">
     {% block extra_css %}{% endblock %}
 </head>
 <body>
-    <div class="page-container">
+    <!-- Основной контейнер -->
+    <div class="d-flex">
         <!-- Sidebar / Navigation -->
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <h2 class="logo">Logo</h2>
+        <aside class="sidebar bg-dark text-white vh-100 position-fixed start-0 top-0 w-250">
+            <div class="p-3">
+                <h2 class="logo h5">Logo</h2>
             </div>
-            <nav class="sidebar-nav">
-    <ul class="nav-list">
-        <li><a href="{% url 'dashboard' %}" class="nav-link"><i class="bi bi-house-door"></i> Дашборд</a></li>
-        <li><a href="{% url 'about' %}" class="nav-link"><i class="bi bi-info-circle"></i> О нас</a></li>
+            <nav class="px-3">
+                <ul class="nav flex-column">
+                    <li><a href="{% url 'dashboard' %}" class="nav-link text-white"><i class="bi bi-house-door"></i> Дашборд</a></li>
+                    <li><a href="{% url 'about' %}" class="nav-link text-white"><i class="bi bi-info-circle"></i> О нас</a></li>
 
-        {% if user.is_authenticated %}
-            {% if user.profile.role == 'employee' %}
-                <!-- Навигация для Сотрудника -->
-                <li><a href="{% url 'profile_view' %}" class="nav-link"><i class="bi bi-person-circle"></i> Профиль</a></li>
-                <li><a href="{% url 'employee_schedule' %}" class="nav-link"><i class="bi bi-calendar-event"></i> Мой график</a></li>
-                <li><a href="{% url 'timeoff_requests' %}" class="nav-link"><i class="bi bi-card-text"></i> Заявки на отгул</a></li>
-                <li><a href="{% url 'shift_swaps' %}" class="nav-link"><i class="bi bi-arrow-left-right"></i> Обмены сменами</a></li>
-            {% else %}
-                {% if user.profile.role == 'studio_admin' %}
-                    <!-- Навигация для Администратора студии -->
-                    <li><a href="{% url 'profile_view' %}" class="nav-link"><i class="bi bi-person-circle"></i> Профиль</a></li>
-                    <li><a href="{% url 'schedule_view' %}" class="nav-link"><i class="bi bi-calendar-week"></i> Управление графиками</a></li>
-                    <li><a href="{% url 'reports' %}" class="nav-link"><i class="bi bi-file-earmark-bar-graph"></i> Отчеты</a></li>
-                    <li><a href="{% url 'employee_schedule' %}" class="nav-link"><i class="bi bi-calendar-event"></i> Фактическая явка</a></li>
-                {% else %}
-                    {% if user.profile.role == 'manager' %}
-                        <!-- Навигация для Руководителя -->
-                        <li><a href="{% url 'profile_view' %}" class="nav-link"><i class="bi bi-person-circle"></i> Профиль</a></li>
-                        <li><a href="{% url 'schedule_view' %}" class="nav-link"><i class="bi bi-calendar-week"></i> Управление графиками</a></li>
-                        <li><a href="{% url 'optimization' %}" class="nav-link"><i class="bi bi-gear-wide-connected"></i> Оптимизация</a></li>
-                        <li><a href="{% url 'reports' %}" class="nav-link"><i class="bi bi-file-earmark-bar-graph"></i> Отчеты</a></li>
-                        <li><a href="{% url 'timeoff_requests' %}" class="nav-link"><i class="bi bi-card-text"></i> Заявки на отгул</a></li>
-                        <li><a href="{% url 'shift_swaps' %}" class="nav-link"><i class="bi bi-arrow-left-right"></i> Обмены сменами</a></li>
-                        <li><a href="{% url 'user_management' %}" class="nav-link"><i class="bi bi-people"></i> Управление пользователями</a></li>
+                    {% if user.is_authenticated %}
+                        {% if user.profile.role == 'employee' %}
+                            <li><a href="{% url 'profile_view' %}" class="nav-link text-white"><i class="bi bi-person-circle"></i> Профиль</a></li>
+                            <li><a href="{% url 'employee_schedule' %}" class="nav-link text-white"><i class="bi bi-calendar-event"></i> Мой график</a></li>
+                            <li><a href="{% url 'timeoff_requests' %}" class="nav-link text-white"><i class="bi bi-card-text"></i> Заявки на отгул</a></li>
+                            <li><a href="{% url 'shift_swaps' %}" class="nav-link text-white"><i class="bi bi-arrow-left-right"></i> Обмены сменами</a></li>
+                        {% elif user.profile.role == 'studio_admin' %}
+                            <li><a href="{% url 'profile_view' %}" class="nav-link text-white"><i class="bi bi-person-circle"></i> Профиль</a></li>
+                            <li><a href="{% url 'schedule_view' %}" class="nav-link text-white"><i class="bi bi-calendar-week"></i> Управление графиками</a></li>
+                            <li><a href="{% url 'reports' %}" class="nav-link text-white"><i class="bi bi-file-earmark-bar-graph"></i> Отчеты</a></li>
+                            <li><a href="{% url 'employee_schedule' %}" class="nav-link text-white"><i class="bi bi-calendar-event"></i> Фактическая явка</a></li>
+                        {% elif user.profile.role == 'manager' %}
+                            <li><a href="{% url 'profile_view' %}" class="nav-link text-white"><i class="bi bi-person-circle"></i> Профиль</a></li>
+                            <li><a href="{% url 'schedule_view' %}" class="nav-link text-white"><i class="bi bi-calendar-week"></i> Управление графиками</a></li>
+                            <li><a href="{% url 'optimization' %}" class="nav-link text-white"><i class="bi bi-gear-wide-connected"></i> Оптимизация</a></li>
+                            <li><a href="{% url 'reports' %}" class="nav-link text-white"><i class="bi bi-file-earmark-bar-graph"></i> Отчеты</a></li>
+                            <li><a href="{% url 'timeoff_requests' %}" class="nav-link text-white"><i class="bi bi-card-text"></i> Заявки на отгул</a></li>
+                            <li><a href="{% url 'shift_swaps' %}" class="nav-link text-white"><i class="bi bi-arrow-left-right"></i> Обмены сменами</a></li>
+                            <li><a href="{% url 'user_management' %}" class="nav-link text-white"><i class="bi bi-people"></i> Управление пользователями</a></li>
+                        {% endif %}
+                    {% else %}
+                        <li><a href="{% url 'login' %}" class="nav-link text-white"><i class="bi bi-box-arrow-in-right"></i> Вход</a></li>
                     {% endif %}
-                {% endif %}
-            {% endif %}
-        {% else %}
-            <!-- Навигация для неавторизованного пользователя -->
-            <li><a href="{% url 'login' %}" class="nav-link"><i class="bi bi-box-arrow-in-right"></i> Вход</a></li>
-        {% endif %}
-    </ul>
-</nav>
+                </ul>
+            </nav>
         </aside>
 
         <!-- Main Content Area -->
-        <main class="main-content">
+        <main class="flex-fill ms-250">
             <!-- Header -->
-            <header class="main-header">
-                <div class="header-left">
-                    <button class="menu-toggle-btn" id="menuToggleBtn">
+            <header class="bg-dark text-white p-2 d-flex justify-content-between align-items-center">
+                <div>
+                    <button class="btn btn-outline-light me-2 d-md-none" id="menuToggleBtn">
                         <i class="bi bi-list"></i>
                     </button>
-                    <!-- Отображение текущей роли -->
                     {% if user.is_authenticated %}
-                        <div class="current-role-display">
-                            <i class="bi bi-person-badge"></i>
-                            <span>Роль: {{ user.profile.get_role_display }}</span>
-                        </div>
+                        <span class="badge bg-purple">Роль: {{ user.profile.get_role_display }}</span>
                     {% endif %}
                 </div>
-                <div class="header-right">
-                    <div class="user-profile">
-                        {% if user.is_authenticated %}
-                            <span class="user-name">{{ user.username }}</span>
-                            <a href="{% url 'logout' %}" class="logout-btn"><i class="bi bi-box-arrow-right"></i></a>
-                        {% else %}
-                            <a href="{% url 'login' %}" class="login-btn">Войти</a>
-                        {% endif %}
-                    </div>
+                <div>
+                    {% if user.is_authenticated %}
+                        <span>{{ user.username }}</span>
+                        <a href="{% url 'logout' %}" class="btn btn-outline-light ms-2">Выйти</a>
+                    {% endif %}
                 </div>
             </header>
 
             <!-- Dynamic Content -->
-            <section class="content-section">
+            <section class="p-3">
                 {% if messages %}
-                    <div class="messages-container">
+                    <div class="mb-3">
                         {% for message in messages %}
                             <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
                                 {{ message }}
@@ -112,17 +99,11 @@
         </main>
     </div>
 
-    <!-- Footer -->
-    <footer class="main-footer">
-        <div class="footer-content">
-            <p>&copy; 2026 Система планирования смен. Все права защищены.</p>
-            <div class="social-links">
-                <a href="#"><i class="bi bi-twitter"></i></a>
-                <a href="#"><i class="bi bi-facebook"></i></a>
-                <a href="#"><i class="bi bi-instagram"></i></a>
-            </div>
-        </div>
-    </footer>
+    <!-- МОДАЛЬНЫЕ ОКНА -->
+    {% block modals %}{% endblock %}
+
+    <!-- Bootstrap JS Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
     <!-- Custom JS -->
     <script src="/static/js/base_script.js"></script>

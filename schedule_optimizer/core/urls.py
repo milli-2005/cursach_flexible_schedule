@@ -18,6 +18,7 @@ urlpatterns = [
     path('profile/edit/', views.profile_edit, name='profile_edit'),
     path('profile/change-password/', views.change_password, name='change_password'),
 
+
     # Графики и планирование
     path('schedules/', views.schedule_view, name='schedule_view'),
     path('optimization/', views.optimization_view, name='optimization'),

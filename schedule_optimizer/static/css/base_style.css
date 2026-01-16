@@ -49,7 +49,7 @@ img {
     background: linear-gradient(180deg, #252525 0%, #1E1E1E 100%); /* Градиент для фона */
     backdrop-filter: blur(10px); /* Эффект стекла */
     padding: 2rem 1rem;
-    position: fixed;
+    /*position: fixed;*/
     top: 0;
     left: 0;
     bottom: 0;
