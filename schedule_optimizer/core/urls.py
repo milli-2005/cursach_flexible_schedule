@@ -2,6 +2,7 @@
 from django.urls import path
 from django.contrib.auth import views as auth_views
 from . import views
+from . import api_views
 
 urlpatterns = [
     # Основные страницы
@@ -30,4 +31,13 @@ urlpatterns = [
 
     # Отчеты
     path('reports/', views.reports, name='reports'),
+
+    # API для управления пользователями
+    path('api/users/', api_views.api_get_users, name='api_get_users'),
+    path('api/invite-user/', api_views.api_invite_user, name='api_invite_user'),
+    path('api/users/<int:user_id>/', api_views.api_get_user_detail, name='api_get_user_detail'),
+
+    path('api/users/<int:user_id>/update/', api_views.api_update_user, name='api_update_user'),
+    path('api/users/<int:user_id>/delete/', api_views.api_delete_user, name='api_delete_user'),
+    path('api/users/<int:user_id>/reset-password/', api_views.api_reset_user_password, name='api_reset_user_password'),
 ]

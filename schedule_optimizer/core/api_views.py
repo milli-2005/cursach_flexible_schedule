@@ -1,4 +1,5 @@
 # core/api_views.py
+import logging
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.views.decorators.csrf import csrf_exempt
@@ -14,6 +15,9 @@ from .forms import UserInvitationForm
 import json
 import secrets
 import string
+from django.views.decorators.http import require_http_methods
+
+logger = logging.getLogger(__name__)
 
 def is_admin(user):
     if not hasattr(user, 'profile'):
@@ -125,56 +129,70 @@ def api_get_user_detail(request, user_id):
     except User.DoesNotExist:
         return JsonResponse({'error': 'User not found'}, status=404)
 
+
 @login_required
 @user_passes_test(is_admin)
 @csrf_exempt
-@require_http_methods(["PUT"])
+@require_http_methods(["POST"])
 def api_update_user(request, user_id):
+    logger.info(f"Received POST request to update user {user_id}")
     try:
         user = User.objects.get(id=user_id)
         profile = user.profile
     except User.DoesNotExist:
+        logger.error(f"User {user_id} not found for update")
         return JsonResponse({'success': False, 'errors': {'__all__': ['Пользователь не найден.']}})
 
     try:
+        # Парсим JSON из тела запроса
         data = json.loads(request.body.decode('utf-8'))
+        logger.info(f"Received JSON data for update: {data}")
     except json.JSONDecodeError:
+        logger.error("Invalid JSON in request body")
         return JsonResponse({'success': False, 'errors': {'__all__': ['Неверный формат данных.']}})
-
-    # Валидация минимальная
-    errors = {}
 
     username = data.get('username', '').strip()
     email = data.get('email', '').strip()
     role = data.get('role', '').strip()
     department = data.get('department', '').strip()
-    position = data.get('position', '').strip()
-    phone = data.get('phone', '').strip()
 
-    if User.objects.exclude(id=user_id).filter(username=username).exists():
+    errors = {}
+
+    if not username:
+        errors['username'] = ['Это поле обязательно.']
+    elif User.objects.exclude(id=user_id).filter(username=username).exists():
         errors['username'] = ['Пользователь с таким именем уже существует.']
 
-    if User.objects.exclude(id=user_id).filter(email=email).exists():
+    if not email:
+        errors['email'] = ['Это поле обязательно.']
+    elif User.objects.exclude(id=user_id).filter(email=email).exists():
         errors['email'] = ['Пользователь с таким email уже существует.']
 
-    if role not in dict(UserProfile.ROLE_CHOICES):
+    if not role:
+        errors['role'] = ['Это поле обязательно.']
+    elif role not in dict(UserProfile.ROLE_CHOICES):
         errors['role'] = ['Выбрана недопустимая роль.']
 
     if errors:
+        logger.warning(f"Validation errors for user {user_id}: {errors}")
         return JsonResponse({'success': False, 'errors': errors})
 
     # Сохраняем
-    user.username = username
-    user.email = email
-    user.save()
+    try:
+        user.username = username
+        user.email = email
+        user.save()
 
-    profile.role = role
-    profile.department = department
-    profile.position = position
-    profile.phone = phone
-    profile.save()
+        profile.role = role
+        profile.department = department
+        profile.save()
 
-    return JsonResponse({'success': True})
+        logger.info(f"User {user_id} updated successfully")
+        return JsonResponse({'success': True})
+    except Exception as e:
+        logger.error(f"Error saving user {user_id}: {str(e)}")
+        return JsonResponse({'success': False, 'errors': {'__all__': [f'Ошибка при сохранении: {str(e)}']}})
+
 
 @login_required
 @user_passes_test(is_admin)

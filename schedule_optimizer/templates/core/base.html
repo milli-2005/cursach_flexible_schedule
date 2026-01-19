@@ -24,8 +24,8 @@
     <!-- Основной контейнер -->
     <div class="d-flex">
         <!-- Sidebar / Navigation -->
-        <aside class="sidebar bg-dark text-white vh-100 position-fixed start-0 top-0 w-250">
-            <div class="p-3">
+        <aside class="sidebar">
+            <div class="main-content-inner">
                 <h2 class="logo h5">Logo</h2>
             </div>
             <nav class="px-3">
@@ -58,28 +58,23 @@
                     {% endif %}
                 </ul>
             </nav>
+            <!-- Информация о пользователе в сайдбаре -->
+<div class="mt-auto pt-3 border-top border-white border-opacity-10">
+    {% if user.is_authenticated %}
+        <div class="d-flex align-items-center justify-content-between mb-2 px-3">
+            <span class="badge bg-purple">{{ user.profile.get_role_display }}</span>
+            <a href="{% url 'logout' %}" class="btn btn-sm btn-outline-light">Выйти</a>
+        </div>
+        <div class="px-3">
+            <small class="text-muted">Привет, {{ user.username }}</small>
+        </div>
+    {% endif %}
+</div>
         </aside>
 
         <!-- Main Content Area -->
-        <main class="flex-fill ms-250">
-            <!-- Header -->
-            <header class="bg-dark text-white p-2 d-flex justify-content-between align-items-center">
-                <div>
-                    <button class="btn btn-outline-light me-2 d-md-none" id="menuToggleBtn">
-                        <i class="bi bi-list"></i>
-                    </button>
-                    {% if user.is_authenticated %}
-                        <span class="badge bg-purple">Роль: {{ user.profile.get_role_display }}</span>
-                    {% endif %}
-                </div>
-                <div>
-                    {% if user.is_authenticated %}
-                        <span>{{ user.username }}</span>
-                        <a href="{% url 'logout' %}" class="btn btn-outline-light ms-2">Выйти</a>
-                    {% endif %}
-                </div>
-            </header>
-
+        <main class="main-content">
+            <div class="container-fluid px-4 py-3">
             <!-- Dynamic Content -->
             <section class="p-3">
                 {% if messages %}
@@ -96,6 +91,7 @@
                 {% block content %}
                 {% endblock %}
             </section>
+                </div>
         </main>
     </div>
 

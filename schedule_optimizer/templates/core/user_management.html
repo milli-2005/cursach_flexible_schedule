@@ -3,16 +3,16 @@
 {% block title %}Управление пользователями - {{ block.super }}{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
+<div class="management-container">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2>Управление пользователями</h2>
+        <h2 class="mb-0">Управление пользователями</h2>
         <button type="button" class="btn btn-primary" onclick="openCreateUserModal()">
             Пригласить нового пользователя
         </button>
     </div>
 
-    <div class="table-responsive">
-        <table class="table table-dark table-striped">
+    <div class="management-table">
+        <table>
             <thead>
                 <tr>
                     <th>Имя пользователя</th>
@@ -23,7 +23,7 @@
                 </tr>
             </thead>
             <tbody id="userTableBody">
-                <!-- Содержимое таблицы будет загружаться через AJAX -->
+                <!-- Содержимое загружается через AJAX -->
             </tbody>
         </table>
     </div>
@@ -31,6 +31,7 @@
 {% endblock %}
 
 {% block modals %}
+<!-- Модальное окно для создания пользователя -->
 <!-- Модальное окно для создания пользователя -->
 <div class="modal fade" id="createUserModal" tabindex="-1" aria-labelledby="createUserModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
@@ -114,6 +115,102 @@
         </div>
     </div>
 </div>
+<!-- Модальное окно для редактирования пользователя -->
+<div class="modal fade" id="editUserModal" tabindex="-1" aria-labelledby="editUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editUserModalLabel">Редактировать пользователя</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editUserForm">
+                    {% csrf_token %}
+                    <input type="hidden" id="editUserId" name="id">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editUsername" class="form-label">Имя пользователя *</label>
+                                <input type="text" class="form-control" id="editUsername" name="username" required>
+                                <div class="invalid-feedback"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editEmail" class="form-label">Email *</label>
+                                <input type="email" class="form-control" id="editEmail" name="email" required>
+                                <div class="invalid-feedback"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editRole" class="form-label">Роль *</label>
+                                <select class="form-select" id="editRole" name="role" required>
+                                    <option value="employee">Сотрудник</option>
+                                    <option value="studio_admin">Администратор</option>
+                                    <option value="manager">Руководитель</option>
+                                </select>
+                                <div class="invalid-feedback"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editDepartment" class="form-label">Отдел</label>
+                                <input type="text" class="form-control" id="editDepartment" name="department">
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" onclick="submitEditUser()">Сохранить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для удаления пользователя -->
+<div class="modal fade" id="deleteUserModal" tabindex="-1" aria-labelledby="deleteUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteUserModalLabel">Удалить пользователя</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Вы уверены, что хотите удалить пользователя <strong id="deleteUserName"></strong>?</p>
+                <input type="hidden" id="deleteUserId" name="id">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-danger" onclick="confirmDeleteUser()">Удалить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для сброса пароля -->
+<div class="modal fade" id="resetPasswordModal" tabindex="-1" aria-labelledby="resetPasswordModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="resetPasswordModalLabel">Сбросить пароль</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Сбросить пароль для пользователя <strong id="resetPasswordUserName"></strong>?</p>
+                <input type="hidden" id="resetPasswordUserId" name="id">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-warning" onclick="confirmResetPassword()">Сбросить</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -128,35 +225,35 @@
     }
 
     function loadUsers() {
-        fetch('/api/users/')
-            .then(response => response.json())
-            .then(data => {
-                const tbody = document.getElementById('userTableBody');
-                tbody.innerHTML = '';
-                data.forEach(user => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${user.username}</td>
-                        <td>${user.email}</td>
-                        <td>${user.profile.role_display}</td>
-                        <td>${user.profile.department || '-'}</td>
-                        <td>
-                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="alert('Edit ${user.id}')">
-                                <i class="bi bi-pencil"></i>
-                            </button>
-                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="alert('Delete ${user.id}')">
-                                <i class="bi bi-trash"></i>
-                            </button>
-                            <button type="button" class="btn btn-sm btn-outline-warning" onclick="alert('Reset ${user.id}')">
-                                <i class="bi bi-key"></i>
-                            </button>
-                        </td>
-                    `;
-                    tbody.appendChild(row);
-                });
-            })
-            .catch(error => console.error('Error loading users:', error));
-    }
+    fetch('/api/users/')
+        .then(response => response.json())
+        .then(data => {
+            const tbody = document.getElementById('userTableBody');
+            tbody.innerHTML = '';
+            data.forEach(user => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${user.username}</td>
+                    <td>${user.email}</td>
+                    <td>${user.profile.role_display}</td>
+                    <td>${user.profile.department || '-'}</td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="openEditUserModal(${user.id})">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="openDeleteUserModal(${user.id}, '${user.username}')">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-warning" onclick="openResetPasswordModal(${user.id}, '${user.username}')">
+                            <i class="bi bi-key"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        })
+        .catch(error => console.error('Error loading users:', error));
+}
 
     function submitCreateUser() {
         const form = document.getElementById('createUserForm');
@@ -182,5 +279,132 @@
         })
         .catch(error => console.error('Error creating user:', error));
     }
+
+    function openEditUserModal(userId) {
+    fetch(`/api/users/${userId}/`)
+        .then(response => response.json())
+        .then(user => {
+            document.getElementById('editUserId').value = user.id;
+            document.getElementById('editUsername').value = user.username;
+            document.getElementById('editEmail').value = user.email;
+            document.getElementById('editRole').value = user.profile.role;
+            document.getElementById('editDepartment').value = user.profile.department || '';
+
+            const modal = new bootstrap.Modal(document.getElementById('editUserModal'));
+            modal.show();
+        })
+        .catch(error => console.error('Error fetching user:', error));
+}
+
+
+function submitEditUser() {
+    const userId = document.getElementById('editUserId').value;
+    const username = document.getElementById('editUsername').value;
+    const email = document.getElementById('editEmail').value;
+    const role = document.getElementById('editRole').value;
+    const department = document.getElementById('editDepartment').value;
+
+    // Создаем объект данных
+    const data = {
+        username: username,
+        email: email,
+        role: role,
+        department: department
+    };
+
+    fetch(`/api/users/${userId}/update/`, {
+        method: 'POST', // Меняем на POST
+        body: JSON.stringify(data), // Отправляем как JSON
+        headers: {
+            'Content-Type': 'application/json', // Указываем тип контента
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            alert('Пользователь успешно обновлен.');
+            bootstrap.Modal.getInstance(document.getElementById('editUserModal')).hide();
+            loadUsers();
+        } else {
+            let errorMessage = 'Ошибка при обновлении пользователя:\n';
+            if (data.errors) {
+                for (const [field, messages] of Object.entries(data.errors)) {
+                    errorMessage += `${field}: ${messages.join(', ')}\n`;
+                }
+            } else {
+                errorMessage += 'Неизвестная ошибка.';
+            }
+            alert(errorMessage);
+        }
+    })
+    .catch(error => {
+        console.error('Error updating user:', error);
+        alert('Произошла ошибка при обновлении пользователя. Проверьте консоль.');
+    });
+}
+
+function openDeleteUserModal(userId, username) {
+    document.getElementById('deleteUserId').value = userId;
+    document.getElementById('deleteUserName').textContent = username;
+
+    const modal = new bootstrap.Modal(document.getElementById('deleteUserModal'));
+    modal.show();
+}
+
+function confirmDeleteUser() {
+    const userId = document.getElementById('deleteUserId').value;
+    fetch(`/api/users/${userId}/delete/`, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Пользователь успешно удален.');
+            bootstrap.Modal.getInstance(document.getElementById('deleteUserModal')).hide();
+            loadUsers();
+        } else {
+            alert('Ошибка при удалении пользователя.');
+        }
+    })
+    .catch(error => console.error('Error deleting user:', error));
+}
+
+function openResetPasswordModal(userId, username) {
+    document.getElementById('resetPasswordUserId').value = userId;
+    document.getElementById('resetPasswordUserName').textContent = username;
+
+    const modal = new bootstrap.Modal(document.getElementById('resetPasswordModal'));
+    modal.show();
+}
+
+function confirmResetPassword() {
+    const userId = document.getElementById('resetPasswordUserId').value;
+
+    fetch(`/api/users/${userId}/reset-password/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Пароль успешно сброшен.');
+            bootstrap.Modal.getInstance(document.getElementById('resetPasswordModal')).hide();
+        } else {
+            alert('Ошибка при сбросе пароля.');
+        }
+    })
+    .catch(error => console.error('Error resetting password:', error));
+}
 </script>
 {% endblock %}
