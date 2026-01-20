@@ -13,15 +13,25 @@ class UserProfile(models.Model):
     # Роли пользователей
     ROLE_CHOICES = [
         ('employee', 'Сотрудник'),
-        ('studio_admin', 'Администратор'),
         ('manager', 'Руководитель'),
+    ]
+    # Должности (для бизнес-логики)
+    POSITION_CHOICES = [
+        ('trainer', 'Тренер'),
+        ('administrator', 'Администратор'),
     ]
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='employee')
     phone = models.CharField(max_length=20, blank=True, verbose_name="Телефон")
-    department = models.CharField(max_length=100, blank=True, verbose_name="Отдел")
-    position = models.CharField(max_length=100, blank=True, verbose_name="Должность")
+
+    # Новое поле для должности
+    position = models.CharField(
+        max_length=20,
+        choices=POSITION_CHOICES,
+        default='trainer',
+        verbose_name="Должность"
+    )
 
     # Поле для хранения времени приглашения/сброса пароля
     invitation_timestamp = models.DateTimeField(null=True, blank=True, verbose_name="Время приглашения/сброса пароля")
@@ -50,11 +60,44 @@ class UserProfile(models.Model):
         return timezone.now() > expiration_time
 
 
-
 @receiver(post_save, sender=User)
 def save_user_profile(sender, instance, **kwargs):
     if hasattr(instance, 'profile'):
         instance.profile.save()
+
+
+
+# Глобальные константы для всей студии
+WORKOUT_DURATION_MINUTES = 50
+TRAINER_RATE_PER_SESSION = 400.00
+ADMIN_RATE_PER_DAY = 1500.00
+
+
+class WorkoutType(models.Model):
+    """
+    Тип группового занятия (тренировки).
+    Например: Stretch Basic, Deep Stretch, Yoga.
+    Все занятия длятся 50 минут и оплачиваются по фиксированной ставке.
+    """
+    name = models.CharField(max_length=100, verbose_name="Название занятия")
+    description = models.TextField(blank=True, verbose_name="Описание")
+
+    class Meta:
+        verbose_name = "Тип занятия"
+        verbose_name_plural = "Типы занятий"
+
+    def __str__(self):
+        return self.name
+
+    @property
+    def duration_minutes(self):
+        """Возвращает длительность занятия как константу."""
+        return WORKOUT_DURATION_MINUTES
+
+    @property
+    def rate_per_session(self):
+        """Возвращает ставку за занятие как константу."""
+        return TRAINER_RATE_PER_SESSION
 
 
 class Employee(models.Model):
@@ -82,30 +125,35 @@ class Employee(models.Model):
     def __str__(self):
         return f"{self.user_profile.user.get_full_name() or self.user_profile.user.username}"
 
-class Shift(models.Model):
-    """
-    Модель смены (тип смены).
-    """
-    SHIFT_TYPES = [
-        ('morning', 'Утренняя'),
-        ('day', 'Дневная'),
-        ('evening', 'Вечерняя'),
-        ('night', 'Ночная'),
-        ('special', 'Особая'),
-    ]
 
-    name = models.CharField(max_length=100, verbose_name="Название смены")
-    shift_type = models.CharField(max_length=20, choices=SHIFT_TYPES, default='day')
-    start_time = models.TimeField(verbose_name="Время начала")
-    end_time = models.TimeField(verbose_name="Время окончания")
-    required_employees = models.IntegerField(default=1, verbose_name="Требуемое количество сотрудников")
 
-    class Meta:
-        verbose_name = "Смена"
-        verbose_name_plural = "Смены"
+# class Shift(models.Model):
+#     """
+#     Модель смены (тип смены).
+#     """
+#     SHIFT_TYPES = [
+#         ('morning', 'Утренняя'),
+#         ('day', 'Дневная'),
+#         ('evening', 'Вечерняя'),
+#         ('night', 'Ночная'),
+#         ('special', 'Особая'),
+#     ]
+#
+#     name = models.CharField(max_length=100, verbose_name="Название смены")
+#     shift_type = models.CharField(max_length=20, choices=SHIFT_TYPES, default='day')
+#     start_time = models.TimeField(verbose_name="Время начала")
+#     end_time = models.TimeField(verbose_name="Время окончания")
+#     required_employees = models.IntegerField(default=1, verbose_name="Требуемое количество сотрудников")
+#
+#     class Meta:
+#         verbose_name = "Смена"
+#         verbose_name_plural = "Смены"
+#
+#     def __str__(self):
+#         return f"{self.name} ({self.get_shift_type_display()})"
 
-    def __str__(self):
-        return f"{self.name} ({self.get_shift_type_display()})"
+
+
 
 class Schedule(models.Model):
     """
@@ -123,7 +171,6 @@ class Schedule(models.Model):
         ('published', 'Опубликован'),
     ]
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
-
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, verbose_name="Создатель")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата создания")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Дата обновления")
@@ -135,14 +182,31 @@ class Schedule(models.Model):
     def __str__(self):
         return f"{self.name} ({self.start_date} - {self.end_date})"
 
+
+
 class ShiftAssignment(models.Model):
     """
-    Назначение сотрудника на конкретную смену в конкретный день.
+    Назначение сотрудника на конкретное занятие в конкретный день и время.
     """
-    schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE, related_name='assignments')
-    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, verbose_name="Сотрудник")
-    shift = models.ForeignKey(Shift, on_delete=models.CASCADE, verbose_name="Смена")
+    schedule = models.ForeignKey('Schedule', on_delete=models.CASCADE, related_name='assignments')
+
+    # Сотрудник, которого назначают
+    employee = models.ForeignKey(UserProfile, on_delete=models.CASCADE, verbose_name="Сотрудник")
+
+    # Тип занятия (для тренеров) или просто "Работа" (для администраторов)
+    workout_type = models.ForeignKey(
+        WorkoutType,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Тип занятия"
+    )
+
+    # Временные рамки
     date = models.DateField(verbose_name="Дата")
+    start_time = models.TimeField(verbose_name="Время начала")
+
+    end_time = models.TimeField(verbose_name="Время окончания", null=True, blank=True)
 
     # Статус назначения
     STATUS_CHOICES = [
@@ -157,12 +221,32 @@ class ShiftAssignment(models.Model):
     actual_hours = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True, verbose_name="Факт. часы")
 
     class Meta:
-        verbose_name = "Назначение на смену"
-        verbose_name_plural = "Назначения на смены"
-        unique_together = ['employee', 'date']  # Сотрудник не может быть в две смены в один день
+        verbose_name = "Назначение на занятие"
+        verbose_name_plural = "Назначения на занятия"
+        unique_together = ['employee', 'date', 'start_time']  # Сотрудник не может быть в двух местах одновременно
 
     def __str__(self):
-        return f"{self.employee} - {self.shift} ({self.date})"
+        return f"{self.employee.user.username} - {self.workout_type or 'Работа'} ({self.date} {self.start_time}-{self.end_time})"
+
+
+    def get_payment_amount(self):
+        """
+        Рассчитывает сумму к выплате за это назначение.
+        """
+        employee_profile = self.employee
+        if employee_profile.position == 'trainer':
+            # Для тренера: ставка за занятие
+            return self.workout_type.rate_per_session if self.workout_type else 0
+        elif employee_profile.position == 'administrator':
+            # Для администратора: ставка за день
+            # Предположим, что у нас есть глобальная константа ADMIN_RATE_PER_DAY
+            return ADMIN_RATE_PER_DAY
+        return 0
+
+    def __str__(self):
+        return f"{self.employee.user.username} - {self.workout_type or 'Работа'} ({self.date})"
+
+
 
 class TimeOffRequest(models.Model):
     """

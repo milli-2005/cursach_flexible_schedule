@@ -15,7 +15,6 @@
                 <li><strong>Фамилия:</strong> {{ user.last_name }}</li>
                 <li><strong>Роль:</strong> {{ profile.get_role_display }}</li>
                 <li><strong>Текущая роль:</strong> {{ profile.get_current_role_display }}</li>
-                <li><strong>Отдел:</strong> {{ profile.department|default:"-" }}</li>
                 <li><strong>Должность:</strong> {{ profile.position|default:"-" }}</li>
                 <li><strong>Телефон:</strong> {{ profile.phone|default:"-" }}</li>
             </ul>

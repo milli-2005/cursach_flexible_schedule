@@ -7,32 +7,34 @@ from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import User
 from .models import *
 
-# Регистрируем модели в админке
+# --- Обновляем регистрацию UserProfile ---
 @admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):
-    list_display = ('user', 'role', 'department', 'position')
-    list_filter = ('role', 'department')
-    search_fields = ('user__username', 'user__email', 'department', 'position')
+    list_display = ('user', 'role', 'position')
+    list_filter = ('role', 'position')
+    search_fields = ('user__username', 'user__email', 'position')
+
+# --- Обновляем регистрацию ShiftAssignment ---
+@admin.register(ShiftAssignment)
+class ShiftAssignmentAdmin(admin.ModelAdmin):
+    list_display = ('schedule', 'employee', 'workout_type', 'date', 'status') # Заменили 'shift' на 'workout_type'
+    list_filter = ('status', 'date', 'workout_type')
+    # Если workout_type может быть NULL, лучше использовать 'workout_type__name'
+
 
 @admin.register(Employee)
 class EmployeeAdmin(admin.ModelAdmin):
     list_display = ('user_profile', 'max_hours_per_week', 'min_hours_per_week', 'hourly_rate')
     list_filter = ('max_hours_per_week', 'min_hours_per_week')
 
-@admin.register(Shift)
-class ShiftAdmin(admin.ModelAdmin):
-    list_display = ('name', 'shift_type', 'start_time', 'end_time', 'required_employees')
-    list_filter = ('shift_type',)
+@admin.register(WorkoutType) # Новая модель
+class WorkoutTypeAdmin(admin.ModelAdmin):
+    list_display = ('name', 'description')
 
 @admin.register(Schedule)
 class ScheduleAdmin(admin.ModelAdmin):
     list_display = ('name', 'start_date', 'end_date', 'status', 'created_by', 'created_at')
     list_filter = ('status', 'created_by', 'created_at')
-
-@admin.register(ShiftAssignment)
-class ShiftAssignmentAdmin(admin.ModelAdmin):
-    list_display = ('schedule', 'employee', 'shift', 'date', 'status')
-    list_filter = ('status', 'date', 'shift__shift_type')
 
 @admin.register(TimeOffRequest)
 class TimeOffRequestAdmin(admin.ModelAdmin):
@@ -50,7 +52,7 @@ class OptimizationRuleAdmin(admin.ModelAdmin):
     list_filter = ('rule_type', 'is_active', 'priority')
 
 
-# Расширяем стандартную админку User
+# --- Расширяем стандартную админку User ---
 class UserProfileInline(admin.StackedInline):
     model = UserProfile
     can_delete = False

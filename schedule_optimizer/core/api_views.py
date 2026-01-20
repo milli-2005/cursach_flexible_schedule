@@ -64,7 +64,6 @@ def api_get_users(request):
             'profile': {
                 'role': user.profile.role,
                 'role_display': user.profile.get_role_display(),
-                'department': user.profile.department,
                 'position': user.profile.position,
                 'phone': user.profile.phone,
             }
@@ -89,7 +88,6 @@ def api_invite_user(request):
             )
             profile = user.profile
             profile.role = form.cleaned_data['role']
-            profile.department = form.cleaned_data.get('department', '')
             profile.position = form.cleaned_data.get('position', '')
             profile.phone = form.cleaned_data.get('phone', '')
             profile.invitation_timestamp = timezone.now() # Устанавливаем временную метку
@@ -120,7 +118,6 @@ def api_get_user_detail(request, user_id):
             'email': user.email,
             'profile': {
                 'role': user.profile.role,
-                'department': user.profile.department,
                 'position': user.profile.position,
                 'phone': user.profile.phone,
             }
@@ -154,7 +151,6 @@ def api_update_user(request, user_id):
     username = data.get('username', '').strip()
     email = data.get('email', '').strip()
     role = data.get('role', '').strip()
-    department = data.get('department', '').strip()
 
     errors = {}
 
@@ -184,7 +180,6 @@ def api_update_user(request, user_id):
         user.save()
 
         profile.role = role
-        profile.department = department
         profile.save()
 
         logger.info(f"User {user_id} updated successfully")

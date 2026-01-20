@@ -5,7 +5,6 @@ from django.contrib.auth.forms import UserCreationForm, SetPasswordForm
 from .models import UserProfile
 
 class UserInvitationForm(forms.Form):
-    # ... (остаётся как было)
     username = forms.CharField(
         max_length=150,
         label="Имя пользователя",
@@ -36,11 +35,6 @@ class UserInvitationForm(forms.Form):
         label="Роль в системе",
         initial='employee'
     )
-    department = forms.CharField(
-        max_length=100,
-        required=False,
-        label="Отдел"
-    )
     position = forms.CharField(
         max_length=100,
         required=False,
@@ -64,24 +58,27 @@ class UserInvitationForm(forms.Form):
             raise forms.ValidationError("Пользователь с таким email уже существует.")
         return email
 
-# Новая форма для редактирования профиля
+
+
 class UserProfileEditForm(forms.ModelForm):
     """
-    Форма для редактирования профиля пользователя (без роли).
+    Форма для редактирования профиля пользователя.
+    Теперь включает только актуальные поля: телефон и должность.
     """
     class Meta:
         model = UserProfile
-        fields = ['phone', 'department', 'position'] # Убрали role
+        # Убираем 'department', так как его больше нет в модели
+        fields = ['phone', 'position']
         labels = {
             'phone': 'Телефон',
-            'department': 'Отдел',
             'position': 'Должность',
         }
         widgets = {
             'phone': forms.TextInput(attrs={'class': 'form-control'}),
-            'department': forms.TextInput(attrs={'class': 'form-control'}),
-            'position': forms.TextInput(attrs={'class': 'form-control'}),
+            'position': forms.Select(attrs={'class': 'form-select'}), # Используем Select для выпадающего списка
         }
+
+
 
 # Оставим SetPasswordForm как есть, если используется
 class CustomSetPasswordForm(SetPasswordForm):

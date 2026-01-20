@@ -94,7 +94,6 @@ def invite_user(request):
                 # но мы должны обновить его атрибуты после создания
                 profile = user.profile # Получаем связанный профиль
                 profile.role = form.cleaned_data['role']
-                profile.department = form.cleaned_data.get('department', '')
                 profile.position = form.cleaned_data.get('position', '')
                 profile.phone = form.cleaned_data.get('phone', '')
 
