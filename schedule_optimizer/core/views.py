@@ -16,6 +16,11 @@ from .forms import UserInvitationForm
 from django.contrib.auth.models import User
 import logging
 from django.utils import timezone #для времени сброса пароля
+from datetime import datetime, timedelta
+from django.shortcuts import render, get_object_or_404
+from .models import Schedule, UserProfile, WorkoutType
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -387,7 +392,7 @@ def schedule_view(request):
     context = {
         'schedules': schedules,
     }
-    return render(request, 'core/schedule_list.html', context)
+    return render(request, 'core/schedules/schedule_list.html', context)
 
 
 @login_required
@@ -505,3 +510,53 @@ def workout_types(request):
     Доступна только руководителю.
     """
     return render(request, 'core/workouts/workout_types.html')
+
+
+from datetime import datetime, timedelta
+from django.shortcuts import render
+from .models import UserProfile, WorkoutType
+
+
+@login_required
+def create_schedule_view(request):
+    """
+    Страница для ручного создания/редактирования графика.
+    """
+    # Получаем всех сотрудников (тренеров и администраторов)
+    employees = UserProfile.objects.filter(role='employee')
+
+    # Получаем все типы занятий
+    workout_types = WorkoutType.objects.all()
+
+    # Генерируем временные слоты (с 9:00 до 22:00)
+    start_hour = 9
+    end_hour = 22
+    slots = []
+    current_time = start_hour * 60  # в минутах
+    end_time_total = end_hour * 60
+
+    while current_time + 50 <= end_time_total:
+        start = f"{current_time // 60:02d}:{current_time % 60:02d}"
+        current_time += 50  # 50 минут занятие
+        end = f"{current_time // 60:02d}:{current_time % 60:02d}"
+        slots.append(f"{start}–{end}")
+        current_time += 10  # 10 минут перерыв
+
+    # Генерируем дни недели (следующая неделя)
+    today = datetime.today()
+    start_of_week = today - timedelta(days=today.weekday()) + timedelta(weeks=1)
+    days = []
+    for i in range(7):
+        date = start_of_week + timedelta(days=i)
+        days.append({
+            'date': date.date(),
+            'name': ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'][i]
+        })
+
+    context = {
+        'employees': employees,
+        'workout_types': workout_types,
+        'slots': slots,
+        'days': days,
+    }
+    return render(request, 'core/schedules/create_schedule.html', context)

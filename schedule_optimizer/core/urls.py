@@ -41,10 +41,12 @@ urlpatterns = [
     path('api/users/<int:user_id>/delete/', api_views.api_delete_user, name='api_delete_user'),
     path('api/users/<int:user_id>/reset-password/', api_views.api_reset_user_password, name='api_reset_user_password'),
 
-# API для управления типами занятий
+    # API для управления типами занятий
     path('workout-types/', views.workout_types, name='workout_types'),
     path('api/workout-types/', api_workout_views.api_get_workout_types, name='api_get_workout_types'),
     path('api/workout-types/create/', api_workout_views.api_create_workout_type, name='api_create_workout_type'),
     path('api/workout-types/<int:workout_type_id>/update/', api_workout_views.api_update_workout_type, name='api_update_workout_type'),
     path('api/workout-types/<int:workout_type_id>/delete/', api_workout_views.api_delete_workout_type, name='api_delete_workout_type'),
+
+    path('schedules/create/', views.create_schedule_view, name='create_schedule'),
 ]

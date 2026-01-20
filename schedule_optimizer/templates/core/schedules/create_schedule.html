@@ -1,0 +1,46 @@
+{% extends "core/base.html" %}
+
+{% block title %}Создание графика - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="management-container">
+    <h2>Создание недельного графика</h2>
+
+    <div class="table-responsive">
+        <table class="table table-bordered table-dark">
+            <thead>
+                <tr>
+                    <th>Время</th>
+                    {% for day in days %}
+                        <th>{{ day.name }}<br><small>{{ day.date }}</small></th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for slot in slots %}
+                <tr>
+                    <td>{{ slot }}</td>
+                    {% for day in days %}
+                    <td>
+                        <select class="form-select form-select-sm mb-1">
+                            <option value="">Выберите...</option>
+                            {% for emp in employees %}
+                                <option value="{{ emp.id }}">{{ emp.user.username }}</option>
+                            {% endfor %}
+                        </select>
+                        <select class="form-select form-select-sm">
+                            <option value="">Занятие</option>
+                            {% for wt in workout_types %}
+                                <option value="{{ wt.id }}">{{ wt.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <button class="btn btn-primary">Сохранить график</button>
+</div>
+{% endblock %}

@@ -183,6 +183,7 @@ class ShiftAssignment(models.Model):
     """
     Назначение сотрудника на конкретное занятие в конкретный день и время.
     """
+    # Связь с графиком
     schedule = models.ForeignKey('Schedule', on_delete=models.CASCADE, related_name='assignments')
 
     # Сотрудник, которого назначают
@@ -200,7 +201,6 @@ class ShiftAssignment(models.Model):
     # Временные рамки
     date = models.DateField(verbose_name="Дата")
     start_time = models.TimeField(verbose_name="Время начала")
-
     end_time = models.TimeField(verbose_name="Время окончания", null=True, blank=True)
 
     # Статус назначения
@@ -221,25 +221,21 @@ class ShiftAssignment(models.Model):
         unique_together = ['employee', 'date', 'start_time']  # Сотрудник не может быть в двух местах одновременно
 
     def __str__(self):
-        return f"{self.employee.user.username} - {self.workout_type or 'Работа'} ({self.date} {self.start_time}-{self.end_time})"
-
+        # Единственный, правильный метод __str__
+        end_time_str = self.end_time.strftime('%H:%M') if self.end_time else '??:??'
+        return f"{self.employee.user.username} - {self.workout_type or 'Работа'} ({self.date} {self.start_time.strftime('%H:%M')}-{end_time_str})"
 
     def get_payment_amount(self):
         """
         Рассчитывает сумму к выплате за это назначение.
         """
-        employee_profile = self.employee
-        if employee_profile.position == 'trainer':
+        if self.employee.position == 'trainer':
             # Для тренера: ставка за занятие
             return self.workout_type.rate_per_session if self.workout_type else 0
-        elif employee_profile.position == 'administrator':
+        elif self.employee.position == 'administrator':
             # Для администратора: ставка за день
-            # Предположим, что у нас есть глобальная константа ADMIN_RATE_PER_DAY
             return ADMIN_RATE_PER_DAY
         return 0
-
-    def __str__(self):
-        return f"{self.employee.user.username} - {self.workout_type or 'Работа'} ({self.date})"
 
 
 
