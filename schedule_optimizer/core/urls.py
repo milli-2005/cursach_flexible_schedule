@@ -3,6 +3,7 @@ from django.urls import path
 from django.contrib.auth import views as auth_views
 from . import views
 from . import api_views
+from . import api_workout_views
 
 urlpatterns = [
     # Основные страницы
@@ -36,8 +37,14 @@ urlpatterns = [
     path('api/users/', api_views.api_get_users, name='api_get_users'),
     path('api/invite-user/', api_views.api_invite_user, name='api_invite_user'),
     path('api/users/<int:user_id>/', api_views.api_get_user_detail, name='api_get_user_detail'),
-
     path('api/users/<int:user_id>/update/', api_views.api_update_user, name='api_update_user'),
     path('api/users/<int:user_id>/delete/', api_views.api_delete_user, name='api_delete_user'),
     path('api/users/<int:user_id>/reset-password/', api_views.api_reset_user_password, name='api_reset_user_password'),
+
+# API для управления типами занятий
+    path('workout-types/', views.workout_types, name='workout_types'),
+    path('api/workout-types/', api_workout_views.api_get_workout_types, name='api_get_workout_types'),
+    path('api/workout-types/create/', api_workout_views.api_create_workout_type, name='api_create_workout_type'),
+    path('api/workout-types/<int:workout_type_id>/update/', api_workout_views.api_update_workout_type, name='api_update_workout_type'),
+    path('api/workout-types/<int:workout_type_id>/delete/', api_workout_views.api_delete_workout_type, name='api_delete_workout_type'),
 ]

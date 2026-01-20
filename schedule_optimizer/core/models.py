@@ -24,8 +24,6 @@ class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='employee')
     phone = models.CharField(max_length=20, blank=True, verbose_name="Телефон")
-
-    # Новое поле для должности
     position = models.CharField(
         max_length=20,
         choices=POSITION_CHOICES,
@@ -42,9 +40,6 @@ class UserProfile(models.Model):
 
     def __str__(self):
         return f"{self.user.username} ({self.get_role_display()})"
-
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
 
 
     def is_temporary_password_expired(self, timeout_minutes=5):

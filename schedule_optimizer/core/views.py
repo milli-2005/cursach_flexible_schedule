@@ -135,11 +135,8 @@ def invite_user(request):
 @login_required
 @user_passes_test(is_admin)
 def user_management(request):
-    # Страница управления пользователями для администратора.
-    # Страница теперь загружает данные через AJAX
-    # Можно передать дополнительные контексты, если нужно
     context = {}
-    return render(request, 'core/user_management.html', context)
+    return render(request, 'core/dashboard/user_management.html', context)
 
 
 
@@ -182,7 +179,7 @@ def reset_user_password(request, user_id):
         context = {
             'user': user,
         }
-        return render(request, 'core/reset_password_confirm.html', context)
+        return render(request, 'profile/reset_password_confirm.html', context)
     except User.DoesNotExist:
         messages.error(request, 'Пользователь не найден.')
         return redirect('user_management')
@@ -333,7 +330,7 @@ def change_password(request):
     Смена пароля после регистрации по приглашению.
     Предполагается, что пользователь уже вошёл в систему с временным паролем.
     """
-    from django.contrib.auth.forms import SetPasswordForm  # Импортируем стандартную форму
+    from django.contrib.auth.forms import SetPasswordForm
     from django.contrib.auth import update_session_auth_hash  # Для обновления сессии
 
     user = request.user
@@ -500,3 +497,11 @@ def dashboard_studio_admin(request):
 def dashboard_manager(request):
     # Логика для дашборда менеджера
     return render(request, 'core/dashboard_manager.html')
+
+@login_required
+def workout_types(request):
+    """
+    Страница управления типами занятий.
+    Доступна только руководителю.
+    """
+    return render(request, 'core/workouts/workout_types.html')
