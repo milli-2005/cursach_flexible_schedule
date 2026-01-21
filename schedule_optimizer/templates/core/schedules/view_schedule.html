@@ -1,3 +1,4 @@
+<!-- templates/core/schedules/view_schedule.html -->
 {% extends "core/base.html" %}
 
 {% block title %}График {{ schedule.name }} - {{ block.super }}{% endblock %}
@@ -26,11 +27,11 @@
                 {% for row in table_data %}
                 <tr>
                     <td>{{ row.time_slot }}</td>
-                    {% for assignment in row.assignments %}
+                    {% for cell in row.cells %}
                     <td>
-                        {% if assignment %}
-                            <strong>{{ assignment.employee.user.username }}</strong><br>
-                            <small>{{ assignment.workout_type.name|default:"Работа" }}</small>
+                        {% if cell.assignment %}
+                            <strong>{{ cell.assignment.employee.user.username }}</strong><br>
+                            <small>{{ cell.assignment.workout_type.name|default:"Работа" }}</small>
                         {% else %}
                             <em>—</em>
                         {% endif %}

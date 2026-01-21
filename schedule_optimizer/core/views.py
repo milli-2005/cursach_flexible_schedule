@@ -1,6 +1,7 @@
 # core/views.py
 import secrets
 import string
+import json
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth import login, logout
@@ -19,6 +20,10 @@ from django.utils import timezone #для времени сброса парол
 from datetime import datetime, timedelta
 from django.shortcuts import render, get_object_or_404
 from .models import Schedule, UserProfile, WorkoutType
+
+from django.shortcuts import render
+from .models import Schedule, ShiftAssignment
+from collections import defaultdict
 
 
 
@@ -315,28 +320,27 @@ def profile_view(request):
     }
     return render(request, 'core/profile/view.html', context)
 
+
+# core/views.py
+from .forms import UserProfileEditForm
+
 @login_required
 def profile_edit(request):
-    """
-    Редактирование профиля пользователя.
-    """
-    from .forms import UserProfileEditForm  # Импортируем форму редактирования
     user = request.user
-    profile = user.profile  # Предполагается, что профиль всегда существует
+    profile = user.profile
 
     if request.method == 'POST':
         form = UserProfileEditForm(request.POST, instance=profile)
         if form.is_valid():
             form.save()
             messages.success(request, "Профиль успешно обновлён.")
-            return redirect('profile_view')  # Перенаправляем на просмотр после сохранения
+            return redirect('profile_view')
     else:
         form = UserProfileEditForm(instance=profile)
 
-    context = {
-        'form': form,
-    }
+    context = {'form': form}
     return render(request, 'core/profile/edit.html', context)
+
 
 
 def change_password(request):
@@ -521,11 +525,6 @@ def workout_types(request):
     return render(request, 'core/workouts/workout_types.html')
 
 
-# core/views.py
-from datetime import datetime, timedelta
-from django.shortcuts import render
-from .models import UserProfile, WorkoutType
-
 
 @login_required
 def create_schedule_view(request):
@@ -568,50 +567,55 @@ def create_schedule_view(request):
     return render(request, 'core/schedules/create_schedule.html', context)
 
 
-# core/views.py
-from django.shortcuts import render, get_object_or_404
-from .models import Schedule, ShiftAssignment
-from datetime import timedelta
-
 
 @login_required
 def view_schedule(request, schedule_id):
     schedule = get_object_or_404(Schedule, id=schedule_id)
 
-    # === 1. Генерация временных слотов (как в create_schedule_view) ===
-    start_hour = 9
-    end_hour = 21
-    all_slots = []
-    current_time = start_hour * 60  # в минутах
-    end_time_total = end_hour * 60
-
-    while current_time + 50 <= end_time_total:
-        start = f"{current_time // 60:02d}:{current_time % 60:02d}"
-        current_time += 50  # 50 минут занятие
-        end = f"{current_time // 60:02d}:{current_time % 60:02d}"
-        all_slots.append(f"{start}–{end}")
-        current_time += 10  # 10 минут перерыв
-
-    # === 2. Генерация списка дней ИЗ СОХРАНЁННОГО ГРАФИКА ===
+    # === 1. Генерация дней из графика ===
     days = []
     current_date = schedule.start_date
     while current_date <= schedule.end_date:
         days.append(current_date)
         current_date += timedelta(days=1)
 
-    # === 3. Подготовка данных для таблицы ===
+    # === 2. Генерация временных слотов (9:00–21:00) ===
+    all_slots = []
+    start_hour = 9
+    end_hour = 21
+    current_time = start_hour * 60  # в минутах
+    end_time_total = end_hour * 60
+
+    while current_time + 50 <= end_time_total:
+        start = f"{current_time // 60:02d}:{current_time % 60:02d}"
+        current_time += 50
+        end = f"{current_time // 60:02d}:{current_time % 60:02d}"
+        all_slots.append(f"{start}–{end}")
+        current_time += 10
+
+    # === 3. Загрузка всех назначений ОДНИМ запросом ===
+    assignments = ShiftAssignment.objects.filter(
+        schedule=schedule,
+        date__in=days
+    ).select_related('employee__user', 'workout_type')
+
+    # === 4. Создание словаря: {(дата, время_начала): assignment} ===
+    assignment_dict = {}
+    for a in assignments:
+        # Преобразуем время начала в строку "09:00"
+        time_key = a.start_time.strftime('%H:%M')
+        key = (a.date, time_key)
+        assignment_dict[key] = a
+
+    # === 5. Построение таблицы ===
     table_data = []
     for slot in all_slots:
         row = {'time_slot': slot, 'cells': []}
-        for day in days:
-            # Ищем назначение на этот день и начало слота
-            start_time_str = slot.split('–')[0]
-            assignment = ShiftAssignment.objects.filter(
-                schedule=schedule,
-                date=day,
-                start_time=start_time_str
-            ).first()
+        start_time_str = slot.split('–')[0]  # Например, "09:00"
 
+        for day in days:
+            key = (day, start_time_str)
+            assignment = assignment_dict.get(key)
             row['cells'].append({'assignment': assignment})
         table_data.append(row)
 
@@ -623,19 +627,16 @@ def view_schedule(request, schedule_id):
     return render(request, 'core/schedules/view_schedule.html', context)
 
 
+# core/views.py
+from django.shortcuts import render, get_object_or_404
+from .models import Schedule, ShiftAssignment
+
+
 @login_required
-@user_passes_test(is_manager)  # Убедись, что есть функция is_manager
 def edit_schedule_view(request, schedule_id):
-    """
-    Страница для редактирования существующего графика.
-    """
     schedule = get_object_or_404(Schedule, id=schedule_id)
 
-    # Все данные, как в create_schedule_view
-    employees = UserProfile.objects.filter(role='employee')
-    workout_types = WorkoutType.objects.all()
-
-    # Генерация слотов и дней (как в create_schedule_view)
+    # Генерация временных слотов (9:00–21:00)
     start_hour = 9
     end_hour = 21
     slots = []
@@ -648,36 +649,40 @@ def edit_schedule_view(request, schedule_id):
         slots.append(f"{start}–{end}")
         current_time += 10
 
-    # Генерация дней из самого графика
+    # Генерация дней из графика
     from datetime import timedelta
     days = []
-    date_strings = []
     current_date = schedule.start_date
     while current_date <= schedule.end_date:
-        days.append({
-            'date': current_date,
-            'name': current_date.strftime('%a')[:2]
-        })
-        date_strings.append(current_date.strftime('%Y-%m-%d'))
+        days.append(current_date)
         current_date += timedelta(days=1)
 
-    # Получаем текущие назначения для этого графика
-    assignments = ShiftAssignment.objects.filter(schedule=schedule)
-    assignments_dict = {}
+    # Получаем всех сотрудников и типы занятий
+    from .models import UserProfile, WorkoutType
+    employees = UserProfile.objects.filter(role='employee')
+    workout_types = WorkoutType.objects.all()
+
+    # Получаем все назначения
+    assignments = ShiftAssignment.objects.filter(schedule=schedule).select_related('employee', 'workout_type')
+
+    # Создаём список для передачи в шаблон
+    assignment_list = []
+    # В edit_schedule_view
+    assignment_list = []
     for a in assignments:
-        key = f"{a.date}_{a.start_time.strftime('%H:%M')}–{a.end_time.strftime('%H:%M')}"
-        assignments_dict[key] = {
-            'employee_id': a.employee.id,
-            'workout_type_id': a.workout_type.id if a.workout_type else None
-        }
+        assignment_list.append({
+            'date': a.date,  # Это объект date
+            'time_start': a.start_time.strftime('%H:%M'),  # Строка "09:00"
+            'employee': a.employee,  # Объект UserProfile
+            'workout_type': a.workout_type,  # Объект WorkoutType или None
+        })
 
     context = {
         'schedule': schedule,
-        'employees': employees,
-        'workout_types': workout_types,
         'slots': slots,
         'days': days,
-        'date_strings': date_strings,
-        'assignments_json': json.dumps(assignments_dict)  # Передаем в JS
+        'employees': employees,
+        'workout_types': workout_types,
+        'assignment_list': assignment_list,  # Передаём список
     }
     return render(request, 'core/schedules/edit_schedule.html', context)
