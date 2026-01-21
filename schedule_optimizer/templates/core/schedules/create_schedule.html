@@ -1,9 +1,10 @@
-{% extends "core/base.html" %}
 
+{% extends "core/base.html" %}
 {% block title %}Создание графика - {{ block.super }}{% endblock %}
 
 {% block content %}
 <div class="management-container">
+    {% csrf_token %}
     <h2>Создание недельного графика</h2>
 
     <div class="table-responsive">
@@ -22,13 +23,13 @@
                     <td>{{ slot }}</td>
                     {% for day in days %}
                     <td>
-                        <select class="form-select form-select-sm mb-1">
+                        <select class="form-select form-select-sm mb-1 employee-select">
                             <option value="">Выберите...</option>
                             {% for emp in employees %}
                                 <option value="{{ emp.id }}">{{ emp.user.username }}</option>
                             {% endfor %}
                         </select>
-                        <select class="form-select form-select-sm">
+                        <select class="form-select form-select-sm workout-select">
                             <option value="">Занятие</option>
                             {% for wt in workout_types %}
                                 <option value="{{ wt.id }}">{{ wt.name }}</option>
@@ -41,6 +42,73 @@
             </tbody>
         </table>
     </div>
-    <button class="btn btn-primary">Сохранить график</button>
+    <button id="save-schedule-btn" class="btn btn-primary">Сохранить график</button>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Безопасно получаем даты из контекста Django
+const DATE_STRINGS = {{ date_strings|safe }};
+
+function saveSchedule() {
+    const scheduleName = prompt("Введите название графика:", "График на неделю");
+    if (!scheduleName) return;
+
+    const assignments = [];
+    const rows = document.querySelectorAll('tbody tr');
+
+    rows.forEach((row, rowIndex) => {
+        const timeSlot = row.cells[0].textContent;
+        for (let dayIndex = 1; dayIndex < row.cells.length; dayIndex++) {
+            const cell = row.cells[dayIndex];
+            const employeeSelect = cell.querySelector('.employee-select');
+            const workoutSelect = cell.querySelector('.workout-select');
+
+            if (employeeSelect && employeeSelect.value) {
+                assignments.push({
+                    employee_id: parseInt(employeeSelect.value),
+                    workout_type_id: workoutSelect.value ? parseInt(workoutSelect.value) : null,
+                    date: DATE_STRINGS[dayIndex - 1], // <-- Правильная дата!
+                    time_slot: timeSlot
+                });
+            }
+        }
+    });
+
+    fetch('/api/schedule/save/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        },
+        body: JSON.stringify({
+            name: scheduleName,
+            start_date: DATE_STRINGS[0],
+            end_date: DATE_STRINGS[DATE_STRINGS.length - 1],
+            assignments: assignments
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('График успешно сохранен!');
+            window.location.href = '/schedules/';
+        } else {
+            alert('Ошибка: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Ошибка:', error);
+        alert('Произошла ошибка при сохранении.');
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const button = document.getElementById('save-schedule-btn');
+    if (button) {
+        button.addEventListener('click', saveSchedule);
+    }
+});
+</script>
 {% endblock %}

@@ -4,6 +4,7 @@ from django.contrib.auth import views as auth_views
 from . import views
 from . import api_views
 from . import api_workout_views
+from . import api_schedule_views
 
 urlpatterns = [
     # Основные страницы
@@ -20,10 +21,6 @@ urlpatterns = [
     path('profile/edit/', views.profile_edit, name='profile_edit'),
     path('profile/change-password/', views.change_password, name='change_password'),
 
-
-    # Графики и планирование
-    path('schedules/', views.schedule_view, name='schedule_view'),
-    path('optimization/', views.optimization_view, name='optimization'),
 
     # Для сотрудников
     path('my-schedule/', views.employee_schedule, name='employee_schedule'),
@@ -48,5 +45,17 @@ urlpatterns = [
     path('api/workout-types/<int:workout_type_id>/update/', api_workout_views.api_update_workout_type, name='api_update_workout_type'),
     path('api/workout-types/<int:workout_type_id>/delete/', api_workout_views.api_delete_workout_type, name='api_delete_workout_type'),
 
+
+    # Графики и планирование
+    path('schedules/', views.schedule_view, name='schedule_view'),
     path('schedules/create/', views.create_schedule_view, name='create_schedule'),
+    path('api/schedule/save/', api_schedule_views.api_save_schedule, name='api_save_schedule'),
+
+    path('schedules/<int:schedule_id>/', views.view_schedule, name='view_schedule'),
+    path('schedules/<int:schedule_id>/edit/', views.edit_schedule_view, name='edit_schedule'),
+    path('api/schedule/<int:schedule_id>/update/', api_schedule_views.api_update_schedule, name='api_update_schedule'),
+
+
+
+    path('optimization/', views.optimization_view, name='optimization'),
 ]

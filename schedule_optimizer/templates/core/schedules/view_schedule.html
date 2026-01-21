@@ -1,0 +1,45 @@
+{% extends "core/base.html" %}
+
+{% block title %}График {{ schedule.name }} - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="management-container">
+    <h2>График "{{ schedule.name }}"</h2>
+    <p><strong>Период:</strong> {{ schedule.start_date|date:"d E Y" }} — {{ schedule.end_date|date:"d E Y" }}</p>
+    <p><strong>Статус:</strong> {{ schedule.get_status_display }}</p>
+
+    {% if user.profile.role == 'manager' %}
+        <a href="{% url 'edit_schedule' schedule.id %}" class="btn btn-primary mb-3">Редактировать</a>
+    {% endif %}
+
+    <div class="table-responsive">
+        <table class="table table-bordered table-dark">
+            <thead>
+                <tr>
+                    <th>Время</th>
+                    {% for day in days %}
+                        <th>{{ day|date:"D, d M" }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in table_data %}
+                <tr>
+                    <td>{{ row.time_slot }}</td>
+                    {% for assignment in row.assignments %}
+                    <td>
+                        {% if assignment %}
+                            <strong>{{ assignment.employee.user.username }}</strong><br>
+                            <small>{{ assignment.workout_type.name|default:"Работа" }}</small>
+                        {% else %}
+                            <em>—</em>
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,146 @@
+{% extends "core/base.html" %}
+{% load static %}
+
+{% block title %}Редактирование графика - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="management-container">
+    {% csrf_token %}
+    <input type="hidden" id="schedule-id" value="{{ schedule.id }}">
+    <h2>Редактирование графика "{{ schedule.name }}"</h2>
+    <p class="text-muted">Период: {{ schedule.start_date }} — {{ schedule.end_date }}</p>
+
+    <div class="table-responsive">
+        <table class="table table-bordered table-dark">
+            <thead>
+                <tr>
+                    <th>Время</th>
+                    {% for day in days %}
+                        <th>{{ day.name }}<br><small>{{ day.date }}</small></th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for slot in slots %}
+                <tr>
+                    <td>{{ slot }}</td>
+                    {% for day in days %}
+                    <td>
+                        <select class="form-select form-select-sm mb-1 employee-select" data-date="{{ day.date }}" data-slot="{{ slot }}">
+                            <option value="">Выберите...</option>
+                            {% for emp in employees %}
+                                <option value="{{ emp.id }}">{{ emp.user.username }}</option>
+                            {% endfor %}
+                        </select>
+                        <select class="form-select form-select-sm workout-select" data-date="{{ day.date }}" data-slot="{{ slot }}">
+                            <option value="">Занятие</option>
+                            {% for wt in workout_types %}
+                                <option value="{{ wt.id }}">{{ wt.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <!-- Кнопка с уникальным ID -->
+    <button id="save-schedule-btn" class="btn btn-primary">Сохранить изменения</button>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Функция для сохранения изменений в графике
+function saveSchedule() {
+    const scheduleId = document.getElementById('schedule-id').value;
+    const dateStrings = JSON.parse(document.getElementById('dateStrings').textContent);
+
+    // Собираем все назначения
+    const assignments = [];
+    const rows = document.querySelectorAll('tbody tr');
+
+    rows.forEach((row, rowIndex) => {
+        const timeSlot = row.cells[0].textContent;
+        for (let dayIndex = 1; dayIndex < row.cells.length; dayIndex++) {
+            const cell = row.cells[dayIndex];
+            const employeeSelect = cell.querySelector('.employee-select');
+            const workoutSelect = cell.querySelector('.workout-select');
+
+            if (employeeSelect && employeeSelect.value) {
+                assignments.push({
+                    employee_id: parseInt(employeeSelect.value),
+                    workout_type_id: workoutSelect.value ? parseInt(workoutSelect.value) : null,
+                    date: dateStrings[dayIndex - 1],
+                    time_slot: timeSlot
+                });
+            }
+        }
+    });
+
+    // Отправляем данные на сервер для ОБНОВЛЕНИЯ
+    fetch(`/api/schedule/${scheduleId}/update/`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        },
+        body: JSON.stringify({
+            assignments: assignments
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('График успешно обновлен!');
+            window.location.href = '/schedules/';
+        } else {
+            alert('Ошибка: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Ошибка при обновлении:', error);
+        alert('Произошла ошибка при обновлении графика. Проверьте консоль.');
+    });
+}
+
+// Функция для загрузки текущих данных графика
+function loadExistingAssignments() {
+    const assignments = JSON.parse(document.getElementById('assignmentsJson').textContent);
+    for (const [key, assignment] of Object.entries(assignments)) {
+        const [date, timeSlot] = key.split('_');
+        const employeeSelect = document.querySelector(`.employee-select[data-date="${date}"][data-slot="${timeSlot}"]`);
+        const workoutSelect = document.querySelector(`.workout-select[data-date="${date}"][data-slot="${timeSlot}"]`);
+
+        if (employeeSelect) {
+            employeeSelect.value = assignment.employee_id;
+        }
+        if (workoutSelect && assignment.workout_type_id) {
+            workoutSelect.value = assignment.workout_type_id;
+        }
+    }
+}
+
+// Инициализация после загрузки страницы
+document.addEventListener('DOMContentLoaded', function() {
+    console.log("Страница редактирования загружена.");
+    loadExistingAssignments(); // Загружаем существующие данные
+
+    const saveButton = document.getElementById('save-schedule-btn');
+    if (saveButton) {
+        saveButton.addEventListener('click', saveSchedule);
+    } else {
+        console.error("Кнопка сохранения не найдена!");
+    }
+});
+</script>
+
+<!-- Передача данных в JS -->
+<script id="dateStrings" type="application/json">
+    {{ date_strings|json_script }}
+</script>
+<script id="assignmentsJson" type="application/json">
+    {{ assignments_json|json_script }}
+</script>
+{% endblock %}
