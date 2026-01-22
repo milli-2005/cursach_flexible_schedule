@@ -412,24 +412,6 @@ def optimization_view(request):
 
 
 @login_required
-def employee_schedule(request):
-    if not hasattr(request.user, 'profile'):
-        messages.error(request, "Профиль пользователя не найден.")
-        return redirect('dashboard')
-
-    user_profile = request.user.profile
-    current_role = user_profile.role # Берём роль из профиля
-
-    # Права доступа могут отличаться для сотрудника и админа студии
-    # Например, сотрудник видит только свой график, админ студии - всех
-    context = {
-        'current_role': current_role,
-    }
-    return render(request, 'core/employee_schedule.html', context)
-
-
-
-@login_required
 def timeoff_requests(request):
     if not hasattr(request.user, 'profile'):
         messages.error(request, "Профиль пользователя не найден.")
@@ -555,14 +537,6 @@ def schedule_view(request):
         messages.error(request, "Профиль пользователя не найден.")
         return redirect('dashboard')
 
-    user_profile = request.user.profile
-    current_role = user_profile.role  # Берём роль из профиля
-
-    # Только менеджеры, планировщики и админы могут просматривать графики
-    if current_role not in ['studio_admin', 'manager']:
-        messages.error(request, "У вас нет доступа к этому разделу.")
-        return redirect('dashboard')
-
     schedules = Schedule.objects.all()
     context = {
         'schedules': schedules,
@@ -677,7 +651,6 @@ def edit_schedule_view(request, schedule_id):
 
 
 
-
 @login_required
 @user_passes_test(is_manager)
 def delete_schedule_view(request, schedule_id):
@@ -689,3 +662,36 @@ def delete_schedule_view(request, schedule_id):
         return redirect('schedule_view')  # Перенаправление на список графиков
     # Если кто-то попытается GET — перенаправим на просмотр
     return redirect('view_schedule', schedule_id=schedule_id)
+
+
+
+
+#ГРАФИК В ЛИЧНОМ КАБИНЕТЕ У ТРЕНЕРОВ
+
+# core/views.py
+@login_required
+def employee_schedule(request):
+    user_profile = request.user.profile
+    current_role = user_profile.role
+
+    # Получаем все назначения текущего сотрудника
+    assignments = ShiftAssignment.objects.filter(
+        employee=user_profile
+    ).select_related('schedule', 'workout_type').order_by('date', 'start_time')
+
+    # Группируем по графикам
+    schedules_dict = {}
+    for assignment in assignments:
+        key = assignment.schedule.id
+        if key not in schedules_dict:
+            schedules_dict[key] = {
+                'schedule': assignment.schedule,
+                'assignments': []
+            }
+        schedules_dict[key]['assignments'].append(assignment)
+
+    context = {
+        'current_role': current_role,
+        'schedules': list(schedules_dict.values()),
+    }
+    return render(request, 'core/schedules/employee_schedule.html', context)

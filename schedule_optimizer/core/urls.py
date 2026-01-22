@@ -21,7 +21,6 @@ urlpatterns = [
     path('profile/edit/', views.profile_edit, name='profile_edit'),
     path('profile/change-password/', views.change_password, name='change_password'),
 
-
     # Для сотрудников
     path('my-schedule/', views.employee_schedule, name='employee_schedule'),
     path('timeoff/', views.timeoff_requests, name='timeoff_requests'),

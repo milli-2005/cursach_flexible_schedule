@@ -1,0 +1,56 @@
+<!-- templates/core/employee_schedule.html -->
+{% extends "core/base.html" %}
+
+{% block title %}Мой график работы - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="management-container">
+    <h2>Мой график работы</h2>
+
+    {% if schedules %}
+        {% for item in schedules %}
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5>{{ item.schedule.name }}</h5>
+                    <span class="badge bg-secondary">{{ item.schedule.get_status_display }}</span>
+                </div>
+                <div class="card-body">
+                    <p><strong>Период:</strong> {{ item.schedule.start_date|date:"d E Y" }} — {{ item.schedule.end_date|date:"d E Y" }}</p>
+
+                    <div class="table-responsive mt-3">
+                        <table class="table table-bordered table-dark">
+                            <thead>
+                                <tr>
+                                    <th>Дата</th>
+                                    <th>Время</th>
+                                    <th>Тип занятия</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for a in item.assignments %}
+                                    <tr>
+                                        <td>{{ a.date|date:"D, d M" }}</td>
+                                        <td>{{ a.start_time|time:"H:i" }} – {{ a.end_time|time:"H:i" }}</td>
+                                        <td>{{ a.workout_type.name|default:"Работа" }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <div class="alert alert-info">
+            У вас пока нет назначенных смен.
+        </div>
+    {% endif %}
+
+    <!-- Кнопка: Посмотреть всё расписание -->
+    <div class="mt-4 text-center">
+        <a href="{% url 'schedule_view' %}" class="btn btn-outline-light">
+            <i class="bi bi-calendar-week"></i> Посмотреть всё расписание
+        </a>
+    </div>
+</div>
+{% endblock %}
