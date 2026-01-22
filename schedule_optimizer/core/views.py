@@ -25,6 +25,9 @@ from django.shortcuts import render
 from .models import Schedule, ShiftAssignment
 from collections import defaultdict
 
+from django.shortcuts import redirect
+from django.contrib import messages
+
 
 
 logger = logging.getLogger(__name__)
@@ -383,31 +386,6 @@ def change_password(request):
     return render(request, 'core/profile/change_password.html', context)
 
 
-
-@login_required
-def schedule_view(request):
-    """Просмотр графиков смен."""
-
-    # Проверяем права доступа
-    if not hasattr(request.user, 'profile'):
-        messages.error(request, "Профиль пользователя не найден.")
-        return redirect('dashboard')
-
-    user_profile = request.user.profile
-    current_role = user_profile.role  # Берём роль из профиля
-
-    # Только менеджеры, планировщики и админы могут просматривать графики
-    if current_role not in ['studio_admin', 'manager']:
-        messages.error(request, "У вас нет доступа к этому разделу.")
-        return redirect('dashboard')
-
-    schedules = Schedule.objects.all()
-    context = {
-        'schedules': schedules,
-    }
-    return render(request, 'core/schedules/schedule_list.html', context)
-
-
 @login_required
 def optimization_view(request):
     """Страница оптимизации графиков."""
@@ -569,7 +547,31 @@ def create_schedule_view(request):
 
 
 @login_required
-def view_schedule(request, schedule_id):
+def schedule_view(request):
+    """Просмотр графиков смен."""
+
+    # Проверяем права доступа
+    if not hasattr(request.user, 'profile'):
+        messages.error(request, "Профиль пользователя не найден.")
+        return redirect('dashboard')
+
+    user_profile = request.user.profile
+    current_role = user_profile.role  # Берём роль из профиля
+
+    # Только менеджеры, планировщики и админы могут просматривать графики
+    if current_role not in ['studio_admin', 'manager']:
+        messages.error(request, "У вас нет доступа к этому разделу.")
+        return redirect('dashboard')
+
+    schedules = Schedule.objects.all()
+    context = {
+        'schedules': schedules,
+    }
+    return render(request, 'core/schedules/schedule_list.html', context)
+
+
+@login_required
+def schedule_detail(request, schedule_id):
     schedule = get_object_or_404(Schedule, id=schedule_id)
 
     # === 1. Генерация дней из графика ===
@@ -627,16 +629,12 @@ def view_schedule(request, schedule_id):
     return render(request, 'core/schedules/view_schedule.html', context)
 
 
-# core/views.py
-from django.shortcuts import render, get_object_or_404
-from .models import Schedule, ShiftAssignment
-
+from collections import defaultdict
 
 @login_required
 def edit_schedule_view(request, schedule_id):
     schedule = get_object_or_404(Schedule, id=schedule_id)
 
-    # Генерация временных слотов (9:00–21:00)
     start_hour = 9
     end_hour = 21
     slots = []
@@ -646,10 +644,9 @@ def edit_schedule_view(request, schedule_id):
         start = f"{current_time // 60:02d}:{current_time % 60:02d}"
         current_time += 50
         end = f"{current_time // 60:02d}:{current_time % 60:02d}"
-        slots.append(f"{start}–{end}")
+        slots.append(f"{start} – {end}")
         current_time += 10
 
-    # Генерация дней из графика
     from datetime import timedelta
     days = []
     current_date = schedule.start_date
@@ -657,25 +654,16 @@ def edit_schedule_view(request, schedule_id):
         days.append(current_date)
         current_date += timedelta(days=1)
 
-    # Получаем всех сотрудников и типы занятий
-    from .models import UserProfile, WorkoutType
     employees = UserProfile.objects.filter(role='employee')
     workout_types = WorkoutType.objects.all()
 
-    # Получаем все назначения
     assignments = ShiftAssignment.objects.filter(schedule=schedule).select_related('employee', 'workout_type')
 
-    # Создаём список для передачи в шаблон
-    assignment_list = []
-    # В edit_schedule_view
-    assignment_list = []
+    # ВЛОЖЕННЫЙ СЛОВАРЬ: assignment_dict[дата][время] = assignment
+    assignment_dict = defaultdict(dict)
     for a in assignments:
-        assignment_list.append({
-            'date': a.date,  # Это объект date
-            'time_start': a.start_time.strftime('%H:%M'),  # Строка "09:00"
-            'employee': a.employee,  # Объект UserProfile
-            'workout_type': a.workout_type,  # Объект WorkoutType или None
-        })
+        time_key = a.start_time.strftime('%H:%M')
+        assignment_dict[a.date][time_key] = a
 
     context = {
         'schedule': schedule,
@@ -683,6 +671,21 @@ def edit_schedule_view(request, schedule_id):
         'days': days,
         'employees': employees,
         'workout_types': workout_types,
-        'assignment_list': assignment_list,  # Передаём список
+        'assignment_dict': dict(assignment_dict),  # преобразуем обратно в обычный dict
     }
     return render(request, 'core/schedules/edit_schedule.html', context)
+
+
+
+
+@login_required
+@user_passes_test(is_manager)
+def delete_schedule_view(request, schedule_id):
+    schedule = get_object_or_404(Schedule, id=schedule_id)
+    if request.method == "POST":
+        schedule_name = schedule.name
+        schedule.delete()
+        messages.success(request, f'График "{schedule_name}" успешно удалён.')
+        return redirect('schedule_view')  # Перенаправление на список графиков
+    # Если кто-то попытается GET — перенаправим на просмотр
+    return redirect('view_schedule', schedule_id=schedule_id)

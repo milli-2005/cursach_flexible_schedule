@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Система планирования смен{% endblock %}</title>
 
+    <!-- CSRF Token для AJAX -->
+    <meta name="csrf-token" content="{{ csrf_token }}">
+
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -47,7 +50,7 @@
                         {% elif user.profile.role == 'manager' %}
                             <li><a href="{% url 'profile_view' %}" class="nav-link text-white"><i class="bi bi-person-circle"></i> Профиль</a></li>
                             <li><a href="{% url 'schedule_view' %}" class="nav-link text-white"><i class="bi bi-calendar-week"></i> Управление графиками</a></li>
-                    <li><a href="{% url 'user_management' %}" class="nav-link text-white"><i class="bi bi-people"></i> Управление пользователями</a></li>
+                            <li><a href="{% url 'user_management' %}" class="nav-link text-white"><i class="bi bi-people"></i> Управление пользователями</a></li>
                             <li><a href="{% url 'workout_types' %}" class="nav-link"><i class="bi bi-journal-bookmark"></i> Типы занятий</a></li>
                             <li><a href="{% url 'optimization' %}" class="nav-link text-white"><i class="bi bi-gear-wide-connected"></i> Оптимизация</a></li>
                             <li><a href="{% url 'reports' %}" class="nav-link text-white"><i class="bi bi-file-earmark-bar-graph"></i> Отчеты</a></li>
@@ -60,39 +63,39 @@
                 </ul>
             </nav>
             <!-- Информация о пользователе в сайдбаре -->
-<div class="mt-auto pt-3 border-top border-white border-opacity-10">
-    {% if user.is_authenticated %}
-        <div class="d-flex align-items-center justify-content-between mb-2 px-3">
-            <span class="badge bg-purple">{{ user.profile.get_role_display }}</span>
-            <a href="{% url 'logout' %}" class="btn btn-sm btn-outline-light">Выйти</a>
-        </div>
-        <div class="px-3">
-            <small class="text-muted">Привет, {{ user.username }}</small>
-        </div>
-    {% endif %}
-</div>
+            <div class="mt-auto pt-3 border-top border-white border-opacity-10">
+                {% if user.is_authenticated %}
+                    <div class="d-flex align-items-center justify-content-between mb-2 px-3">
+                        <span class="badge bg-purple">{{ user.profile.get_role_display }}</span>
+                        <a href="{% url 'logout' %}" class="btn btn-sm btn-outline-light">Выйти</a>
+                    </div>
+                    <div class="px-3">
+                        <small class="text-muted">Привет, {{ user.username }}</small>
+                    </div>
+                {% endif %}
+            </div>
         </aside>
 
         <!-- Main Content Area -->
         <main class="main-content">
             <div class="container-fluid px-4 py-3">
-            <!-- Dynamic Content -->
-            <section class="p-3">
-                {% if messages %}
-                    <div class="mb-3">
-                        {% for message in messages %}
-                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                                {{ message }}
-                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                            </div>
-                        {% endfor %}
-                    </div>
-                {% endif %}
+                <!-- Dynamic Content -->
+                <section class="p-3">
+                    {% if messages %}
+                        <div class="mb-3">
+                            {% for message in messages %}
+                                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
 
-                {% block content %}
-                {% endblock %}
-            </section>
-                </div>
+                    {% block content %}
+                    {% endblock %}
+                </section>
+            </div>
         </main>
     </div>
 

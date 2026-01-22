@@ -1,17 +1,60 @@
 # core/api_schedule_views.py
+import json
 from django.http import JsonResponse
-from django.contrib.auth.decorators import login_required, user_passes_test
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
-from django.utils.dateparse import parse_date
-import json
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.shortcuts import get_object_or_404
+from datetime import datetime, time
 from .models import Schedule, ShiftAssignment, UserProfile, WorkoutType
-
+from django.utils.dateparse import parse_date
 
 def is_manager(user):
     if not hasattr(user, 'profile'):
         return False
-    return user.profile.role == 'manager'
+    return user.profile.role in ['manager', 'studio_admin']
+
+@login_required
+@user_passes_test(is_manager)
+@csrf_exempt
+@require_http_methods(["PUT"])
+def api_update_schedule(request, schedule_id):
+    try:
+        schedule = get_object_or_404(Schedule, id=schedule_id)
+        data = json.loads(request.body)
+        assignments = data.get('assignments', [])
+
+        # Сначала удалим все текущие назначения для этого графика
+        ShiftAssignment.objects.filter(schedule=schedule).delete()
+
+        for item in assignments:
+            date_str = item['date']          # "2026-01-22"
+            time_str = item['time_slot']     # "09:00" ← ТОЛЬКО НАЧАЛО
+            employee_id = item.get('employee_id')
+            workout_type_id = item.get('workout_type_id')
+
+            if not employee_id and not workout_type_id:
+                continue  # пропускаем пустые
+
+            # Преобразуем дату
+            date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
+
+            # Преобразуем время начала
+            start_time_obj = datetime.strptime(time_str, '%H:%M').time()
+
+            # Создаём новое назначение
+            ShiftAssignment.objects.create(
+                schedule=schedule,
+                date=date_obj,
+                start_time=start_time_obj,
+                employee_id=employee_id,
+                workout_type_id=workout_type_id
+            )
+
+        return JsonResponse({'success': True})
+
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
 
 @login_required
@@ -53,40 +96,3 @@ def api_save_schedule(request):
     except Exception as e:
         # ВСЕГДА возвращаем JSON, даже при ошибке!
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
-
-@login_required
-@user_passes_test(is_manager)
-@csrf_exempt
-@require_http_methods(["PUT"])
-def api_update_schedule(request, schedule_id):
-    try:
-        schedule = Schedule.objects.get(id=schedule_id)
-        data = json.loads(request.body.decode('utf-8'))
-
-        # 1. Удаляем все старые назначения
-        ShiftAssignment.objects.filter(schedule=schedule).delete()
-
-        # 2. Создаем новые назначения
-        for assignment_data in data['assignments']:
-            employee_id = assignment_data['employee_id']
-            workout_type_id = assignment_data.get('workout_type_id')
-            date_str = assignment_data['date']
-            time_slot = assignment_data['time_slot']
-
-            start_time_str, end_time_str = time_slot.split('–')
-            employee = UserProfile.objects.get(id=employee_id)
-            workout_type = WorkoutType.objects.get(id=workout_type_id) if workout_type_id else None
-
-            ShiftAssignment.objects.create(
-                schedule=schedule,
-                employee=employee,
-                workout_type=workout_type,
-                date=parse_date(date_str),
-                start_time=start_time_str,
-                end_time=end_time_str
-            )
-
-        return JsonResponse({'success': True})
-
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)})

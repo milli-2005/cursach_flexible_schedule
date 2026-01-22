@@ -1,6 +1,6 @@
-<!-- templates/core/schedules/edit_schedule.html -->
 {% extends "core/base.html" %}
 {% load static %}
+{% load dict_extras %}
 
 {% block title %}Редактирование графика - {{ block.super }}{% endblock %}
 
@@ -18,47 +18,107 @@
                         <th>{{ day|date:"D, d M" }}</th>
                     {% endfor %}
                 </tr>
-            </thead><tbody>
-    {% for slot in slots %}
-    <tr>
-        <td>{{ slot }}</td>
-        {% for day in days %}
-        <td>
-            <!-- Найдём назначение для этой ячейки -->
-            {% with current_assignment=None %}
-                {% for item in assignment_list %}
-                    {% if item.date == day and item.time_start == slot|slice:":5" %}
-                        {% with current_assignment=item %}{% endwith %}
-                    {% endif %}
+            </thead>
+            <tbody>
+                {% for slot in slots %}
+                <tr>
+                    <td>{{ slot }}</td>
+                    {% for day in days %}
+                    <td>
+                        {% with time_key=slot|slice:":5" %}
+                            {% with date_assignments=assignment_dict|get_item:day %}
+                                {% with assignment=date_assignments|get_item:time_key %}
+                                <select class="form-select form-select-sm mb-1 employee-select">
+                                    <option value="">Выберите...</option>
+                                    {% for emp in employees %}
+                                        <option value="{{ emp.id }}"
+                                            {% if assignment and assignment.employee.id == emp.id %}selected{% endif %}>
+                                            {{ emp.user.username }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                                <select class="form-select form-select-sm workout-select">
+                                    <option value="">Занятие</option>
+                                    {% for wt in workout_types %}
+                                        <option value="{{ wt.id }}"
+                                            {% if assignment and assignment.workout_type and assignment.workout_type.id == wt.id %}selected{% endif %}>
+                                            {{ wt.name }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                                {% endwith %}
+                            {% endwith %}
+                        {% endwith %}
+                    </td>
+                    {% endfor %}
+                </tr>
                 {% endfor %}
-
-                <!-- ВСЕГДА отображаем списки -->
-                <select class="form-select form-select-sm mb-1 employee-select">
-                    <option value="">Выберите...</option>
-                    {% for emp in employees %}
-                        <option value="{{ emp.id }}"
-                                {% if current_assignment and current_assignment.employee.id == emp.id %}selected{% endif %}>
-                            {{ emp.user.username }}
-                        </option>
-                    {% endfor %}
-                </select>
-                <select class="form-select form-select-sm workout-select">
-                    <option value="">Занятие</option>
-                    {% for wt in workout_types %}
-                        <option value="{{ wt.id }}"
-                                {% if current_assignment and current_assignment.workout_type and current_assignment.workout_type.id == wt.id %}selected{% endif %}>
-                            {{ wt.name }}
-                        </option>
-                    {% endfor %}
-                </select>
-            {% endwith %}
-        </td>
-        {% endfor %}
-    </tr>
-    {% endfor %}
-</tbody>
+            </tbody>
         </table>
     </div>
     <button id="save-schedule-btn" class="btn btn-primary">Сохранить изменения</button>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('save-schedule-btn').addEventListener('click', function () {
+    const scheduleId = {{ schedule.id }};
+    const assignments = [];
+
+    const days = [
+        {% for d in days %}
+            "{{ d|date:'Y-m-d' }}"{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+
+    document.querySelectorAll('tbody tr').forEach(row => {
+        const fullTimeText = row.querySelector('td:first-child').textContent.trim();
+        const startTime = fullTimeText.split('–')[0].trim();
+
+        row.querySelectorAll('td:not(:first-child)').forEach((cell, colIndex) => {
+            const day = days[colIndex];
+            const employeeSelect = cell.querySelector('.employee-select');
+            const workoutSelect = cell.querySelector('.workout-select');
+
+            const employeeId = employeeSelect ? employeeSelect.value : null;
+            const workoutTypeId = workoutSelect ? workoutSelect.value : null;
+
+            if (employeeId || workoutTypeId) {
+                assignments.push({
+                    date: day,
+                    time_slot: startTime,
+                    employee_id: employeeId || null,
+                    workout_type_id: workoutTypeId || null
+                });
+            }
+        });
+    });
+
+    const csrftoken = document.querySelector('[name=csrf-token]').content;
+
+    fetch(`/api/schedule/${scheduleId}/update/`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken
+        },
+        body: JSON.stringify({ assignments: assignments })
+    })
+    .then(response => {
+        if (response.ok) {
+            // УСПЕХ → ПЕРЕХОД НА СТРАНИЦУ ПРОСМОТРА ЭТОГО ГРАФИКА
+            window.location.href = "{% url 'schedule_detail' schedule.id %}";
+        } else {
+            return response.json().then(data => {
+                alert('Ошибка сохранения: ' + (data.error || 'Сервер вернул ошибку'));
+            });
+        }
+    })
+    .catch(error => {
+        console.error('Ошибка сети:', error);
+        alert('Не удалось отправить данные. Проверьте подключение.');
+    });
+});
+</script>
 {% endblock %}

@@ -50,12 +50,10 @@ urlpatterns = [
     path('schedules/', views.schedule_view, name='schedule_view'),
     path('schedules/create/', views.create_schedule_view, name='create_schedule'),
     path('api/schedule/save/', api_schedule_views.api_save_schedule, name='api_save_schedule'),
-
-    path('schedules/<int:schedule_id>/', views.view_schedule, name='view_schedule'),
+    path('schedules/<int:schedule_id>/', views.schedule_detail, name='schedule_detail'),
     path('schedules/<int:schedule_id>/edit/', views.edit_schedule_view, name='edit_schedule'),
     path('api/schedule/<int:schedule_id>/update/', api_schedule_views.api_update_schedule, name='api_update_schedule'),
-
-
+    path('schedules/<int:schedule_id>/delete/', views.delete_schedule_view, name='delete_schedule'),
 
     path('optimization/', views.optimization_view, name='optimization'),
 ]

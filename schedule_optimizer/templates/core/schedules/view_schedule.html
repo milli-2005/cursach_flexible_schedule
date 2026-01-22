@@ -9,9 +9,13 @@
     <p><strong>Период:</strong> {{ schedule.start_date|date:"d E Y" }} — {{ schedule.end_date|date:"d E Y" }}</p>
     <p><strong>Статус:</strong> {{ schedule.get_status_display }}</p>
 
+
     {% if user.profile.role == 'manager' %}
-        <a href="{% url 'edit_schedule' schedule.id %}" class="btn btn-primary mb-3">Редактировать</a>
-    {% endif %}
+    <a href="{% url 'edit_schedule' schedule.id %}" class="btn btn-primary mb-3">Редактировать</a>
+    <button type="button" class="btn btn-danger mb-3" data-bs-toggle="modal" data-bs-target="#deleteScheduleModal">
+        Удалить график
+    </button>
+{% endif %}
 
     <div class="table-responsive">
         <table class="table table-bordered table-dark">
@@ -42,5 +46,27 @@
             </tbody>
         </table>
     </div>
+</div>
+
+<!-- Модальное окно подтверждения удаления -->
+<div class="modal fade" id="deleteScheduleModal" tabindex="-1" aria-labelledby="deleteScheduleModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="deleteScheduleModalLabel">Подтверждение удаления</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+      </div>
+      <div class="modal-body">
+        Вы уверены, что хотите удалить график <strong>"{{ schedule.name }}"</strong>? Это действие нельзя отменить.
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+        <form method="post" action="{% url 'delete_schedule' schedule.id %}" style="display:inline;">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger">Удалить</button>
+        </form>
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %}
