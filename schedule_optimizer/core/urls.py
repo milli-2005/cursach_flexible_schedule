@@ -26,6 +26,8 @@ urlpatterns = [
     path('timeoff/', views.timeoff_requests, name='timeoff_requests'),
     path('shift-swaps/', views.shift_swaps, name='shift_swaps'),
 
+path('my-availability/', views.my_availability, name='my_availability'),
+
     # Отчеты
     path('reports/', views.reports, name='reports'),
 

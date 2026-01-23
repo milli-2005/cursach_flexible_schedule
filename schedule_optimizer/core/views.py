@@ -492,37 +492,42 @@ def create_schedule_view(request):
     workout_types = WorkoutType.objects.all()
 
     # Генерация слотов
-    start_hour = 9
-    end_hour = 21
+    start_hour, end_hour = 9, 21
     slots = []
     current_time = start_hour * 60
-    end_time_total = end_hour * 60
-    while current_time + 50 <= end_time_total:
-        start = f"{current_time // 60:02d}:{current_time % 60:02d}"
+    while current_time + 50 <= end_hour * 60:
+        start_str = f"{current_time // 60:02d}:{current_time % 60:02d}"
         current_time += 50
-        end = f"{current_time // 60:02d}:{current_time % 60:02d}"
-        slots.append(f"{start}–{end}")
+        end_str = f"{current_time // 60:02d}:{current_time % 60:02d}"
+        slots.append((start_str, end_str))
         current_time += 10
 
-    # Генерация дней
+    # Генерация дней (следующая неделя) — КАК СТРОКИ
     today = datetime.today()
-    start_of_week = today - timedelta(days=today.weekday()) + timedelta(weeks=1)
-    days = []
-    date_strings = []  # <-- Это важно
+    next_monday = today + timedelta(days=(7 - today.weekday()))
+    date_strings = []
     for i in range(7):
-        date_obj = start_of_week + timedelta(days=i)
-        days.append({
-            'date': date_obj.date(),
-            'name': ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'][i]
-        })
-        date_strings.append(date_obj.strftime('%Y-%m-%d'))  # <-- Список строк
+        date_obj = next_monday + timedelta(days=i)
+        date_strings.append(date_obj.strftime('%Y-%m-%d'))
+
+    # Загрузка доступности
+    from datetime import date
+    date_objects = [date.fromisoformat(ds) for ds in date_strings]
+    availabilities = Availability.objects.filter(
+        employee__in=employees,
+        date__in=date_objects
+    )
+    availability_dict = {}
+    for a in availabilities:
+        key = (a.employee.id, a.date.strftime('%Y-%m-%d'), a.start_time.strftime('%H:%M'))
+        availability_dict[key] = True
 
     context = {
         'employees': employees,
         'workout_types': workout_types,
         'slots': slots,
-        'days': days,
-        'date_strings': date_strings,  # <-- Передаём в шаблон
+        'date_strings': date_strings,  # ← СТРОКИ
+        'availability_dict': availability_dict,
     }
     return render(request, 'core/schedules/create_schedule.html', context)
 
@@ -695,3 +700,103 @@ def employee_schedule(request):
         'schedules': list(schedules_dict.values()),
     }
     return render(request, 'core/schedules/employee_schedule.html', context)
+
+
+
+
+""" === ДОСТУПНОСТЬ === """
+
+from django.utils import timezone
+@login_required
+def my_availability(request):
+    # Получаем профиль текущего пользователя
+    user_profile = request.user.profile
+
+    if user_profile.role != 'employee':
+        messages.error(request, "Доступно только для сотрудников.")
+        return redirect('dashboard')
+
+    #Определяем даты следующей недели
+    today = datetime.today()
+    # Находим ближайший ПОНЕДЕЛЬНИК следующей недели
+    next_monday = today + timedelta(days=(7 - today.weekday()))
+    # Создаём список из 7 дней: Пн, Вт, ..., Вс
+    current_days = [next_monday + timedelta(days=i) for i in range(7)]
+    # Также создаём список дат в виде строк (для удобства в шаблоне)
+    date_strings = [d.strftime('%Y-%m-%d') for d in current_days]
+
+    # Генерируем временные слоты
+    start_hour, end_hour = 9, 21
+    slots = []
+    current_time = start_hour * 60  # Переводим в минуты
+    while current_time + 50 <= end_hour * 60:
+        start_str = f"{current_time // 60:02d}:{current_time % 60:02d}"
+        current_time += 50
+        end_str = f"{current_time // 60:02d}:{current_time % 60:02d}"
+        slots.append((start_str, end_str))
+        current_time += 10
+
+    # Загружаем уже сохранённую доступность на эту неделю
+    existing_avail = Availability.objects.filter(
+        employee=user_profile,
+        date__in=current_days  # Только дни этой недели
+    )
+    # Создаём множество ключей вида "2026-01-26_09:00" — это быстро и надёжно
+    checked_keys = set()
+    for a in existing_avail:
+        key = f"{a.date.strftime('%Y-%m-%d')}_{a.start_time.strftime('%H:%M')}"
+        checked_keys.add(key)
+
+    # Подготавливаем данные для кнопки "Взять с прошлой недели"
+    prev_monday = next_monday - timedelta(weeks=1)  # Понедельник ПРОШЛОЙ недели
+    prev_days = [prev_monday + timedelta(days=i) for i in range(7)]
+    # Загружаем доступность за прошлую неделю
+    prev_avail = Availability.objects.filter(employee=user_profile, date__in=prev_days)
+    prev_avail_list = []
+    for a in prev_avail:
+        # Сдвигаем дату на +1 неделю (чтобы применить к ТЕКУЩЕЙ неделе)
+        new_date = a.date + timedelta(weeks=1)
+        new_date_str = new_date.strftime('%Y-%m-%d')
+        # Если такая дата есть в текущей неделе — добавляем в список
+        if new_date_str in date_strings:
+            prev_avail_list.append({
+                'date': new_date_str,
+                'time': a.start_time.strftime('%H:%M')
+            })
+
+    #Определяем, когда в последний раз обновлялась доступность
+    last_updated = existing_avail.latest('updated_at').updated_at if existing_avail.exists() else None
+
+    # Обработка формы при нажатии "Сохранить"
+    if request.method == "POST":
+        # Удаляем ВСЕ старые записи на эту неделю (чтобы не было дублей)
+        Availability.objects.filter(employee=user_profile, date__in=current_days).delete()
+
+        # Сохраняем новые отметки
+        for day_obj in current_days:
+            day_str = day_obj.strftime('%Y-%m-%d')
+            for start_str, end_str in slots:
+                # Имя чекбокса: slot_2026-01-26_09:00
+                checkbox_name = f"slot_{day_str}_{start_str}"
+                # Если чекбокс отмечен — создаём запись
+                if request.POST.get(checkbox_name):
+                    Availability.objects.create(
+                        employee=user_profile,
+                        date=day_obj,
+                        start_time=datetime.strptime(start_str, '%H:%M').time(),
+                        end_time=datetime.strptime(end_str, '%H:%M').time(),
+                        is_available=True
+                    )
+        messages.success(request, "Ваша доступность успешно обновлена.")
+        return redirect('my_availability')  # Перезагружаем страницу
+
+    # === ШАГ 7: Передаём данные в шаблон ===
+    context = {
+        'days': current_days,  # объекты date — для красивого отображения (Пн, 26 янв)
+        'date_strings': date_strings,  # строки дат — для работы с чекбоксами
+        'slots': slots,  # список слотов (начало, конец)
+        'checked_keys': checked_keys,  # множество строк вида "2026-01-26_09:00" — для checked
+        'last_updated': last_updated,  # когда последний раз сохраняли
+        'prev_avail_json': json.dumps(prev_avail_list),  # данные для JS-кнопки
+    }
+    return render(request, 'core/availability/my_availability.html', context)

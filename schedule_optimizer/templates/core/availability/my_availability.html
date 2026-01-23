@@ -1,0 +1,70 @@
+<!-- templates/core/availability/my_availability.html -->
+{% extends "core/base.html" %}
+
+{% block title %}Моя доступность - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="management-container">
+    <h2>Моя доступность на следующую неделю</h2>
+    <p class="text-muted">Отметьте, в какие дни и слоты вы можете работать.</p>
+
+    {% if last_updated %}
+        <div class="alert alert-info">
+            <strong>Последнее обновление:</strong> {{ last_updated|date:"d E Y" }} в {{ last_updated|time:"H:i" }}
+        </div>
+    {% endif %}
+
+    <div class="mb-3">
+        <button type="button" id="copy-prev-week" class="btn btn-outline-light">
+            <i class="bi bi-arrow-repeat"></i> Взять данные с прошлой недели
+        </button>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="table-responsive">
+            <table class="table table-bordered table-dark">
+                <thead>
+                    <tr>
+                        <th>Время</th>
+                        {% for day in days %}
+                            <th>{{ day|date:"D, d M" }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for start_str, end_str in slots %}
+                    <tr>
+                        <td>{{ start_str }} – {{ end_str }}</td>
+                        {% for day_str in date_strings %}
+                            {% with checkbox_id=day_str|add:"_"|add:start_str %}
+                            <td class="text-center">
+                                <input type="checkbox"
+                                       name="slot_{{ day_str }}_{{ start_str }}"
+                                       id="slot_{{ day_str }}_{{ start_str }}"
+                                       {% if checkbox_id in checked_keys %}checked{% endif %}>
+                            </td>
+                            {% endwith %}
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <button type="submit" class="btn btn-primary mt-3">Сохранить доступность</button>
+    </form>
+</div>
+
+<script>
+const prevData = {{ prev_avail_json|safe }};
+
+document.getElementById('copy-prev-week').addEventListener('click', function () {
+    document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+    prevData.forEach(item => {
+        const checkbox = document.querySelector(`input[name="slot_${item.date}_${item.time}"]`);
+        if (checkbox) checkbox.checked = true;
+    });
+    alert('Данные с прошлой недели загружены.');
+});
+</script>
+{% endblock %}

@@ -961,11 +961,6 @@ h1, h2, h3 {
     margin-bottom: 1rem;
 }
 
-.management-container {
-    max-width: 1200px;
-    margin: 0 auto;
-}
-
 .management-table {
     width: 100%;
     border-collapse: collapse;
@@ -987,4 +982,40 @@ h1, h2, h3 {
     text-align: left;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
+
+/* === Стили для карточек графика сотрудника === */
+.card {
+    background: linear-gradient(145deg, #252525, #1E1E1E);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 2rem;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card-header {
+    border-bottom: 1px solid rgba(128, 90, 213, 0.4);
+    color: #e0e0ff;
+    font-weight: 600;
+}
+
+.card-body{
+    color: white;
+}
+
+.table-dark {
+    --bs-table-bg: rgba(25, 25, 35, 0.8);
+    --bs-table-striped-bg: rgba(35, 35, 50, 0.6);
+    --bs-table-hover-bg: rgba(50, 40, 70, 0.6);
+}
+
+.btn-outline-light {
+    border-color: #8A6BBE;
+    color: #e0e0ff;
+}
+.btn-outline-light:hover {
+    background-color: #8A6BBE;
+    color: white;
+    border: #8A6BBE;;
+}
+
 

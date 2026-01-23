@@ -64,3 +64,12 @@ class UserAdmin(BaseUserAdmin):
 # Перерегистрируем UserAdmin
 admin.site.unregister(User)
 admin.site.register(User, UserAdmin)
+
+# core/admin.py
+from django.contrib import admin
+from .models import Availability
+
+@admin.register(Availability)
+class AvailabilityAdmin(admin.ModelAdmin):
+    list_display = ['employee', 'date', 'start_time', 'end_time', 'updated_at']
+    list_filter = ['employee', 'date']

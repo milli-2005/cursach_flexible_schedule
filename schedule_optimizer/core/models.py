@@ -328,3 +328,21 @@ class OptimizationRule(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.get_rule_type_display()})"
+
+
+
+class Availability(models.Model):
+    employee = models.ForeignKey(UserProfile, on_delete=models.CASCADE, verbose_name="Сотрудник")
+    date = models.DateField(verbose_name="Дата")
+    start_time = models.TimeField(verbose_name="Начало слота")
+    end_time = models.TimeField(verbose_name="Окончание слота")
+    is_available = models.BooleanField(default=True, verbose_name="Доступен")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Последнее обновление")
+
+    class Meta:
+        verbose_name = "Доступность"
+        verbose_name_plural = "Доступность"
+        unique_together = ('employee', 'date', 'start_time')
+
+    def __str__(self):
+        return f"{self.employee.user.username} — {self.date} {self.start_time}–{self.end_time}"
