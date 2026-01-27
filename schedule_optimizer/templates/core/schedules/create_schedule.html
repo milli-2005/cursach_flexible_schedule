@@ -59,7 +59,9 @@
 
 {% block extra_js %}
 <script>
-// === АВТОЗАПОЛНЕНИЕ ===
+// Загружаем данные о доступности: ["1,2026-01-27,09:00", "2,2026-01-27,10:00", ...]
+const AVAILABILITY_SET = new Set({{ availability_set_json|safe }});
+
 document.getElementById('auto-fill-btn').addEventListener('click', function () {
     const rows = document.querySelectorAll('#schedule-table tbody tr');
     const employees = Array.from(document.querySelectorAll('.employee-select option[value]'))
@@ -68,26 +70,28 @@ document.getElementById('auto-fill-btn').addEventListener('click', function () {
     let empIndex = 0;
 
     rows.forEach(row => {
-        const timeSlot = row.querySelector('td:first-child').textContent.trim();
-        const startTime = timeSlot.split('–')[0].trim();
+        const timeCell = row.querySelector('td:first-child');
+        if (!timeCell) return;
 
-        row.querySelectorAll('td:not(:first-child)').forEach(cell => {
-            const day = cell.dataset.day;
+        const timeText = timeCell.textContent.trim(); // "09:00 – 09:50"
+        const startTime = timeText.split('–')[0].trim(); // "09:00"
+
+        row.querySelectorAll('td:not(:first-child)').forEach((cell, idx) => {
+            const day = cell.dataset.day; // "2026-01-27"
             const employeeSelect = cell.querySelector('.employee-select');
             const workoutSelect = cell.querySelector('.workout-select');
 
             // Пропускаем, если уже заполнено
             if (employeeSelect.value) return;
 
-            // Ищем первого доступного сотрудника
+            // Ищем первого ДОСТУПНОГО сотрудника
             let assigned = false;
             for (let i = 0; i < employees.length; i++) {
                 const emp = employees[(empIndex + i) % employees.length];
-                const option = employeeSelect.querySelector(`option[value="${emp.id}"]`);
+                const key = `${emp.id},${day},${startTime}`;
 
-                if (option && !option.disabled) {
+                if (AVAILABILITY_SET.has(key)) {
                     employeeSelect.value = emp.id;
-                    // Автоматически выбираем первый тип занятия (или оставляем пустым)
                     if (workoutSelect.options.length > 1) {
                         workoutSelect.value = workoutSelect.options[1].value;
                     }
@@ -98,16 +102,17 @@ document.getElementById('auto-fill-btn').addEventListener('click', function () {
             }
 
             if (!assigned) {
-                // Никто не доступен — оставляем пустым
                 employeeSelect.value = '';
                 workoutSelect.value = '';
             }
         });
     });
 
-    alert('График заполнен автоматически. Проверьте и при необходимости отредактируйте.');
+    alert('График заполнен с учётом доступности сотрудников.');
 });
+</script>
 
+<script>
 // === СОХРАНЕНИЕ ===
 document.getElementById('save-schedule-btn').addEventListener('click', function () {
     const scheduleName = prompt("Введите название графика:", "График на неделю");
@@ -118,7 +123,7 @@ document.getElementById('save-schedule-btn').addEventListener('click', function 
     const dateStrings = {{ date_strings|safe }};
 
     rows.forEach(row => {
-        const timeSlot = row.querySelector('td:first-child').textContent;
+        const timeSlot = row.querySelector('td:first-child').textContent.trim();
         row.querySelectorAll('td:not(:first-child)').forEach((cell, idx) => {
             const employeeSelect = cell.querySelector('.employee-select');
             const workoutSelect = cell.querySelector('.workout-select');

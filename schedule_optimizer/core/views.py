@@ -505,7 +505,7 @@ def create_schedule_view(request):
     # Генерация дней (следующая неделя) — КАК СТРОКИ
     today = datetime.today()
     next_monday = today + timedelta(days=(7 - today.weekday()))
-    current_days = [next_monday.date() + timedelta(days=i) for i in range(7)]  # ← ОПРЕДЕЛЕНО!
+    current_days = [next_monday.date() + timedelta(days=i) for i in range(7)]
 
     # Строки для JS и шаблона
     date_strings = [d.strftime('%Y-%m-%d') for d in current_days]
@@ -515,18 +515,20 @@ def create_schedule_view(request):
         employee__in=employees,
         date__in=current_days
     )
-    availability_dict = {}
+
+    # Создаём SET для быстрой проверки в JS: "emp_id,date,time"
+    availability_set = set()
     for a in availabilities:
-        key = (a.employee.id, a.date.strftime('%Y-%m-%d'), a.start_time.strftime('%H:%M'))
-        availability_dict[key] = True
+        key = f"{a.employee.id},{a.date.strftime('%Y-%m-%d')},{a.start_time.strftime('%H:%M')}"
+        availability_set.add(key)
 
     context = {
         'employees': employees,
         'workout_types': workout_types,
         'slots': slots,
+         'days': current_days,
         'date_strings': date_strings,
-        'days': current_days,
-        'availability_dict': availability_dict,
+        'availability_set_json': json.dumps(list(availability_set)),
     }
     return render(request, 'core/schedules/create_schedule.html', context)
 
@@ -608,11 +610,13 @@ def schedule_detail(request, schedule_id):
 
 
 from collections import defaultdict
+import json
 
 @login_required
 def edit_schedule_view(request, schedule_id):
     schedule = get_object_or_404(Schedule, id=schedule_id)
 
+    # Генерация слотов (9:00–21:00)
     start_hour = 9
     end_hour = 21
     slots = []
@@ -625,6 +629,7 @@ def edit_schedule_view(request, schedule_id):
         slots.append(f"{start} – {end}")
         current_time += 10
 
+    # Генерация дней из графика
     from datetime import timedelta
     days = []
     current_date = schedule.start_date
@@ -632,24 +637,37 @@ def edit_schedule_view(request, schedule_id):
         days.append(current_date)
         current_date += timedelta(days=1)
 
+    date_strings = [d.strftime('%Y-%m-%d') for d in days]
+
     employees = UserProfile.objects.filter(role='employee')
     workout_types = WorkoutType.objects.all()
 
+    # Текущие назначения
     assignments = ShiftAssignment.objects.filter(schedule=schedule).select_related('employee', 'workout_type')
-
-    # ВЛОЖЕННЫЙ СЛОВАРЬ: assignment_dict[дата][время] = assignment
     assignment_dict = defaultdict(dict)
     for a in assignments:
         time_key = a.start_time.strftime('%H:%M')
         assignment_dict[a.date][time_key] = a
 
+    # === ЗАГРУЗКА ДОСТУПНОСТИ ДЛЯ АВТОЗАПОЛНЕНИЯ ===
+    availabilities = Availability.objects.filter(
+        employee__in=employees,
+        date__in=days
+    )
+    availability_set = set()
+    for a in availabilities:
+        key = f"{a.employee.id},{a.date.strftime('%Y-%m-%d')},{a.start_time.strftime('%H:%M')}"
+        availability_set.add(key)
+
     context = {
         'schedule': schedule,
         'slots': slots,
         'days': days,
+        'date_strings': date_strings,  # ← для JS
         'employees': employees,
         'workout_types': workout_types,
-        'assignment_dict': dict(assignment_dict),  # преобразуем обратно в обычный dict
+        'assignment_dict': dict(assignment_dict),
+        'availability_set_json': json.dumps(list(availability_set)),  # ← для JS
     }
     return render(request, 'core/schedules/edit_schedule.html', context)
 

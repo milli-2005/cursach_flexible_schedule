@@ -8,6 +8,9 @@
 <div class="management-container">
     <h2>Редактирование графика "{{ schedule.name }}"</h2>
     <p class="text-muted">Период: {{ schedule.start_date }} — {{ schedule.end_date }}</p>
+    <div class="mb-3">
+    <button id="auto-fill-btn" class="btn btn-outline-light">Заполнить автоматически</button>
+</div>
 
     <div class="table-responsive">
         <table class="table table-bordered table-dark">
@@ -62,6 +65,61 @@
 
 {% block extra_js %}
 <script>
+// Данные о доступности
+const AVAILABILITY_SET = new Set({{ availability_set_json|safe }});
+
+document.getElementById('auto-fill-btn').addEventListener('click', function () {
+    const rows = document.querySelectorAll('tbody tr');
+    const employees = Array.from(document.querySelectorAll('.employee-select option[value]'))
+        .map(opt => ({ id: opt.value, name: opt.textContent }));
+
+    let empIndex = 0;
+
+    rows.forEach(row => {
+        const timeCell = row.querySelector('td:first-child');
+        if (!timeCell) return;
+
+        const timeText = timeCell.textContent.trim();
+        const startTime = timeText.split('–')[0].trim();
+
+        row.querySelectorAll('td:not(:first-child)').forEach((cell, idx) => {
+            const day = "{{ date_strings|join:'|' }}".split('|')[idx];
+            const employeeSelect = cell.querySelector('.employee-select');
+            const workoutSelect = cell.querySelector('.workout-select');
+
+            // Пропускаем, если уже заполнено
+            if (employeeSelect.value) return;
+
+            // Ищем первого доступного
+            let assigned = false;
+            for (let i = 0; i < employees.length; i++) {
+                const emp = employees[(empIndex + i) % employees.length];
+                const key = `${emp.id},${day},${startTime}`;
+
+                if (AVAILABILITY_SET.has(key)) {
+                    employeeSelect.value = emp.id;
+                    if (workoutSelect.options.length > 1) {
+                        workoutSelect.value = workoutSelect.options[1].value;
+                    }
+                    empIndex = (empIndex + i + 1) % employees.length;
+                    assigned = true;
+                    break;
+                }
+            }
+
+            if (!assigned) {
+                employeeSelect.value = '';
+                workoutSelect.value = '';
+            }
+        });
+    });
+
+    alert('График заполнен с учётом доступности сотрудников.');
+});
+</script>
+
+<!-- ОСТАЛЬНЫЙ JS (сохранение) остаётся без изменений -->
+<script>
 document.getElementById('save-schedule-btn').addEventListener('click', function () {
     const scheduleId = {{ schedule.id }};
     const assignments = [];
@@ -105,19 +163,18 @@ document.getElementById('save-schedule-btn').addEventListener('click', function 
         },
         body: JSON.stringify({ assignments: assignments })
     })
-    .then(response => {
-        if (response.ok) {
-            // УСПЕХ → ПЕРЕХОД НА СТРАНИЦУ ПРОСМОТРА ЭТОГО ГРАФИКА
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('График успешно сохранён!');
             window.location.href = "{% url 'schedule_detail' schedule.id %}";
         } else {
-            return response.json().then(data => {
-                alert('Ошибка сохранения: ' + (data.error || 'Сервер вернул ошибку'));
-            });
+            alert('Ошибка сохранения: ' + (data.error || JSON.stringify(data)));
         }
     })
     .catch(error => {
-        console.error('Ошибка сети:', error);
-        alert('Не удалось отправить данные. Проверьте подключение.');
+        console.error('Ошибка:', error);
+        alert('Не удалось отправить данные.');
     });
 });
 </script>
