@@ -124,3 +124,23 @@ EMAIL_USE_TLS = True   #Включает шифрование соединени
 EMAIL_HOST_USER = 'milena9470st@gmail.com'
 EMAIL_HOST_PASSWORD = 'dmwfojpsrxzrrtft'  # Пароль приложения (не пароль от почты!)
 DEFAULT_FROM_EMAIL = 'schedule.system@gmail.com'  #Имя отправителя, которое увидят пользователи
+
+
+# Email-напоминание в среду
+# ✅ Что нужно: Задача Celery (или простой cron), которая каждый вторник вечером проверяет:
+#         Есть ли графики со статусом draft,
+#         Если да — отправляет email всем сотрудникам:
+#         «Укажите вашу доступность до [день]!»
+# Если не хочешь Celery — можно сделать через management command + cron, но Celery проще.
+# settings.py
+
+CELERY_BEAT_SCHEDULE = {
+    'send-availability-reminder': {
+        'task': 'core.tasks.send_availability_reminder',
+        'schedule': crontab(day_of_week=1, hour=18, minute=0),  # Вторник 18:00
+    },
+    'auto-approve-schedules': {
+        'task': 'core.tasks.auto_approve_schedules',
+        'schedule': 600.0,  # Каждые 10 минут (600 секунд)
+    },
+}

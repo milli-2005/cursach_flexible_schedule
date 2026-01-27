@@ -56,5 +56,9 @@ path('my-availability/', views.my_availability, name='my_availability'),
     path('api/schedule/<int:schedule_id>/update/', api_schedule_views.api_update_schedule, name='api_update_schedule'),
     path('schedules/<int:schedule_id>/delete/', views.delete_schedule_view, name='delete_schedule'),
 
+    #страницу согласования
+    path('schedules/<int:schedule_id>/approve/', views.approve_schedule_view, name='approve_schedule'),
+
+
     path('optimization/', views.optimization_view, name='optimization'),
 ]

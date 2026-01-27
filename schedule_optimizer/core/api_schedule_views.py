@@ -57,6 +57,33 @@ def api_update_schedule(request, schedule_id):
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
 
+
+
+# При генерации графика — если у сотрудника не указал на текущую неделю → копируем с предыдущей.
+
+from datetime import timedelta
+def copy_availability_from_previous_week(employee, current_week_start):
+    prev_week_start = current_week_start - timedelta(weeks=1)
+    prev_avail = Availability.objects.filter(
+        employee=employee,
+        date__gte=prev_week_start,
+        date__lt=prev_week_start + timedelta(days=7)
+    )
+    new_records = []
+    for a in prev_avail:
+        new_date = a.date + timedelta(weeks=1)
+        new_records.append(Availability(
+            employee=employee,
+            date=new_date,
+            start_time=a.start_time,
+            end_time=a.end_time,
+            is_available=True
+        ))
+    if new_records:
+        Availability.objects.bulk_create(new_records, ignore_conflicts=True)
+
+
+
 @login_required
 @user_passes_test(is_manager)
 @csrf_exempt
@@ -101,3 +128,34 @@ def api_save_schedule(request):
 
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+
+    # Меняем статус на "На согласовании"
+    schedule.status = 'pending'
+    schedule.save()
+
+    # Создаём записи для подтверждения
+    employees = UserProfile.objects.filter(role='employee')
+    for emp in employees:
+        ScheduleApproval.objects.get_or_create(
+            schedule=schedule,
+            employee=emp
+        )
+
+    # Отправляем email (временно через print)
+    print(f"📧 Отправлено напоминание {employees.count()} сотрудникам о графике '{schedule.name}'")
+    # Позже заменишь на send_mail()
+
+
+# После создания графика (в api_save_schedule)
+send_mail(
+    "Новый график на согласование",
+    f"График '{schedule.name}' ожидает вашего подтверждения. У вас есть 1 час.",
+    settings.DEFAULT_FROM_EMAIL,
+    [emp.user.email for emp in UserProfile.objects.filter(role='employee')],
+)
+
+
+
+
+

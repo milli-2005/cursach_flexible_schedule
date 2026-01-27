@@ -817,3 +817,53 @@ def my_availability(request):
         'prev_avail_json': json.dumps(prev_avail_list),  # данные для JS-кнопки
     }
     return render(request, 'core/availability/my_availability.html', context)
+
+
+
+# View для подтверждения
+from django.utils import timezone
+from datetime import timedelta
+
+@login_required
+def approve_schedule_view(request, schedule_id):
+    schedule = get_object_or_404(Schedule, id=schedule_id)
+    employee = request.user.profile
+
+    # Проверка: только сотрудники
+    if employee.role != 'employee':
+        messages.error(request, "Доступно только для сотрудников.")
+        return redirect('dashboard')
+
+    # Получаем или создаём запись
+    approval, created = ScheduleApproval.objects.get_or_create(
+        schedule=schedule,
+        employee=employee
+    )
+
+    # Проверяем, прошёл ли час
+    deadline = schedule.created_at + timedelta(hours=1)
+    time_is_up = timezone.now() > deadline
+
+    if request.method == "POST":
+        if time_is_up:
+            messages.error(request, "Время на подтверждение истекло.")
+            return redirect('employee_schedule')
+
+        approved = request.POST.get('action') == 'approve'
+        comment = request.POST.get('comment', '').strip()
+
+        approval.approved = approved
+        approval.comment = comment if not approved else ''
+        approval.responded_at = timezone.now()
+        approval.save()
+
+        messages.success(request, "Ваш ответ сохранён.")
+        return redirect('employee_schedule')
+
+    context = {
+        'schedule': schedule,
+        'approval': approval,
+        'time_is_up': time_is_up,
+        'deadline': deadline,
+    }
+    return render(request, 'core/approve_schedule.html', context)

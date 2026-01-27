@@ -69,7 +69,7 @@ class Migration(migrations.Migration):
                 ('name', models.CharField(max_length=200, verbose_name='Название графика')),
                 ('start_date', models.DateField(verbose_name='Дата начала')),
                 ('end_date', models.DateField(verbose_name='Дата окончания')),
-                ('status', models.CharField(choices=[('draft', 'Черновик'), ('pending', 'На согласовании'), ('approved', 'Утвержден'), ('published', 'Опубликован')], default='draft', max_length=20)),
+                ('status', models.CharField(choices=[('draft', 'Черновик'), ('pending', 'На согласовании'), ('approved', 'Утвержден')], default='draft', max_length=20)),
                 ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')),
                 ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Дата обновления')),
                 ('created_by', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, to=settings.AUTH_USER_MODEL, verbose_name='Создатель')),

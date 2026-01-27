@@ -1,0 +1,39 @@
+<!-- templates/core/approve_schedule.html -->
+{% extends "core/base.html" %}
+
+{% block title %}Согласование графика - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="management-container">
+    <h2>Согласование графика "{{ schedule.name }}"</h2>
+
+    {% if time_is_up %}
+        <div class="alert alert-warning">
+            Время на подтверждение истекло. График будет утверждён автоматически.
+        </div>
+    {% else %}
+        <p class="text-muted">У вас есть до {{ deadline|date:"d E Y H:i" }}, чтобы подтвердить или отправить замечания.</p>
+
+        <div class="d-grid gap-2 d-md-flex justify-content-md-center mt-4">
+            <form method="post" class="me-md-2">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="approve">
+                <button type="submit" class="btn btn-success btn-lg">
+                    <i class="bi bi-check-circle"></i> Подтверждаю
+                </button>
+            </form>
+            <form method="post" class="ms-md-2">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="reject">
+                <div class="mb-3">
+                    <label for="comment" class="form-label">Ваши замечания:</label>
+                    <textarea name="comment" id="comment" class="form-control" rows="3" required></textarea>
+                </div>
+                <button type="submit" class="btn btn-danger btn-lg">
+                    <i class="bi bi-x-circle"></i> Есть замечания
+                </button>
+            </form>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -158,12 +158,27 @@ class Schedule(models.Model):
     start_date = models.DateField(verbose_name="Дата начала")
     end_date = models.DateField(verbose_name="Дата окончания")
 
+    AVAILABILITY_DEADLINE_CHOICES = [
+        (0, 'Понедельник'),
+        (1, 'Вторник'),
+        (2, 'Среда'),
+        (3, 'Четверг'),
+        (4, 'Пятница'),
+        (5, 'Суббота'),
+        (6, 'Воскресенье'),
+    ]
+
+    availability_deadline_weekday = models.IntegerField(
+        choices=AVAILABILITY_DEADLINE_CHOICES,
+        default=3,  # Четверг
+        verbose_name="Дедлайн для указания доступности"
+    )
+
     # Статус графика
     STATUS_CHOICES = [
         ('draft', 'Черновик'),
         ('pending', 'На согласовании'),
-        ('approved', 'Утвержден'),
-        ('published', 'Опубликован'),
+        ('approved', 'Утвержден')
     ]
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, verbose_name="Создатель")
@@ -346,3 +361,17 @@ class Availability(models.Model):
 
     def __str__(self):
         return f"{self.employee.user.username} — {self.date} {self.start_time}–{self.end_time}"
+
+
+
+#согласование графика: модель отзыва
+class ScheduleApproval(models.Model):
+    schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE, related_name='approvals')
+    employee = models.ForeignKey(UserProfile, on_delete=models.CASCADE)
+    approved = models.BooleanField(null=True)  # True/False/None
+    comment = models.TextField(blank=True)
+    responded_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('schedule', 'employee')
