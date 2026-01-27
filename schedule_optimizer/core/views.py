@@ -505,17 +505,15 @@ def create_schedule_view(request):
     # Генерация дней (следующая неделя) — КАК СТРОКИ
     today = datetime.today()
     next_monday = today + timedelta(days=(7 - today.weekday()))
-    date_strings = []
-    for i in range(7):
-        date_obj = next_monday + timedelta(days=i)
-        date_strings.append(date_obj.strftime('%Y-%m-%d'))
+    current_days = [next_monday.date() + timedelta(days=i) for i in range(7)]  # ← ОПРЕДЕЛЕНО!
+
+    # Строки для JS и шаблона
+    date_strings = [d.strftime('%Y-%m-%d') for d in current_days]
 
     # Загрузка доступности
-    from datetime import date
-    date_objects = [date.fromisoformat(ds) for ds in date_strings]
     availabilities = Availability.objects.filter(
         employee__in=employees,
-        date__in=date_objects
+        date__in=current_days
     )
     availability_dict = {}
     for a in availabilities:
@@ -526,7 +524,8 @@ def create_schedule_view(request):
         'employees': employees,
         'workout_types': workout_types,
         'slots': slots,
-        'date_strings': date_strings,  # ← СТРОКИ
+        'date_strings': date_strings,
+        'days': current_days,
         'availability_dict': availability_dict,
     }
     return render(request, 'core/schedules/create_schedule.html', context)

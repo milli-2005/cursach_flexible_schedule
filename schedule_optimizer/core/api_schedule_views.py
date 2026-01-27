@@ -65,7 +65,6 @@ def api_save_schedule(request):
     try:
         data = json.loads(request.body.decode('utf-8'))
 
-        # Создаем график
         schedule = Schedule.objects.create(
             name=data['name'],
             start_date=parse_date(data['start_date']),
@@ -73,26 +72,32 @@ def api_save_schedule(request):
             created_by=request.user
         )
 
-        # Сохраняем назначения
         for assignment_data in data['assignments']:
             employee = UserProfile.objects.get(id=assignment_data['employee_id'])
             workout_type = None
             if assignment_data.get('workout_type_id'):
                 workout_type = WorkoutType.objects.get(id=assignment_data['workout_type_id'])
 
-            start_time_str, end_time_str = assignment_data['time_slot'].split('–')
+            # === ИСПРАВЛЕНИЕ: парсим время правильно ===
+            time_slot = assignment_data['time_slot']  # например: "18:00 – 18:50"
+            parts = time_slot.split('–')
+            start_time_str = parts[0].strip()  # ← .strip() убирает пробел
+            end_time_str = parts[1].strip()
+
+            # Преобразуем строки в объекты time
+            start_time = datetime.strptime(start_time_str, '%H:%M').time()
+            end_time = datetime.strptime(end_time_str, '%H:%M').time()
 
             ShiftAssignment.objects.create(
                 schedule=schedule,
                 employee=employee,
                 workout_type=workout_type,
                 date=parse_date(assignment_data['date']),
-                start_time=start_time_str,
-                end_time=end_time_str
+                start_time=start_time,   # ← объект time
+                end_time=end_time        # ← объект time
             )
 
         return JsonResponse({'success': True, 'schedule_id': schedule.id})
 
     except Exception as e:
-        # ВСЕГДА возвращаем JSON, даже при ошибке!
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
