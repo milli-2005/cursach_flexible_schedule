@@ -5,14 +5,19 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.shortcuts import get_object_or_404
-from datetime import datetime, time
-from .models import Schedule, ShiftAssignment, UserProfile, WorkoutType
+from datetime import datetime, timedelta
 from django.utils.dateparse import parse_date
+from django.core.mail import send_mail
+from django.conf import settings
+
+from .models import Schedule, ShiftAssignment, UserProfile, WorkoutType, ScheduleApproval, Availability
+
 
 def is_manager(user):
     if not hasattr(user, 'profile'):
         return False
     return user.profile.role in ['manager', 'studio_admin']
+
 
 @login_required
 @user_passes_test(is_manager)
@@ -57,11 +62,7 @@ def api_update_schedule(request, schedule_id):
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
 
-
-
-# При генерации графика — если у сотрудника не указал на текущую неделю → копируем с предыдущей.
-
-from datetime import timedelta
+# === Вспомогательная функция: копирование доступности с прошлой недели ===
 def copy_availability_from_previous_week(employee, current_week_start):
     prev_week_start = current_week_start - timedelta(weeks=1)
     prev_avail = Availability.objects.filter(
@@ -83,7 +84,6 @@ def copy_availability_from_previous_week(employee, current_week_start):
         Availability.objects.bulk_create(new_records, ignore_conflicts=True)
 
 
-
 @login_required
 @user_passes_test(is_manager)
 @csrf_exempt
@@ -92,26 +92,27 @@ def api_save_schedule(request):
     try:
         data = json.loads(request.body.decode('utf-8'))
 
+        # Создаём график со статусом "На согласовании"
         schedule = Schedule.objects.create(
             name=data['name'],
             start_date=parse_date(data['start_date']),
             end_date=parse_date(data['end_date']),
-            created_by=request.user
+            created_by=request.user,
+            status='pending'  # ← сразу на согласование
         )
 
+        # Сохраняем назначения
         for assignment_data in data['assignments']:
             employee = UserProfile.objects.get(id=assignment_data['employee_id'])
             workout_type = None
             if assignment_data.get('workout_type_id'):
                 workout_type = WorkoutType.objects.get(id=assignment_data['workout_type_id'])
 
-            # === ИСПРАВЛЕНИЕ: парсим время правильно ===
-            time_slot = assignment_data['time_slot']  # например: "18:00 – 18:50"
+            time_slot = assignment_data['time_slot']  # "09:00 – 09:50"
             parts = time_slot.split('–')
-            start_time_str = parts[0].strip()  # ← .strip() убирает пробел
+            start_time_str = parts[0].strip()
             end_time_str = parts[1].strip()
 
-            # Преобразуем строки в объекты time
             start_time = datetime.strptime(start_time_str, '%H:%M').time()
             end_time = datetime.strptime(end_time_str, '%H:%M').time()
 
@@ -120,42 +121,33 @@ def api_save_schedule(request):
                 employee=employee,
                 workout_type=workout_type,
                 date=parse_date(assignment_data['date']),
-                start_time=start_time,   # ← объект time
-                end_time=end_time        # ← объект time
+                start_time=start_time,
+                end_time=end_time
             )
+
+        # === Создаём записи для согласования ===
+        employees = UserProfile.objects.filter(role='employee')
+        for emp in employees:
+            ScheduleApproval.objects.get_or_create(
+                schedule=schedule,
+                employee=emp
+            )
+
+        # === Отправка email (в консоль) ===
+        employee_emails = [emp.user.email for emp in employees if emp.user.email]
+        if employee_emails:
+            try:
+                send_mail(
+                    subject="Новый график на согласование",
+                    message=f"График '{schedule.name}' ожидает вашего подтверждения. У вас есть 1 час.",
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=employee_emails,
+                )
+            except Exception as e:
+                # Логируем ошибку, но не прерываем сохранение
+                print(f"[EMAIL ERROR] {e}")
 
         return JsonResponse({'success': True, 'schedule_id': schedule.id})
 
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
-
-
-    # Меняем статус на "На согласовании"
-    schedule.status = 'pending'
-    schedule.save()
-
-    # Создаём записи для подтверждения
-    employees = UserProfile.objects.filter(role='employee')
-    for emp in employees:
-        ScheduleApproval.objects.get_or_create(
-            schedule=schedule,
-            employee=emp
-        )
-
-    # Отправляем email (временно через print)
-    print(f"📧 Отправлено напоминание {employees.count()} сотрудникам о графике '{schedule.name}'")
-    # Позже заменишь на send_mail()
-
-
-# После создания графика (в api_save_schedule)
-send_mail(
-    "Новый график на согласование",
-    f"График '{schedule.name}' ожидает вашего подтверждения. У вас есть 1 час.",
-    settings.DEFAULT_FROM_EMAIL,
-    [emp.user.email for emp in UserProfile.objects.filter(role='employee')],
-)
-
-
-
-
-

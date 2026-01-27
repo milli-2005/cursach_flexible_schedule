@@ -117,7 +117,6 @@ LOGIN_URL = 'login'
 
 
 # Настройки email для разработки
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'    #адрес почтового сервера - gmail, yandex, mail
 EMAIL_PORT = 587       #587 - стандартный порт для защищенной отправки почты (TLS) или 465
 EMAIL_USE_TLS = True   #Включает шифрование соединения (как HTTPS для почты), чтобы пароли и письма нельзя было перехватить
@@ -134,6 +133,7 @@ DEFAULT_FROM_EMAIL = 'schedule.system@gmail.com'  #Имя отправителя
 # Если не хочешь Celery — можно сделать через management command + cron, но Celery проще.
 # settings.py
 
+from celery.schedules import crontab
 CELERY_BEAT_SCHEDULE = {
     'send-availability-reminder': {
         'task': 'core.tasks.send_availability_reminder',

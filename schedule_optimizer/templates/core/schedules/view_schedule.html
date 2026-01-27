@@ -69,4 +69,26 @@
     </div>
   </div>
 </div>
+
+<!-- === ЗАМЕЧАНИЯ СОТРУДНИКОВ === -->
+{% if schedule.status == 'pending' and user.profile.role == 'manager' %}
+    <div class="mt-4">
+        <h4>Замечания сотрудников:</h4>
+        {% with approvals=schedule.approvals.all %}
+            {% if approvals %}
+                <ul class="list-group">
+                    {% for approval in approvals %}
+                        {% if approval.comment %}
+                            <li class="list-group-item">
+                                <strong>{{ approval.employee.user.username }}:</strong> {{ approval.comment }}
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="text-muted">Нет замечаний.</p>
+            {% endif %}
+        {% endwith %}
+    </div>
+{% endif %}
 {% endblock %}

@@ -866,4 +866,4 @@ def approve_schedule_view(request, schedule_id):
         'time_is_up': time_is_up,
         'deadline': deadline,
     }
-    return render(request, 'core/approve_schedule.html', context)
+    return render(request, 'core/schedules/approve_schedule.html', context)
