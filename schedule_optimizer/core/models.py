@@ -122,33 +122,6 @@ class Employee(models.Model):
 
 
 
-# class Shift(models.Model):
-#     """
-#     Модель смены (тип смены).
-#     """
-#     SHIFT_TYPES = [
-#         ('morning', 'Утренняя'),
-#         ('day', 'Дневная'),
-#         ('evening', 'Вечерняя'),
-#         ('night', 'Ночная'),
-#         ('special', 'Особая'),
-#     ]
-#
-#     name = models.CharField(max_length=100, verbose_name="Название смены")
-#     shift_type = models.CharField(max_length=20, choices=SHIFT_TYPES, default='day')
-#     start_time = models.TimeField(verbose_name="Время начала")
-#     end_time = models.TimeField(verbose_name="Время окончания")
-#     required_employees = models.IntegerField(default=1, verbose_name="Требуемое количество сотрудников")
-#
-#     class Meta:
-#         verbose_name = "Смена"
-#         verbose_name_plural = "Смены"
-#
-#     def __str__(self):
-#         return f"{self.name} ({self.get_shift_type_display()})"
-
-
-
 
 class Schedule(models.Model):
     """
@@ -158,21 +131,6 @@ class Schedule(models.Model):
     start_date = models.DateField(verbose_name="Дата начала")
     end_date = models.DateField(verbose_name="Дата окончания")
 
-    AVAILABILITY_DEADLINE_CHOICES = [
-        (0, 'Понедельник'),
-        (1, 'Вторник'),
-        (2, 'Среда'),
-        (3, 'Четверг'),
-        (4, 'Пятница'),
-        (5, 'Суббота'),
-        (6, 'Воскресенье'),
-    ]
-
-    availability_deadline_weekday = models.IntegerField(
-        choices=AVAILABILITY_DEADLINE_CHOICES,
-        default=3,  # Четверг
-        verbose_name="Дедлайн для указания доступности"
-    )
 
     # Статус графика
     STATUS_CHOICES = [

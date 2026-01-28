@@ -7,30 +7,42 @@ from django.core.mail import send_mail
 from django.conf import settings
 from .models import Schedule, UserProfile
 
-# === ЗАДАЧА 1: Напоминание о доступности (во вторник) ===
+
+# === ЗАДАЧА 1: Напоминание о доступности  ===
 @shared_task
 def send_availability_reminder():
-    draft_schedules = Schedule.objects.filter(status='draft')
-    if not draft_schedules.exists():
+    # Получаем глобальные настройки
+    try:
+        settings_obj = GlobalSettings.objects.get(pk=1)
+    except GlobalSettings.DoesNotExist:
         return
 
+    today_weekday = timezone.now().weekday()
+    deadline_weekday = settings_obj.availability_deadline_weekday
+    reminder_day = (deadline_weekday - 1) % 7
+
+    if today_weekday != reminder_day:
+        return
+
+    # Отправляем напоминание ВСЕМ сотрудникам
     employees = UserProfile.objects.filter(role='employee')
-    employee_emails = [emp.user.email for emp in employees if emp.user.email]
+    emails = [emp.user.email for emp in employees if emp.user.email]
 
-    if not employee_emails:
+    if not emails:
         return
 
-    for schedule in draft_schedules:
-        deadline_day = dict(Schedule.AVAILABILITY_DEADLINE_CHOICES)[schedule.availability_deadline_weekday]
-        message = f"Напоминаем: укажите вашу доступность для графика '{schedule.name}' до {deadline_day}!"
+    deadline_label = dict(GlobalSettings.AVAILABILITY_DEADLINE_CHOICES)[deadline_weekday]
+    message = f"Напоминаем: завтра последний день для указания вашей доступности!\n\nДедлайн: {deadline_label}."
 
-        send_mail(
-            subject="Напоминание: укажите доступность",
-            message=message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=employee_emails,
-            fail_silently=False,
-        )
+    send_mail(
+        subject="Напоминание: укажите доступность",
+        message=message,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=emails,
+        fail_silently=False,
+    )
+
+
 
 # === ЗАДАЧА 2: Автоматическое утверждение графика (каждые 10 мин) ===
 @shared_task

@@ -544,7 +544,6 @@ def schedule_view(request):
 
     # Все сотрудники
     total_employees = UserProfile.objects.filter(role='employee').count()
-
     schedules = Schedule.objects.all().prefetch_related('approvals')
 
     # Добавляем аннотации
@@ -566,6 +565,8 @@ def schedule_view(request):
         'schedules_with_stats': schedules_with_stats,
     }
     return render(request, 'core/schedules/schedule_list.html', context)
+
+
 
 
 @login_required
@@ -842,6 +843,7 @@ def my_availability(request):
         messages.success(request, "Ваша доступность успешно обновлена.")
         return redirect('my_availability')  # Перезагружаем страницу
 
+
     # === ШАГ 7: Передаём данные в шаблон ===
     context = {
         'days': current_days,  # объекты date — для красивого отображения (Пн, 26 янв)
@@ -852,3 +854,24 @@ def my_availability(request):
         'prev_avail_json': json.dumps(prev_avail_list),  # данные для JS-кнопки
     }
     return render(request, 'core/availability/my_availability.html', context)
+
+
+#для отправки напоминаний о доступности
+@login_required
+@user_passes_test(lambda u: u.profile.role == 'manager')
+def send_availability_reminder_manual(request):
+    if request.method == "POST":
+        employees = UserProfile.objects.filter(role='employee')
+        emails = [emp.user.email for emp in employees if emp.user.email]
+        if emails:
+            send_mail(
+                subject="Напоминание: укажите ваши рабочие часы",
+                message="Пожалуйста, зайдите в личный кабинет и укажите, когда вы можете работать на следующей неделе.",
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=emails,
+                fail_silently=False,
+            )
+            messages.success(request, f"Напоминание отправлено {len(emails)} сотрудникам.")
+        else:
+            messages.warning(request, "Нет сотрудников с email.")
+    return redirect('schedule_view')

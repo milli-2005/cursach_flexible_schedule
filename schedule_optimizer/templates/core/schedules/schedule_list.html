@@ -1,13 +1,21 @@
 <!-- templates/core/schedules/schedule_list.html -->
 {% extends "core/base.html" %}
 
-{% block title %}Графики - {{ block.super }}{% endblock %}
+{% block title %}Управление графиками - {{ block.super }}{% endblock %}
 
 {% block content %}
 <div class="management-container">
+
+    <!-- ТАБЛИЦА ГРАФИКОВ -->
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h2>Управление графиками</h2>
         {% if user.profile.role == 'manager' %}
+        <form method="post" action="{% url 'send_availability_reminder' %}" style="display:inline;">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-outline-warning">
+        <i class="bi bi-bell"></i> Напомнить о доступности
+    </button>
+</form>
             <a href="{% url 'create_schedule' %}" class="nav-link text-white">
                 <i class="bi bi-plus-circle"></i> Создать график
             </a>
@@ -22,7 +30,7 @@
                     <th>Дата начала</th>
                     <th>Дата окончания</th>
                     <th>Статус</th>
-                    <th>Согласование</th> <!-- НОВЫЙ СТОЛБЕЦ -->
+                    <th>Согласование</th>
                     <th>Создатель</th>
 <!--                    {% if user.profile.role == 'manager' %}-->
 <!--                        <th>Действия</th>-->
@@ -38,15 +46,15 @@
                         <td>{{ s.end_date|date:"d E Y" }}</td>
                         <td>{{ s.get_status_display }}</td>
                         <td>
-    {% if s.status == 'pending' %}
-        Просмотрено: {{ item.responded_count }} / {{ item.total_employees }} <br>
-        {% if item.rejected_count > 0 %}
-            <span class="text-danger">Отказ: {{ item.rejected_count }}</span>
-        {% endif %}
-    {% else %}
-        <em>—</em>
-    {% endif %}
-</td>
+                            {% if s.status == 'pending' %}
+                                Просмотрено: {{ item.responded_count }} / {{ item.total_employees }}
+                                {% if item.rejected_count > 0 %}
+                                    <br> <span class="text-danger">Отказ: {{ item.rejected_count }}</span>
+                                {% endif %}
+                            {% else %}
+                                <em>—</em>
+                            {% endif %}
+                        </td>
                         <td>{{ s.created_by.username }}</td>
 <!--                        {% if user.profile.role == 'manager' %}-->
 <!--                            <td>-->

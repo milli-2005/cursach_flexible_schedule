@@ -59,6 +59,8 @@ path('my-availability/', views.my_availability, name='my_availability'),
     # согласование графика окошко
     path('api/schedule/<int:schedule_id>/approve/', api_schedule_views.api_approve_schedule, name='api_approve_schedule'),
 
+#для отправки напоминаний о доступности
+path('remind/availability/', views.send_availability_reminder_manual, name='send_availability_reminder'),
 
     path('optimization/', views.optimization_view, name='optimization'),
 ]

@@ -580,7 +580,7 @@
   "pk": 1,
   "fields": {
     "password": "pbkdf2_sha256$720000$uVtmt84hk1qXievjfWTPE5$SH2+9EaVe7LSbmwKWLZFqV9l6yk6D2aeGjFbOTzT2BI=",
-    "last_login": "2026-01-28T05:24:53.298Z",
+    "last_login": "2026-01-28T07:13:07.164Z",
     "is_superuser": true,
     "username": "manager",
     "first_name": "",
@@ -598,7 +598,7 @@
   "pk": 2,
   "fields": {
     "password": "pbkdf2_sha256$720000$J31nMIwIaPWtlpddnpXMbW$4uig7EkQnbDiFQs7qtc4Txz1Q9sYQExlTT21wIkoH3M=",
-    "last_login": "2026-01-28T05:21:42.521Z",
+    "last_login": "2026-01-28T07:11:35.268Z",
     "is_superuser": false,
     "username": "milena",
     "first_name": "милена",
@@ -616,7 +616,7 @@
   "pk": 3,
   "fields": {
     "password": "pbkdf2_sha256$720000$fsNnJos2cLT19Jplu1UymN$UT2vxohp2OpOdO8j1EvIrIA/S1L+djbfGHY2ak9R7Ow=",
-    "last_login": "2026-01-28T05:26:56.436Z",
+    "last_login": "2026-01-28T07:11:53.428Z",
     "is_superuser": false,
     "username": "sofa",
     "first_name": "софа",
@@ -625,6 +625,24 @@
     "is_staff": false,
     "is_active": true,
     "date_joined": "2026-01-28T05:18:29.039Z",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "auth.user",
+  "pk": 4,
+  "fields": {
+    "password": "pbkdf2_sha256$720000$aPEUoB416LTsFGVq3qA2RJ$+CQQuyLjq9NZ7+E4PQ1o52m9fFsxCvCVqeH4JlpgCl8=",
+    "last_login": "2026-01-28T07:12:51.777Z",
+    "is_superuser": false,
+    "username": "alina",
+    "first_name": "алина",
+    "last_name": "маннурова",
+    "email": "aliiiin12e@gmail.com",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-01-28T06:39:21.996Z",
     "groups": [],
     "user_permissions": []
   }
@@ -759,10 +777,18 @@
 },
 {
   "model": "sessions.session",
-  "pk": "4te0kvzno8hiflmrll9clr639l3u5983",
+  "pk": "e5z0vr6rlbnd9p11rt7v2zz6jnok2bk7",
   "fields": {
-    "session_data": ".eJxVjEEOwiAQRe_C2hAYoKBL956BDJ1BqoYmpV0Z7y5NutDtf-_9t4i4rSVujZc4kbgII06_W8LxyXUH9MB6n-U413WZktwVedAmbzPx63q4fwcFW-k1Z405WJ2ssZiAfBg8OsjsHJFSxioTPEIA77XNHeFg1TkDJ-g-o_h8Ad6hN8Q:1vky4u:5gjedC_K-MXCskMzBww8ZmySETzmOuFX8eixK_30qIo",
-    "expire_date": "2026-02-11T05:26:56.443Z"
+    "session_data": ".eJxVjDsOwjAQBe_iGlmxN_5R0nMGa23v4gBypDipEHeHSCmgfTPzXiLitta4dVriVMRZKHH63RLmB7UdlDu22yzz3NZlSnJX5EG7vM6FnpfD_Tuo2Ou3HrhYo0ZwoIgD-VDIe_DsIGvQPJIxaJRPYFlb7chrZkhBKyREO5B4fwDReje2:1vkzjf:nKxTp4gbH-j3MlOeZMq_AzCdKolkLkc3Lu1zMKahzKQ",
+    "expire_date": "2026-02-11T07:13:07.168Z"
+  }
+},
+{
+  "model": "sessions.session",
+  "pk": "zxyqaqxj2o2g1a4ivvl0z0yn3umdy7ae",
+  "fields": {
+    "session_data": ".eJxVjDsOwjAQBe_iGlmxN_5R0nMGa23v4gBypDipEHeHSCmgfTPzXiLitta4dVriVMRZKHH63RLmB7UdlDu22yzz3NZlSnJX5EG7vM6FnpfD_Tuo2Ou3HrhYo0ZwoIgD-VDIe_DsIGvQPJIxaJRPYFlb7chrZkhBKyREO5B4fwDReje2:1vkz0c:vsGECv6seIYfa16TN9p_geEf182BDuwrRblCPdfX28A",
+    "expire_date": "2026-02-11T06:26:34.538Z"
   }
 },
 {
@@ -799,6 +825,17 @@
   }
 },
 {
+  "model": "core.userprofile",
+  "pk": 4,
+  "fields": {
+    "user": 4,
+    "role": "employee",
+    "phone": "89872724000",
+    "position": "тренер",
+    "invitation_timestamp": null
+  }
+},
+{
   "model": "core.workouttype",
   "pk": 1,
   "fields": {
@@ -812,6 +849,704 @@
   "fields": {
     "name": "streching",
     "description": ""
+  }
+},
+{
+  "model": "core.schedule",
+  "pk": 1,
+  "fields": {
+    "name": "График на неделю",
+    "start_date": "2026-02-02",
+    "end_date": "2026-02-08",
+    "availability_deadline_weekday": 3,
+    "status": "pending",
+    "created_by": 1,
+    "created_at": "2026-01-28T06:12:22.636Z",
+    "updated_at": "2026-01-28T06:12:22.636Z"
+  }
+},
+{
+  "model": "core.shiftassignment",
+  "pk": 43,
+  "fields": {
+    "schedule": 1,
+    "employee": 2,
+    "workout_type": 1,
+    "date": "2026-02-03",
+    "start_time": "09:00:00",
+    "end_time": null,
+    "status": "scheduled",
+    "actual_hours": null
+  }
+},
+{
+  "model": "core.shiftassignment",
+  "pk": 44,
+  "fields": {
+    "schedule": 1,
+    "employee": 4,
+    "workout_type": 1,
+    "date": "2026-02-05",
+    "start_time": "09:00:00",
+    "end_time": null,
+    "status": "scheduled",
+    "actual_hours": null
+  }
+},
+{
+  "model": "core.shiftassignment",
+  "pk": 45,
+  "fields": {
+    "schedule": 1,
+    "employee": 3,
+    "workout_type": 1,
+    "date": "2026-02-03",
+    "start_time": "10:00:00",
+    "end_time": null,
+    "status": "scheduled",
+    "actual_hours": null
+  }
+},
+{
+  "model": "core.shiftassignment",
+  "pk": 46,
+  "fields": {
+    "schedule": 1,
+    "employee": 4,
+    "workout_type": 1,
+    "date": "2026-02-05",
+    "start_time": "10:00:00",
+    "end_time": null,
+    "status": "scheduled",
+    "actual_hours": null
+  }
+},
+{
+  "model": "core.shiftassignment",
+  "pk": 47,
+  "fields": {
+    "schedule": 1,
+    "employee": 2,
+    "workout_type": 1,
+    "date": "2026-02-03",
+    "start_time": "11:00:00",
+    "end_time": null,
+    "status": "scheduled",
+    "actual_hours": null
+  }
+},
+{
+  "model": "core.shiftassignment",
+  "pk": 48,
+  "fields": {
+    "schedule": 1,
+    "employee": 4,
+    "workout_type": 1,
+    "date": "2026-02-05",
+    "start_time": "11:00:00",
+    "end_time": null,
+    "status": "scheduled",
+    "actual_hours": null
+  }
+},
+{
+  "model": "core.shiftassignment",
+  "pk": 49,
+  "fields": {
+    "schedule": 1,
+    "employee": 2,
+    "workout_type": 1,
+    "date": "2026-02-03",
+    "start_time": "12:00:00",
+    "end_time": null,
+    "status": "scheduled",
+    "actual_hours": null
+  }
+},
+{
+  "model": "core.shiftassignment",
+  "pk": 50,
+  "fields": {
+    "schedule": 1,
+    "employee": 4,
+    "workout_type": 1,
+    "date": "2026-02-05",
+    "start_time": "12:00:00",
+    "end_time": null,
+    "status": "scheduled",
+    "actual_hours": null
+  }
+},
+{
+  "model": "core.shiftassignment",
+  "pk": 51,
+  "fields": {
+    "schedule": 1,
+    "employee": 2,
+    "workout_type": 1,
+    "date": "2026-02-03",
+    "start_time": "13:00:00",
+    "end_time": null,
+    "status": "scheduled",
+    "actual_hours": null
+  }
+},
+{
+  "model": "core.shiftassignment",
+  "pk": 52,
+  "fields": {
+    "schedule": 1,
+    "employee": 3,
+    "workout_type": 1,
+    "date": "2026-02-02",
+    "start_time": "16:00:00",
+    "end_time": null,
+    "status": "scheduled",
+    "actual_hours": null
+  }
+},
+{
+  "model": "core.shiftassignment",
+  "pk": 53,
+  "fields": {
+    "schedule": 1,
+    "employee": 3,
+    "workout_type": 1,
+    "date": "2026-02-02",
+    "start_time": "17:00:00",
+    "end_time": null,
+    "status": "scheduled",
+    "actual_hours": null
+  }
+},
+{
+  "model": "core.shiftassignment",
+  "pk": 54,
+  "fields": {
+    "schedule": 1,
+    "employee": 2,
+    "workout_type": 1,
+    "date": "2026-02-03",
+    "start_time": "17:00:00",
+    "end_time": null,
+    "status": "scheduled",
+    "actual_hours": null
+  }
+},
+{
+  "model": "core.shiftassignment",
+  "pk": 55,
+  "fields": {
+    "schedule": 1,
+    "employee": 2,
+    "workout_type": 1,
+    "date": "2026-02-05",
+    "start_time": "17:00:00",
+    "end_time": null,
+    "status": "scheduled",
+    "actual_hours": null
+  }
+},
+{
+  "model": "core.shiftassignment",
+  "pk": 56,
+  "fields": {
+    "schedule": 1,
+    "employee": 3,
+    "workout_type": 1,
+    "date": "2026-02-02",
+    "start_time": "18:00:00",
+    "end_time": null,
+    "status": "scheduled",
+    "actual_hours": null
+  }
+},
+{
+  "model": "core.shiftassignment",
+  "pk": 57,
+  "fields": {
+    "schedule": 1,
+    "employee": 2,
+    "workout_type": 1,
+    "date": "2026-02-03",
+    "start_time": "18:00:00",
+    "end_time": null,
+    "status": "scheduled",
+    "actual_hours": null
+  }
+},
+{
+  "model": "core.shiftassignment",
+  "pk": 58,
+  "fields": {
+    "schedule": 1,
+    "employee": 2,
+    "workout_type": 1,
+    "date": "2026-02-05",
+    "start_time": "18:00:00",
+    "end_time": null,
+    "status": "scheduled",
+    "actual_hours": null
+  }
+},
+{
+  "model": "core.shiftassignment",
+  "pk": 59,
+  "fields": {
+    "schedule": 1,
+    "employee": 3,
+    "workout_type": 1,
+    "date": "2026-02-02",
+    "start_time": "19:00:00",
+    "end_time": null,
+    "status": "scheduled",
+    "actual_hours": null
+  }
+},
+{
+  "model": "core.shiftassignment",
+  "pk": 60,
+  "fields": {
+    "schedule": 1,
+    "employee": 2,
+    "workout_type": 1,
+    "date": "2026-02-03",
+    "start_time": "19:00:00",
+    "end_time": null,
+    "status": "scheduled",
+    "actual_hours": null
+  }
+},
+{
+  "model": "core.shiftassignment",
+  "pk": 61,
+  "fields": {
+    "schedule": 1,
+    "employee": 4,
+    "workout_type": 1,
+    "date": "2026-02-04",
+    "start_time": "19:00:00",
+    "end_time": null,
+    "status": "scheduled",
+    "actual_hours": null
+  }
+},
+{
+  "model": "core.shiftassignment",
+  "pk": 62,
+  "fields": {
+    "schedule": 1,
+    "employee": 2,
+    "workout_type": 1,
+    "date": "2026-02-05",
+    "start_time": "19:00:00",
+    "end_time": null,
+    "status": "scheduled",
+    "actual_hours": null
+  }
+},
+{
+  "model": "core.shiftassignment",
+  "pk": 63,
+  "fields": {
+    "schedule": 1,
+    "employee": 3,
+    "workout_type": 1,
+    "date": "2026-02-02",
+    "start_time": "20:00:00",
+    "end_time": null,
+    "status": "scheduled",
+    "actual_hours": null
+  }
+},
+{
+  "model": "core.shiftassignment",
+  "pk": 64,
+  "fields": {
+    "schedule": 1,
+    "employee": 2,
+    "workout_type": 1,
+    "date": "2026-02-03",
+    "start_time": "20:00:00",
+    "end_time": null,
+    "status": "scheduled",
+    "actual_hours": null
+  }
+},
+{
+  "model": "core.shiftassignment",
+  "pk": 65,
+  "fields": {
+    "schedule": 1,
+    "employee": 4,
+    "workout_type": 1,
+    "date": "2026-02-04",
+    "start_time": "20:00:00",
+    "end_time": null,
+    "status": "scheduled",
+    "actual_hours": null
+  }
+},
+{
+  "model": "core.shiftassignment",
+  "pk": 66,
+  "fields": {
+    "schedule": 1,
+    "employee": 2,
+    "workout_type": 1,
+    "date": "2026-02-05",
+    "start_time": "20:00:00",
+    "end_time": null,
+    "status": "scheduled",
+    "actual_hours": null
+  }
+},
+{
+  "model": "core.availability",
+  "pk": 1,
+  "fields": {
+    "employee": 3,
+    "date": "2026-02-02",
+    "start_time": "16:00:00",
+    "end_time": "16:50:00",
+    "is_available": true,
+    "updated_at": "2026-01-28T06:11:23.746Z"
+  }
+},
+{
+  "model": "core.availability",
+  "pk": 2,
+  "fields": {
+    "employee": 3,
+    "date": "2026-02-02",
+    "start_time": "17:00:00",
+    "end_time": "17:50:00",
+    "is_available": true,
+    "updated_at": "2026-01-28T06:11:23.749Z"
+  }
+},
+{
+  "model": "core.availability",
+  "pk": 3,
+  "fields": {
+    "employee": 3,
+    "date": "2026-02-02",
+    "start_time": "18:00:00",
+    "end_time": "18:50:00",
+    "is_available": true,
+    "updated_at": "2026-01-28T06:11:23.753Z"
+  }
+},
+{
+  "model": "core.availability",
+  "pk": 4,
+  "fields": {
+    "employee": 3,
+    "date": "2026-02-02",
+    "start_time": "19:00:00",
+    "end_time": "19:50:00",
+    "is_available": true,
+    "updated_at": "2026-01-28T06:11:23.756Z"
+  }
+},
+{
+  "model": "core.availability",
+  "pk": 5,
+  "fields": {
+    "employee": 3,
+    "date": "2026-02-02",
+    "start_time": "20:00:00",
+    "end_time": "20:50:00",
+    "is_available": true,
+    "updated_at": "2026-01-28T06:11:23.763Z"
+  }
+},
+{
+  "model": "core.availability",
+  "pk": 6,
+  "fields": {
+    "employee": 3,
+    "date": "2026-02-03",
+    "start_time": "09:00:00",
+    "end_time": "09:50:00",
+    "is_available": true,
+    "updated_at": "2026-01-28T06:11:23.767Z"
+  }
+},
+{
+  "model": "core.availability",
+  "pk": 7,
+  "fields": {
+    "employee": 3,
+    "date": "2026-02-03",
+    "start_time": "10:00:00",
+    "end_time": "10:50:00",
+    "is_available": true,
+    "updated_at": "2026-01-28T06:11:23.770Z"
+  }
+},
+{
+  "model": "core.availability",
+  "pk": 8,
+  "fields": {
+    "employee": 2,
+    "date": "2026-02-03",
+    "start_time": "09:00:00",
+    "end_time": "09:50:00",
+    "is_available": true,
+    "updated_at": "2026-01-28T06:11:56.216Z"
+  }
+},
+{
+  "model": "core.availability",
+  "pk": 9,
+  "fields": {
+    "employee": 2,
+    "date": "2026-02-03",
+    "start_time": "10:00:00",
+    "end_time": "10:50:00",
+    "is_available": true,
+    "updated_at": "2026-01-28T06:11:56.219Z"
+  }
+},
+{
+  "model": "core.availability",
+  "pk": 10,
+  "fields": {
+    "employee": 2,
+    "date": "2026-02-03",
+    "start_time": "11:00:00",
+    "end_time": "11:50:00",
+    "is_available": true,
+    "updated_at": "2026-01-28T06:11:56.222Z"
+  }
+},
+{
+  "model": "core.availability",
+  "pk": 11,
+  "fields": {
+    "employee": 2,
+    "date": "2026-02-03",
+    "start_time": "12:00:00",
+    "end_time": "12:50:00",
+    "is_available": true,
+    "updated_at": "2026-01-28T06:11:56.225Z"
+  }
+},
+{
+  "model": "core.availability",
+  "pk": 12,
+  "fields": {
+    "employee": 2,
+    "date": "2026-02-03",
+    "start_time": "13:00:00",
+    "end_time": "13:50:00",
+    "is_available": true,
+    "updated_at": "2026-01-28T06:11:56.228Z"
+  }
+},
+{
+  "model": "core.availability",
+  "pk": 13,
+  "fields": {
+    "employee": 2,
+    "date": "2026-02-03",
+    "start_time": "17:00:00",
+    "end_time": "17:50:00",
+    "is_available": true,
+    "updated_at": "2026-01-28T06:11:56.232Z"
+  }
+},
+{
+  "model": "core.availability",
+  "pk": 14,
+  "fields": {
+    "employee": 2,
+    "date": "2026-02-03",
+    "start_time": "18:00:00",
+    "end_time": "18:50:00",
+    "is_available": true,
+    "updated_at": "2026-01-28T06:11:56.237Z"
+  }
+},
+{
+  "model": "core.availability",
+  "pk": 15,
+  "fields": {
+    "employee": 2,
+    "date": "2026-02-03",
+    "start_time": "19:00:00",
+    "end_time": "19:50:00",
+    "is_available": true,
+    "updated_at": "2026-01-28T06:11:56.241Z"
+  }
+},
+{
+  "model": "core.availability",
+  "pk": 16,
+  "fields": {
+    "employee": 2,
+    "date": "2026-02-03",
+    "start_time": "20:00:00",
+    "end_time": "20:50:00",
+    "is_available": true,
+    "updated_at": "2026-01-28T06:11:56.245Z"
+  }
+},
+{
+  "model": "core.availability",
+  "pk": 17,
+  "fields": {
+    "employee": 2,
+    "date": "2026-02-05",
+    "start_time": "17:00:00",
+    "end_time": "17:50:00",
+    "is_available": true,
+    "updated_at": "2026-01-28T06:11:56.250Z"
+  }
+},
+{
+  "model": "core.availability",
+  "pk": 18,
+  "fields": {
+    "employee": 2,
+    "date": "2026-02-05",
+    "start_time": "18:00:00",
+    "end_time": "18:50:00",
+    "is_available": true,
+    "updated_at": "2026-01-28T06:11:56.254Z"
+  }
+},
+{
+  "model": "core.availability",
+  "pk": 19,
+  "fields": {
+    "employee": 2,
+    "date": "2026-02-05",
+    "start_time": "19:00:00",
+    "end_time": "19:50:00",
+    "is_available": true,
+    "updated_at": "2026-01-28T06:11:56.258Z"
+  }
+},
+{
+  "model": "core.availability",
+  "pk": 20,
+  "fields": {
+    "employee": 2,
+    "date": "2026-02-05",
+    "start_time": "20:00:00",
+    "end_time": "20:50:00",
+    "is_available": true,
+    "updated_at": "2026-01-28T06:11:56.262Z"
+  }
+},
+{
+  "model": "core.availability",
+  "pk": 27,
+  "fields": {
+    "employee": 4,
+    "date": "2026-02-05",
+    "start_time": "09:00:00",
+    "end_time": "09:50:00",
+    "is_available": true,
+    "updated_at": "2026-01-28T07:13:02.379Z"
+  }
+},
+{
+  "model": "core.availability",
+  "pk": 28,
+  "fields": {
+    "employee": 4,
+    "date": "2026-02-05",
+    "start_time": "10:00:00",
+    "end_time": "10:50:00",
+    "is_available": true,
+    "updated_at": "2026-01-28T07:13:02.381Z"
+  }
+},
+{
+  "model": "core.availability",
+  "pk": 29,
+  "fields": {
+    "employee": 4,
+    "date": "2026-02-05",
+    "start_time": "11:00:00",
+    "end_time": "11:50:00",
+    "is_available": true,
+    "updated_at": "2026-01-28T07:13:02.385Z"
+  }
+},
+{
+  "model": "core.availability",
+  "pk": 30,
+  "fields": {
+    "employee": 4,
+    "date": "2026-02-05",
+    "start_time": "12:00:00",
+    "end_time": "12:50:00",
+    "is_available": true,
+    "updated_at": "2026-01-28T07:13:02.388Z"
+  }
+},
+{
+  "model": "core.availability",
+  "pk": 31,
+  "fields": {
+    "employee": 4,
+    "date": "2026-02-05",
+    "start_time": "19:00:00",
+    "end_time": "19:50:00",
+    "is_available": true,
+    "updated_at": "2026-01-28T07:13:02.391Z"
+  }
+},
+{
+  "model": "core.availability",
+  "pk": 32,
+  "fields": {
+    "employee": 4,
+    "date": "2026-02-05",
+    "start_time": "20:00:00",
+    "end_time": "20:50:00",
+    "is_available": true,
+    "updated_at": "2026-01-28T07:13:02.393Z"
+  }
+},
+{
+  "model": "core.scheduleapproval",
+  "pk": 1,
+  "fields": {
+    "schedule": 1,
+    "employee": 2,
+    "approved": true,
+    "comment": "",
+    "responded_at": "2026-01-28T06:59:07.654Z",
+    "created_at": "2026-01-28T06:12:22.707Z"
+  }
+},
+{
+  "model": "core.scheduleapproval",
+  "pk": 2,
+  "fields": {
+    "schedule": 1,
+    "employee": 3,
+    "approved": true,
+    "comment": "",
+    "responded_at": "2026-01-28T06:56:58.321Z",
+    "created_at": "2026-01-28T06:12:22.710Z"
+  }
+},
+{
+  "model": "core.scheduleapproval",
+  "pk": 3,
+  "fields": {
+    "schedule": 1,
+    "employee": 4,
+    "approved": false,
+    "comment": "с миленой в 1 время почему у нее не сменился еще",
+    "responded_at": "2026-01-28T07:12:24.399Z",
+    "created_at": "2026-01-28T07:12:24.403Z"
   }
 }
 ]
