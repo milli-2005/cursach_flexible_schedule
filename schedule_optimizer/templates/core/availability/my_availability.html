@@ -4,9 +4,21 @@
 {% block title %}Моя доступность - {{ block.super }}{% endblock %}
 
 {% block content %}
+
+<!-- В шапке формы -->
+
+
+
 <div class="management-container">
-    <h2>Моя доступность на следующую неделю</h2>
-    <p class="text-muted">Отметьте, в какие дни и слоты вы можете работать.</p>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Моя доступность</h2>
+    <div>
+        <a href="?week={{ prev_week }}" class="btn btn-sm btn-outline-light me-2">← Неделя назад</a>
+        <span class="text-white">{{ week_start|date:"d E Y" }} – {{ week_end|date:"d E Y" }}</span>
+        <a href="?week={{ next_week }}" class="btn btn-sm btn-outline-light ms-2">Неделя вперёд →</a>
+    </div>
+</div>
+
 
     {% if last_updated %}
         <div class="alert alert-info">
