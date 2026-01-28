@@ -533,19 +533,37 @@ def create_schedule_view(request):
     return render(request, 'core/schedules/create_schedule.html', context)
 
 
+from django.db.models import Count, Q
+
 
 @login_required
 def schedule_view(request):
-    """Просмотр графиков смен."""
-
-    # Проверяем права доступа
     if not hasattr(request.user, 'profile'):
         messages.error(request, "Профиль пользователя не найден.")
         return redirect('dashboard')
 
-    schedules = Schedule.objects.all()
+    # Все сотрудники
+    total_employees = UserProfile.objects.filter(role='employee').count()
+
+    schedules = Schedule.objects.all().prefetch_related('approvals')
+
+    # Добавляем аннотации
+    schedules_with_stats = []
+    for s in schedules:
+        approved_count = s.approvals.filter(approved=True).count()
+        rejected_count = s.approvals.filter(approved=False).count()
+        responded_count = s.approvals.filter(approved__isnull=False).count()
+
+        schedules_with_stats.append({
+            'schedule': s,
+            'total_employees': total_employees,
+            'approved_count': approved_count,
+            'rejected_count': rejected_count,
+            'responded_count': responded_count,
+        })
+
     context = {
-        'schedules': schedules,
+        'schedules_with_stats': schedules_with_stats,
     }
     return render(request, 'core/schedules/schedule_list.html', context)
 
@@ -688,13 +706,13 @@ def delete_schedule_view(request, schedule_id):
 
 
 
-#ГРАФИК В ЛИЧНОМ КАБИНЕТЕ У ТРЕНЕРОВ
-
-# core/views.py
+""" === ГРАФИК В ЛИЧНОМ КАБИНЕТЕ У ТРЕНЕРОВ === """
 @login_required
 def employee_schedule(request):
     user_profile = request.user.profile
-    current_role = user_profile.role
+    if user_profile.role != 'employee':
+        messages.error(request, "Доступно только для сотрудников.")
+        return redirect('dashboard')
 
     # Получаем все назначения текущего сотрудника
     assignments = ShiftAssignment.objects.filter(
@@ -703,18 +721,35 @@ def employee_schedule(request):
 
     # Группируем по графикам
     schedules_dict = {}
-    for assignment in assignments:
-        key = assignment.schedule.id
+    for a in assignments:
+        key = a.schedule.id
         if key not in schedules_dict:
             schedules_dict[key] = {
-                'schedule': assignment.schedule,
+                'schedule': a.schedule,
                 'assignments': []
             }
-        schedules_dict[key]['assignments'].append(assignment)
+        schedules_dict[key]['assignments'].append(a)
+
+    # Добавляем флаг ответа
+    schedules = []
+    for item in schedules_dict.values():
+        schedule = item['schedule']
+        # Проверяем, отвечал ли сотрудник
+        approval = ScheduleApproval.objects.filter(
+            schedule=schedule,
+            employee=user_profile
+        ).first()
+        has_responded = approval is not None and approval.approved is not None
+
+        schedules.append({
+            'schedule': schedule,
+            'assignments': item['assignments'],
+            'has_responded': has_responded,
+            'approval': approval,
+        })
 
     context = {
-        'current_role': current_role,
-        'schedules': list(schedules_dict.values()),
+        'schedules': schedules,
     }
     return render(request, 'core/schedules/employee_schedule.html', context)
 
@@ -817,53 +852,3 @@ def my_availability(request):
         'prev_avail_json': json.dumps(prev_avail_list),  # данные для JS-кнопки
     }
     return render(request, 'core/availability/my_availability.html', context)
-
-
-
-# View для подтверждения
-from django.utils import timezone
-from datetime import timedelta
-
-@login_required
-def approve_schedule_view(request, schedule_id):
-    schedule = get_object_or_404(Schedule, id=schedule_id)
-    employee = request.user.profile
-
-    # Проверка: только сотрудники
-    if employee.role != 'employee':
-        messages.error(request, "Доступно только для сотрудников.")
-        return redirect('dashboard')
-
-    # Получаем или создаём запись
-    approval, created = ScheduleApproval.objects.get_or_create(
-        schedule=schedule,
-        employee=employee
-    )
-
-    # Проверяем, прошёл ли час
-    deadline = schedule.created_at + timedelta(hours=1)
-    time_is_up = timezone.now() > deadline
-
-    if request.method == "POST":
-        if time_is_up:
-            messages.error(request, "Время на подтверждение истекло.")
-            return redirect('employee_schedule')
-
-        approved = request.POST.get('action') == 'approve'
-        comment = request.POST.get('comment', '').strip()
-
-        approval.approved = approved
-        approval.comment = comment if not approved else ''
-        approval.responded_at = timezone.now()
-        approval.save()
-
-        messages.success(request, "Ваш ответ сохранён.")
-        return redirect('employee_schedule')
-
-    context = {
-        'schedule': schedule,
-        'approval': approval,
-        'time_is_up': time_is_up,
-        'deadline': deadline,
-    }
-    return render(request, 'core/schedules/approve_schedule.html', context)

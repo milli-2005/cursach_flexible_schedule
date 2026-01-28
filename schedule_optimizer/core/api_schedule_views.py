@@ -11,6 +11,7 @@ from django.core.mail import send_mail
 from django.conf import settings
 
 from .models import Schedule, ShiftAssignment, UserProfile, WorkoutType, ScheduleApproval, Availability
+from django.utils import timezone
 
 
 def is_manager(user):
@@ -151,3 +152,35 @@ def api_save_schedule(request):
 
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
+
+
+
+# === Чтобы подтвердить или отклонить график ===
+@login_required
+@require_http_methods(["POST"])
+def api_approve_schedule(request, schedule_id):
+    try:
+        schedule = get_object_or_404(Schedule, id=schedule_id)
+        employee = request.user.profile
+
+        if employee.role != 'employee':
+            return JsonResponse({'success': False, 'error': 'Доступно только для сотрудников.'})
+
+        data = json.loads(request.body)
+        approved = data.get('approved', True)
+        comment = data.get('comment', '').strip() if not approved else ''
+
+        approval, created = ScheduleApproval.objects.update_or_create(
+            schedule=schedule,
+            employee=employee,
+            defaults={
+                'approved': approved,
+                'comment': comment,
+                'responded_at': timezone.now()
+            }
+        )
+
+        return JsonResponse({'success': True})
+
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})

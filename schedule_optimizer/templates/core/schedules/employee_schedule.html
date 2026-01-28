@@ -9,7 +9,7 @@
 
     {% if schedules %}
         {% for item in schedules %}
-            <div class="card mb-4">
+            <div class="card mb-4" id="schedule-card-{{ item.schedule.id }}">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5>{{ item.schedule.name }}</h5>
                     <span class="badge bg-secondary">{{ item.schedule.get_status_display }}</span>
@@ -17,20 +17,37 @@
                 <div class="card-body">
                     <p><strong>Период:</strong> {{ item.schedule.start_date|date:"d E Y" }} — {{ item.schedule.end_date|date:"d E Y" }}</p>
 
-                    <!-- === КНОПКИ СОГЛАСОВАНИЯ === -->
-                    {% if item.schedule.status == 'pending' %}
-                        <div class="alert alert-warning p-3 mb-3">
-                            <strong>Требуется подтверждение!</strong>
-                            <div class="mt-2">
-                                <a href="{% url 'approve_schedule' item.schedule.id %}" class="btn btn-success btn-sm me-2">
-                                    <i class="bi bi-check-circle"></i> Подтверждаю
-                                </a>
-                                <a href="{% url 'approve_schedule' item.schedule.id %}" class="btn btn-danger btn-sm">
-                                    <i class="bi bi-x-circle"></i> Есть замечания
-                                </a>
-                            </div>
-                        </div>
-                    {% endif %}
+                    <!-- КНОПКИ СОГЛАСОВАНИЯ -->
+{% if item.schedule.status == 'pending' %}
+    {% if not item.has_responded %}
+        <div class="mb-3" id="approval-actions-{{ item.schedule.id }}">
+            <button class="btn btn-success btn-sm me-2 approve-btn"
+                    data-schedule-id="{{ item.schedule.id }}">
+                <i class="bi bi-check-circle"></i> Подтверждаю
+            </button>
+            <button class="btn btn-danger btn-sm reject-btn"
+                    data-schedule-id="{{ item.schedule.id }}"
+                    data-bs-toggle="modal"
+                    data-bs-target="#commentModal-{{ item.schedule.id }}">
+                <i class="bi bi-x-circle"></i> Есть замечания
+            </button>
+        </div>
+    {% else %}
+        <!-- УЖЕ ОТВЕТИЛ -->
+        <div class="mb-3">
+            {% if item.approval.approved %}
+                <div class="alert alert-success mb-0">
+                    <strong>Подтверждено!</strong>
+                </div>
+            {% else %}
+                <div class="alert alert-warning mb-0">
+                    <strong>Отправлено на доработку:</strong><br>
+                    "{{ item.approval.comment }}"
+                </div>
+            {% endif %}
+        </div>
+    {% endif %}
+{% endif %}
 
                     <div class="table-responsive mt-3">
                         <table class="table table-bordered table-dark">
@@ -54,6 +71,28 @@
                     </div>
                 </div>
             </div>
+
+            <!-- МОДАЛЬНОЕ ОКНО ДЛЯ ЭТОГО ГРАФИКА -->
+            <div class="modal fade" id="commentModal-{{ item.schedule.id }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Ваши замечания</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <textarea class="form-control comment-text" rows="3" placeholder="Опишите проблему..."></textarea>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                            <button type="button" class="btn btn-danger submit-comment-btn"
+                                    data-schedule-id="{{ item.schedule.id }}">
+                                Отправить
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         {% endfor %}
     {% else %}
         <div class="alert alert-info">
@@ -61,11 +100,90 @@
         </div>
     {% endif %}
 
-    <!-- Кнопка: Посмотреть всё расписание -->
     <div class="mt-4 text-center">
         <a href="{% url 'schedule_view' %}" class="btn btn-outline-light">
             <i class="bi bi-calendar-week"></i> Посмотреть всё расписание
         </a>
     </div>
 </div>
+
+<script>
+// Подтверждение (✅)
+document.querySelectorAll('.approve-btn').forEach(btn => {
+    btn.addEventListener('click', function () {
+        const scheduleId = this.dataset.scheduleId;
+        const actionsDiv = document.getElementById(`approval-actions-${scheduleId}`);
+
+        fetch(`/api/schedule/${scheduleId}/approve/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrf-token]').content
+            },
+            body: JSON.stringify({ approved: true })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                actionsDiv.innerHTML = `
+                    <div class="alert alert-success mb-0">
+                        <strong>Подтверждено!</strong>
+                    </div>
+                `;
+            } else {
+                alert('Ошибка: ' + (data.error || 'Неизвестная ошибка'));
+            }
+        })
+        .catch(error => {
+            console.error('Ошибка:', error);
+            alert('Не удалось отправить запрос.');
+        });
+    });
+});
+
+// Отправка замечаний (❌)
+document.querySelectorAll('.submit-comment-btn').forEach(btn => {
+    btn.addEventListener('click', function () {
+        const scheduleId = this.dataset.scheduleId;
+        const modal = document.getElementById(`commentModal-${scheduleId}`);
+        const textarea = modal.querySelector('.comment-text');
+        const comment = textarea.value.trim();
+
+        if (!comment) {
+            alert('Пожалуйста, напишите замечание.');
+            return;
+        }
+
+        const actionsDiv = document.getElementById(`approval-actions-${scheduleId}`);
+        fetch(`/api/schedule/${scheduleId}/approve/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrf-token]').content
+            },
+            body: JSON.stringify({ approved: false, comment: comment })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                actionsDiv.innerHTML = `
+                    <div class="alert alert-warning mb-0">
+                        <strong>Отправлено на доработку:</strong><br>
+                        "${comment}"
+                    </div>
+                `;
+                // Закрываем модальное окно
+                const bootstrapModal = bootstrap.Modal.getInstance(modal);
+                if (bootstrapModal) bootstrapModal.hide();
+            } else {
+                alert('Ошибка: ' + (data.error || 'Неизвестная ошибка'));
+            }
+        })
+        .catch(error => {
+            console.error('Ошибка:', error);
+            alert('Не удалось отправить запрос.');
+        });
+    });
+});
+</script>
 {% endblock %}

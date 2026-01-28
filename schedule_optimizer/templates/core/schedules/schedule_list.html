@@ -1,4 +1,4 @@
-<!-- templates/core/schedule_list.html -->
+<!-- templates/core/schedules/schedule_list.html -->
 {% extends "core/base.html" %}
 
 {% block title %}Графики - {{ block.super }}{% endblock %}
@@ -7,9 +7,11 @@
 <div class="management-container">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h2>Управление графиками</h2>
-
-        <a href="{% url 'create_schedule' %}" class="nav-link text-white"><i class="bi bi-plus-circle"></i> Создать график</a>
-
+        {% if user.profile.role == 'manager' %}
+            <a href="{% url 'create_schedule' %}" class="nav-link text-white">
+                <i class="bi bi-plus-circle"></i> Создать график
+            </a>
+        {% endif %}
     </div>
 
     <div class="management-table">
@@ -20,22 +22,47 @@
                     <th>Дата начала</th>
                     <th>Дата окончания</th>
                     <th>Статус</th>
+                    <th>Согласование</th> <!-- НОВЫЙ СТОЛБЕЦ -->
                     <th>Создатель</th>
+<!--                    {% if user.profile.role == 'manager' %}-->
+<!--                        <th>Действия</th>-->
+<!--                    {% endif %}-->
                 </tr>
             </thead>
             <tbody>
-                {% for schedule in schedules %}
+                {% for item in schedules_with_stats %}
+                    {% with s=item.schedule %}
                     <tr>
-                        <td><a href="{% url 'schedule_detail' schedule.id %}">{{ schedule.name }}</a></td>
-                        <td>{{ schedule.start_date|date:"d E Y" }}</td>
-                        <td>{{ schedule.end_date|date:"d E Y" }}</td>
-                        <td>{{ schedule.get_status_display }}</td>
-                        <td>{{ schedule.created_by.username }}</td>
+                        <td><a href="{% url 'schedule_detail' s.id %}">{{ s.name }}</a></td>
+                        <td>{{ s.start_date|date:"d E Y" }}</td>
+                        <td>{{ s.end_date|date:"d E Y" }}</td>
+                        <td>{{ s.get_status_display }}</td>
+                        <td>
+    {% if s.status == 'pending' %}
+        Просмотрено: {{ item.responded_count }} / {{ item.total_employees }} <br>
+        {% if item.rejected_count > 0 %}
+            <span class="text-danger">Отказ: {{ item.rejected_count }}</span>
+        {% endif %}
+    {% else %}
+        <em>—</em>
+    {% endif %}
+</td>
+                        <td>{{ s.created_by.username }}</td>
+<!--                        {% if user.profile.role == 'manager' %}-->
+<!--                            <td>-->
+<!--                                <a href="{% url 'edit_schedule' s.id %}" class="btn btn-sm btn-outline-primary">Редактировать</a>-->
+<!--                                <form method="post" action="{% url 'delete_schedule' s.id %}" style="display:inline;" onsubmit="return confirm('Удалить график?')">-->
+<!--                                    {% csrf_token %}-->
+<!--                                    <button type="submit" class="btn btn-sm btn-outline-danger">Удалить</button>-->
+<!--                                </form>-->
+<!--                            </td>-->
+<!--                        {% endif %}-->
                     </tr>
+                    {% endwith %}
                 {% empty %}
-                    <tr>
-                        <td colspan="5">Графики не найдены.</td>
-                    </tr>
+                <tr>
+                    <td colspan="7">Графики не найдены.</td>
+                </tr>
                 {% endfor %}
             </tbody>
         </table>
