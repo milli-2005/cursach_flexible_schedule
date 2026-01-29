@@ -761,7 +761,6 @@ def employee_schedule(request):
 
 # core/views.py
 from datetime import datetime, timedelta
-
 @login_required
 def my_availability(request):
     user_profile = request.user.profile
@@ -769,23 +768,95 @@ def my_availability(request):
         messages.error(request, "Доступно только для сотрудников.")
         return redirect('dashboard')
 
-    # Определяем неделю из параметра ?week=2026-02-10
+    # === ОБРАБОТКА POST: сохранение данных ===
+    if request.method == "POST":
+        week_str = request.POST.get('selected_week')
+        if week_str:
+            try:
+                week_start = datetime.strptime(week_str, '%Y-%m-%d').date()
+                if week_start.weekday() != 0:
+                    week_start = week_start - timedelta(days=week_start.weekday())
+            except (ValueError, TypeError):
+                messages.error(request, "Неверный формат даты.")
+                return redirect('my_availability')
+        else:
+            today = datetime.today()
+            days_ahead = (7 - today.weekday()) % 7
+            if days_ahead == 0:
+                days_ahead = 7
+            week_start = today + timedelta(days=days_ahead)
+
+        # Генерация дней
+        current_days = [week_start + timedelta(days=i) for i in range(7)]
+        date_strings = [d.strftime('%Y-%m-%d') for d in current_days]
+
+        # Слоты
+        start_hour, end_hour = 9, 21
+        slots = []
+        current_time = start_hour * 60
+        while current_time + 50 <= end_hour * 60:
+            start_str = f"{current_time // 60:02d}:{current_time % 60:02d}"
+            current_time += 50
+            end_str = f"{current_time // 60:02d}:{current_time % 60:02d}"
+            slots.append((start_str, end_str))
+            current_time += 10
+
+        print("=== POST KEYS ===")
+        print(list(request.POST.keys()))
+        print("=== EXPECTED SAMPLE ===")
+        print(f"Sample key: {date_strings[0]}_{slots[0][0]}")
+
+        # Удаление старых записей
+        Availability.objects.filter(
+            employee=user_profile,
+            date__in=current_days
+        ).delete()
+
+        # Сохранение новых
+        new_records = []
+        for day_str in date_strings:
+            for slot_start, slot_end in slots:
+                key = f"{day_str}_{slot_start}"
+                if request.POST.get(key) == 'on':  # ← ИЗМЕНЕНО
+                    date_obj = datetime.strptime(day_str, '%Y-%m-%d').date()
+                    start_time = datetime.strptime(slot_start, '%H:%M').time()
+                    end_time = datetime.strptime(slot_end, '%H:%M').time()
+                    new_records.append(Availability(
+                        employee=user_profile,
+                        date=date_obj,
+                        start_time=start_time,
+                        end_time=end_time,
+                        is_available=True
+                    ))
+
+        if new_records:
+            Availability.objects.bulk_create(new_records)
+            messages.success(request, "Доступность успешно сохранена!")
+        else:
+            messages.info(request, "Доступность не указана.")
+
+        return redirect(f"{request.path}?week={week_start.strftime('%Y-%m-%d')}")
+
+    # === ОБРАБОТКА GET: отображение формы ===
+    today = datetime.today()
+    days_ahead = (7 - today.weekday()) % 7
+    if days_ahead == 0:
+        days_ahead = 7
+    default_week_start = today + timedelta(days=days_ahead)
+
+    week_start = default_week_start
     week_param = request.GET.get('week')
     if week_param:
         try:
-            week_start = datetime.strptime(week_param, '%Y-%m-%d').date()
-            # Убедимся, что это понедельник
-            if week_start.weekday() != 0:
-                week_start = week_start - timedelta(days=week_start.weekday())
-        except:
-            week_start = None
-    else:
-        # По умолчанию — следующая неделя
-        today = datetime.today()
-        week_start = today + timedelta(days=(7 - today.weekday()))
+            parsed_date = datetime.strptime(week_param, '%Y-%m-%d').date()
+            week_start = parsed_date - timedelta(days=parsed_date.weekday())
+        except (ValueError, TypeError):
+            pass
 
-    # Генерация дней недели
-    current_days = [week_start + timedelta(days=i) for i in range(7)]
+    # Генерация дней (без спискового включения — через цикл)
+    current_days = []
+    for i in range(7):
+        current_days.append(week_start + timedelta(days=i))
     date_strings = [d.strftime('%Y-%m-%d') for d in current_days]
 
     # Слоты
@@ -793,13 +864,15 @@ def my_availability(request):
     slots = []
     current_time = start_hour * 60
     while current_time + 50 <= end_hour * 60:
-        start_str = f"{current_time // 60:02d}:{current_time % 60:02d}"
+        hour = current_time // 60
+        minute = current_time % 60
+        start_str = f"{hour:02d}:{minute:02d}"
         current_time += 50
         end_str = f"{current_time // 60:02d}:{current_time % 60:02d}"
         slots.append((start_str, end_str))
         current_time += 10
 
-    # Загрузка доступности
+    # Загрузка данных
     availabilities = Availability.objects.filter(
         employee=user_profile,
         date__in=current_days
@@ -809,10 +882,24 @@ def my_availability(request):
         key = f"{a.date.strftime('%Y-%m-%d')}_{a.start_time.strftime('%H:%M')}"
         checked_keys.add(key)
 
-    # Дата последнего обновления
     last_updated = availabilities.order_by('-updated_at').first()
 
-    # Для навигации
+    # === ДАННЫЕ С ПРОШЛОЙ НЕДЕЛИ ДЛЯ JS ===
+    prev_week_start = week_start - timedelta(weeks=1)
+    prev_avail = Availability.objects.filter(
+        employee=user_profile,
+        date__gte=prev_week_start,
+        date__lt=week_start
+    )
+    prev_avail_list = []
+    for a in prev_avail:
+        # Сдвигаем дату на неделю вперёд
+        new_date = a.date + timedelta(weeks=1)
+        prev_avail_list.append({
+            'date': new_date.strftime('%Y-%m-%d'),
+            'time': a.start_time.strftime('%H:%M')
+        })
+
     prev_week = (week_start - timedelta(weeks=1)).strftime('%Y-%m-%d')
     next_week = (week_start + timedelta(weeks=1)).strftime('%Y-%m-%d')
 
@@ -826,6 +913,7 @@ def my_availability(request):
         'week_end': week_start + timedelta(days=6),
         'prev_week': prev_week,
         'next_week': next_week,
+        'prev_avail_json': json.dumps(prev_avail_list),
     }
     return render(request, 'core/availability/my_availability.html', context)
 
