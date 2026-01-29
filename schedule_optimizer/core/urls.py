@@ -30,7 +30,8 @@ path('my-availability/', views.my_availability, name='my_availability'),
 
     # Отчеты
 path('reports/', views.reports_view, name='reports'),
-path('reports/export/excel/', views.export_report_excel, name='export_report_excel'),
+path('reports/export/tabel/', views.export_operational_excel, name='export_operational_excel'),
+
 
     # API для управления пользователями
     path('api/users/', api_views.api_get_users, name='api_get_users'),

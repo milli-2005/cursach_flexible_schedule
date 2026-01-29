@@ -922,10 +922,14 @@ def send_availability_reminder_manual(request):
 
 
 """ === ОТЧЕТЫ === """
-
-from django.http import HttpResponse
-from openpyxl import Workbook
-from datetime import date
+import json
+from datetime import date, datetime, timedelta
+from collections import defaultdict
+from django.shortcuts import render, redirect
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.db.models import Q
+from .models import ShiftAssignment, UserProfile, WorkoutType
 
 @login_required
 def reports_view(request):
@@ -933,68 +937,332 @@ def reports_view(request):
         messages.error(request, "Доступ запрещён.")
         return redirect('dashboard')
 
-    # Период: последняя неделя
-    today = datetime.today()
-    start_date = today - timedelta(days=7)
-    end_date = today
+    period = request.GET.get('period', 'month')
+    employee_id = request.GET.get('employee')
+    workout_id = request.GET.get('workout')
+    search_query = request.GET.get('search', '').strip()
 
-    # Все назначения за период
+    today = date.today()
+    if period == 'week':
+        start_date = today - timedelta(days=7)
+        end_date = today
+    elif period == 'month':
+        start_date = today.replace(day=1)
+        if today.month == 12:
+            end_date = today.replace(year=today.year + 1, month=1, day=1) - timedelta(days=1)
+        else:
+            end_date = today.replace(month=today.month + 1, day=1) - timedelta(days=1)
+    elif period == 'year':
+        start_date = today.replace(month=1, day=1)
+        end_date = today.replace(month=12, day=31)
+    else:
+        start_date = today.replace(day=1)
+        if today.month == 12:
+            end_date = today.replace(year=today.year + 1, month=1, day=1) - timedelta(days=1)
+        else:
+            end_date = today.replace(month=today.month + 1, day=1) - timedelta(days=1)
+
+    delta = end_date - start_date
+    all_dates = [start_date + timedelta(days=i) for i in range(delta.days + 1)]
+
+    all_employees = UserProfile.objects.filter(role='employee').order_by('user__username')
+    employees = all_employees
+
     assignments = ShiftAssignment.objects.filter(
-        date__gte=start_date.date(),
-        date__lte=end_date.date()
-    ).select_related('employee__user', 'workout_type')
+        date__gte=start_date,
+        date__lte=end_date
+    ).select_related('employee', 'workout_type')
 
-    # Агрегация по сотрудникам
-    from collections import defaultdict
-    employee_hours = defaultdict(float)
+    if employee_id and employee_id != 'all':
+        assignments = assignments.filter(employee_id=employee_id)
+        employees = employees.filter(id=employee_id)
+    if workout_id and workout_id != 'all':
+        assignments = assignments.filter(workout_type_id=workout_id)
+    if search_query:
+        assignments = assignments.filter(
+            Q(employee__user__username__icontains=search_query) |
+            Q(workout_type__name__icontains=search_query)
+        )
+
+    data = defaultdict(lambda: defaultdict(float))
+    emp_hours = defaultdict(float)
+    day_hours = [0.0] * 7
+    workout_hours = defaultdict(float)
+    date_hours = defaultdict(float)
+
     for a in assignments:
-        duration = (datetime.combine(date.min, a.end_time) - datetime.combine(date.min, a.start_time)).total_seconds() / 3600
-        employee_hours[a.employee.user.username] += duration
+        dur = (datetime.combine(date.min, a.end_time) - datetime.combine(date.min, a.start_time)).total_seconds() / 3600
+        data[a.employee_id][a.date] += dur
+        emp_hours[a.employee.user.username] += dur
+        day_hours[a.date.weekday()] += dur
+        workout_hours[a.workout_type.name] += dur
+        date_hours[a.date] += dur
+
+    total_hours = {}
+    total_shifts = {}
+    for emp in employees:
+        emp_id = emp.id
+        hours = sum(data[emp_id].values())
+        shifts = len([h for h in data[emp_id].values() if h > 0])
+        total_hours[emp.id] = round(hours, 2)
+        total_shifts[emp.id] = shifts
+
+    # Подготовка данных для графиков
+    chart_data = {
+        'empNames': list(emp_hours.keys()) or [],
+        'empValues': [round(v, 2) for v in emp_hours.values()] or [],
+        'dayLabels': ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'],
+        'dayValues': [round(v, 2) for v in day_hours] or [0]*7,
+        'workoutLabels': list(workout_hours.keys()) or [],
+        'workoutValues': [round(v, 2) for v in workout_hours.values()] or [],
+        'dateLabels': [d.strftime('%d.%m') for d in sorted(date_hours.keys())] or [],
+        'dateValues': [round(date_hours[d], 2) for d in sorted(date_hours.keys())] or [],
+    }
 
     context = {
-        'employee_hours': dict(employee_hours),
-        'start_date': start_date,
-        'end_date': end_date,
+        'period': period,
+        'employee_id': employee_id or 'all',
+        'workout_id': workout_id or 'all',
+        'search_query': search_query,
+        'employees': employees,
+        'all_employees': all_employees,
+        'workout_types': WorkoutType.objects.all(),
+        'all_dates': all_dates,
+        'data': data,
+        'total_hours': total_hours,
+        'total_shifts': total_shifts,
+        'total_all_hours': round(sum(total_hours.values()), 2),
+        'total_all_assignments': assignments.count(),
+        'active_employees': len(employees),
+        'chart_data_json': json.dumps(chart_data, ensure_ascii=False),
     }
     return render(request, 'core/reports/reports.html', context)
 
 
 #ЭКСПОРТ ФАЙЛОВ
+# from openpyxl import Workbook
+# from django.http import HttpResponse
+#
+# @login_required
+# def export_report_detailed(request):
+#     if request.user.profile.role != 'manager':
+#         return redirect('dashboard')
+#
+#     period = request.GET.get('period', 'week')
+#     today = datetime.today().date()
+#
+#     if period == 'week':
+#         start_date = today - timedelta(days=7)
+#     elif period == 'month':
+#         start_date = today - timedelta(days=30)
+#     elif period == 'year':
+#         start_date = today - timedelta(days=365)
+#     else:
+#         start_date = today - timedelta(days=7)
+#
+#     assignments = ShiftAssignment.objects.filter(
+#         date__date__gte=start_date,
+#         date__date__lte=today
+#     ).select_related('employee__user', 'workout_type', 'schedule')
+#
+#     wb = Workbook()
+#     ws = wb.active
+#     ws.title = "Аналитика"
+#
+#     headers = ["Сотрудник", "Дата", "Время", "Тип", "Часов", "График"]
+#     ws.append(headers)
+#
+#     for a in assignments.order_by('-date', 'start_time'):
+#         dur = (datetime.combine(date.min, a.end_time) - datetime.combine(date.min, a.start_time)).total_seconds() / 3600
+#         ws.append([
+#             a.employee.user.username,
+#             a.date.strftime('%d.%m.%Y'),
+#             f"{a.start_time.strftime('%H:%M')}-{a.end_time.strftime('%H:%M')}",
+#             a.workout_type.name,
+#             round(dur, 2),
+#             a.schedule.name if a.schedule else "-"
+#         ])
+#
+#     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+#     response['Content-Disposition'] = f'attachment; filename=analytics_{period}_{today.strftime("%Y%m%d")}.xlsx'
+#     wb.save(response)
+#     return response
+
+
+
+
+#для документа кто сколько работал
+# from datetime import date, datetime, timedelta
+# from collections import defaultdict
+#
+# @login_required
+# def operational_report(request):
+#     if request.user.profile.role != 'manager':
+#         messages.error(request, "Доступ запрещён.")
+#         return redirect('dashboard')
+#
+#     # Выбор периода
+#     period = request.GET.get('period', 'month')
+#     today = date.today()
+#
+#     if period == 'week':
+#         start_date = today - timedelta(days=7)
+#     elif period == 'month':
+#         start_date = today.replace(day=1)
+#     elif period == 'year':
+#         start_date = today.replace(month=1, day=1)
+#     else:
+#         start_date = today.replace(day=1)
+#
+#     # Определяем конец периода
+#     if period == 'week':
+#         end_date = today
+#     elif period == 'month':
+#         # Последний день месяца
+#         if today.month == 12:
+#             end_date = today.replace(year=today.year + 1, month=1, day=1) - timedelta(days=1)
+#         else:
+#             end_date = today.replace(month=today.month + 1, day=1) - timedelta(days=1)
+#     elif period == 'year':
+#         end_date = today.replace(year=today.year, month=12, day=31)
+#     else:
+#         end_date = today
+#
+#     # Все даты в периоде
+#     delta = end_date - start_date
+#     all_dates = [start_date + timedelta(days=i) for i in range(delta.days + 1)]
+#
+#     # Сотрудники
+#     employees = UserProfile.objects.filter(role='employee').order_by('user__username')
+#
+#     # Загружаем назначения
+#     assignments = ShiftAssignment.objects.filter(
+#         date__date__gte=start_date,
+#         date__date__lte=end_date
+#     ).select_related('employee', 'workout_type')
+#
+#     # Собираем данные: employee -> date -> hours
+#     data = defaultdict(lambda: defaultdict(float))  # {emp_id: {date: hours}}
+#     for a in assignments:
+#         dur = (datetime.combine(date.min, a.end_time) - datetime.combine(date.min, a.start_time)).total_seconds() / 3600
+#         data[a.employee_id][a.date] += dur
+#
+#     # Подготавливаем для шаблона
+#     rows = []
+#     total_hours_per_day = [0.0] * len(all_dates)
+#     total_shifts_per_day = [0] * len(all_dates)
+#
+#     for emp in employees:
+#         row = {
+#             'employee': emp,
+#             'hours': [],
+#             'total': 0.0,
+#         }
+#         for i, d in enumerate(all_dates):
+#             h = data[emp.id].get(d, 0.0)
+#             row['hours'].append(round(h, 1) if h > 0 else '')
+#             row['total'] += h
+#             total_hours_per_day[i] += h
+#             if h > 0:
+#                 total_shifts_per_day[i] += 1
+#         rows.append(row)
+#
+#     # Итоговая строка
+#     total_row = {
+#         'employee': {'user': {'username': 'Итого кол-часов'}},
+#         'hours': [round(h, 1) for h in total_hours_per_day],
+#         'total': round(sum(total_hours_per_day), 1)
+#     }
+#
+#     context = {
+#         'period': period,
+#         'start_date': start_date,
+#         'end_date': end_date,
+#         'all_dates': all_dates,
+#         'rows': rows,
+#         'total_row': total_row,
+#         'total_shifts_per_day': total_shifts_per_day,
+#     }
+#     return render(request, 'core/reports/operational.html', context)
+
+#
+from openpyxl import Workbook
+from django.http import HttpResponse
+
 @login_required
-def export_report_excel(request):
+def export_operational_excel(request):
     if request.user.profile.role != 'manager':
         return redirect('dashboard')
 
-    today = datetime.today()
-    start_date = today - timedelta(days=7)
-    end_date = today
+    period = request.GET.get('period', 'month')
+    today = date.today()
+
+    if period == 'week':
+        start_date = today - timedelta(days=7)
+    elif period == 'month':
+        start_date = today.replace(day=1)
+    elif period == 'year':
+        start_date = today.replace(month=1, day=1)
+    else:
+        start_date = today.replace(day=1)
+
+    if period == 'week':
+        end_date = today
+    elif period == 'month':
+        if today.month == 12:
+            end_date = today.replace(year=today.year + 1, month=1, day=1) - timedelta(days=1)
+        else:
+            end_date = today.replace(month=today.month + 1, day=1) - timedelta(days=1)
+    elif period == 'year':
+        end_date = today.replace(year=today.year, month=12, day=31)
+    else:
+        end_date = today
+
+    all_dates = [start_date + timedelta(days=i) for i in range((end_date - start_date).days + 1)]
+    employees = UserProfile.objects.filter(role='employee').order_by('user__username')
 
     assignments = ShiftAssignment.objects.filter(
-        date__gte=start_date.date(),
-        date__lte=end_date.date()
-    ).select_related('employee__user', 'workout_type')
+        date__date__gte=start_date,
+        date__date__lte=end_date
+    ).select_related('employee')
 
-    # Агрегация
-    from collections import defaultdict
-    employee_hours = defaultdict(float)
+    data = {}
+    for emp in employees:
+        data[emp.id] = {d: 0.0 for d in all_dates}
+
     for a in assignments:
-        duration = (datetime.combine(date.min, a.end_time) - datetime.combine(date.min, a.start_time)).total_seconds() / 3600
-        employee_hours[a.employee.user.username] += duration
+        dur = (datetime.combine(date.min, a.end_time) - datetime.combine(date.min, a.start_time)).total_seconds() / 3600
+        data[a.employee_id][a.date] += dur
 
-    # Создаём Excel
     wb = Workbook()
     ws = wb.active
-    ws.title = "Загрузка сотрудников"
+    ws.title = "Операционный график"
 
-    # Заголовки
-    ws.append(["Сотрудник", "Часов за неделю"])
+    # Заголовок
+    headers = ["Сотрудник"] + [d.strftime("%d.%m") for d in all_dates] + ["Итого"]
+    ws.append(headers)
 
     # Данные
-    for emp, hours in employee_hours.items():
-        ws.append([emp, round(hours, 2)])
+    for emp in employees:
+        row = [emp.user.username]
+        total = 0.0
+        for d in all_dates:
+            h = data[emp.id].get(d, 0.0)
+            row.append(round(h, 1) if h > 0 else "")
+            total += h
+        row.append(round(total, 1))
+        ws.append(row)
+
+    # Итоговая строка
+    total_hours = [0.0] * len(all_dates)
+    for emp in employees:
+        for i, d in enumerate(all_dates):
+            total_hours[i] += data[emp.id].get(d, 0.0)
+
+    ws.append(["Итого кол-часов"] + [round(h, 1) for h in total_hours] + [round(sum(total_hours), 1)])
 
     # Ответ
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    response['Content-Disposition'] = 'attachment; filename=report_load_{}.xlsx'.format(today.strftime('%Y%m%d'))
+    response['Content-Disposition'] = f'attachment; filename=operational_{period}_{today.strftime("%Y%m%d")}.xlsx'
     wb.save(response)
     return response

@@ -211,6 +211,18 @@ class ShiftAssignment(models.Model):
         return 0
 
 
+    #вычисляет продолжительность смены в часах
+    def get_duration(self):
+        from datetime import datetime, date
+        # Создаём "фиктивную" дату (01.01.0001), чтобы превратить время в полноценный datetime
+        start = datetime.combine(date.min, self.start_time)  # → datetime(1, 1, 1, 9, 0)
+        end = datetime.combine(date.min, self.end_time)  # → datetime(1, 1, 1, 10, 0)
+
+        # Считаем разницу в секундах и переводим в часы
+        return (end - start).total_seconds() / 3600  # → 1.0
+
+
+
 
 class TimeOffRequest(models.Model):
     """
