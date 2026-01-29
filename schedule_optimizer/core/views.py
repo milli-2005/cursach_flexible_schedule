@@ -445,25 +445,6 @@ def shift_swaps(request):
     return render(request, 'core/shift_swaps.html', context)
 
 
-
-@login_required
-def reports(request):
-    if not hasattr(request.user, 'profile'):
-        messages.error(request, "Профиль пользователя не найден.")
-        return redirect('dashboard')
-
-    user_profile = request.user.profile
-    current_role = user_profile.role # Берём роль из профиля
-
-    if current_role not in ['studio_admin', 'manager']:
-        messages.error(request, "У вас нет доступа к этому разделу.")
-        return redirect('dashboard')
-
-    # Здесь будет логика генерации отчетов
-    context = {}
-    return render(request, 'core/reports.html', context)
-
-
 def dashboard_employee(request):
     # Логика для дашборда сотрудника
     return render(request, 'core/dashboard_employee.html')
@@ -937,3 +918,83 @@ def send_availability_reminder_manual(request):
         else:
             messages.warning(request, "Нет сотрудников с email.")
     return redirect('schedule_view')
+
+
+
+""" === ОТЧЕТЫ === """
+
+from django.http import HttpResponse
+from openpyxl import Workbook
+from datetime import date
+
+@login_required
+def reports_view(request):
+    if request.user.profile.role != 'manager':
+        messages.error(request, "Доступ запрещён.")
+        return redirect('dashboard')
+
+    # Период: последняя неделя
+    today = datetime.today()
+    start_date = today - timedelta(days=7)
+    end_date = today
+
+    # Все назначения за период
+    assignments = ShiftAssignment.objects.filter(
+        date__gte=start_date.date(),
+        date__lte=end_date.date()
+    ).select_related('employee__user', 'workout_type')
+
+    # Агрегация по сотрудникам
+    from collections import defaultdict
+    employee_hours = defaultdict(float)
+    for a in assignments:
+        duration = (datetime.combine(date.min, a.end_time) - datetime.combine(date.min, a.start_time)).total_seconds() / 3600
+        employee_hours[a.employee.user.username] += duration
+
+    context = {
+        'employee_hours': dict(employee_hours),
+        'start_date': start_date,
+        'end_date': end_date,
+    }
+    return render(request, 'core/reports/reports.html', context)
+
+
+#ЭКСПОРТ ФАЙЛОВ
+@login_required
+def export_report_excel(request):
+    if request.user.profile.role != 'manager':
+        return redirect('dashboard')
+
+    today = datetime.today()
+    start_date = today - timedelta(days=7)
+    end_date = today
+
+    assignments = ShiftAssignment.objects.filter(
+        date__gte=start_date.date(),
+        date__lte=end_date.date()
+    ).select_related('employee__user', 'workout_type')
+
+    # Агрегация
+    from collections import defaultdict
+    employee_hours = defaultdict(float)
+    for a in assignments:
+        duration = (datetime.combine(date.min, a.end_time) - datetime.combine(date.min, a.start_time)).total_seconds() / 3600
+        employee_hours[a.employee.user.username] += duration
+
+    # Создаём Excel
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Загрузка сотрудников"
+
+    # Заголовки
+    ws.append(["Сотрудник", "Часов за неделю"])
+
+    # Данные
+    for emp, hours in employee_hours.items():
+        ws.append([emp, round(hours, 2)])
+
+    # Ответ
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename=report_load_{}.xlsx'.format(today.strftime('%Y%m%d'))
+    wb.save(response)
+    return response

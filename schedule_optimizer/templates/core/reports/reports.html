@@ -1,0 +1,68 @@
+<!-- templates/core/reports/reports.html -->
+{% extends "core/base.html" %}
+
+{% block title %}Отчёты - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="management-container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Отчёт по загрузке сотрудников</h2>
+        <a href="{% url 'export_report_excel' %}" class="btn btn-success">
+            <i class="bi bi-file-earmark-excel"></i> Скачать Excel
+        </a>
+    </div>
+
+    <p class="text-muted">Период: {{ start_date|date:"d E Y" }} – {{ end_date|date:"d E Y" }}</p>
+
+    {% if employee_hours %}
+        <div class="card p-3 mb-4">
+            <canvas id="hoursChart" height="100"></canvas>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Сотрудник</th>
+                        <th>Часов</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for emp, hours in employee_hours.items %}
+                    <tr>
+                        <td>{{ emp }}</td>
+                        <td>{{ hours|floatformat:2 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="alert alert-info">Нет данных за указанный период.</div>
+    {% endif %}
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const labels = {{ employee_hours.keys|safe }};
+    const data = {{ employee_hours.values|safe }};
+
+    new Chart(document.getElementById('hoursChart'), {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Часов за неделю',
+                data: data,
+                backgroundColor: '#9b59b6'
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+</script>
+{% endblock %}
