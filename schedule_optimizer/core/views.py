@@ -297,18 +297,6 @@ def dashboard(request):
         return redirect('index')
 
 
-# # core/views.py
-# @login_required
-# def dashboard(request):
-#     user = request.user
-#     profile = user.profile
-#     # Просто рендерим базовый шаблон с минимальным содержимым
-#     context = {
-#         'user': user,
-#         'profile': profile,
-#     }
-#     return render(request, 'core/debug_dashboard.html', context)
-
 
 @login_required
 def profile_view(request):
@@ -466,7 +454,7 @@ def workout_types(request):
     return render(request, 'core/workouts/workout_types.html')
 
 
-
+""" === РАСПИСАНИЕ === """
 @login_required
 def create_schedule_view(request):
     employees = UserProfile.objects.filter(role='employee')
@@ -514,8 +502,9 @@ def create_schedule_view(request):
     return render(request, 'core/schedules/create_schedule.html', context)
 
 
-from django.db.models import Count, Q
 
+
+from django.core.paginator import Paginator
 
 @login_required
 def schedule_view(request):
@@ -523,11 +512,21 @@ def schedule_view(request):
         messages.error(request, "Профиль пользователя не найден.")
         return redirect('dashboard')
 
-    # Все сотрудники
-    total_employees = UserProfile.objects.filter(role='employee').count()
-    schedules = Schedule.objects.all().prefetch_related('approvals')
+    # Параметры
+    page_size = int(request.GET.get('page_size', 3))
+    sort_by = request.GET.get('sort', '-start_date')  # по умолчанию — новые сверху
 
-    # Добавляем аннотации
+    # Валидация поля сортировки
+    valid_sort_fields = ['name', '-name', 'start_date', '-start_date', 'end_date', '-end_date', 'status', '-status']
+    if sort_by not in valid_sort_fields:
+        sort_by = '-start_date'
+
+    # Запрос с сортировкой
+    schedules = Schedule.objects.all().prefetch_related('approvals').order_by(sort_by)
+
+    total_employees = UserProfile.objects.filter(role='employee').count()
+
+    # Аннотации
     schedules_with_stats = []
     for s in schedules:
         approved_count = s.approvals.filter(approved=True).count()
@@ -542,11 +541,17 @@ def schedule_view(request):
             'responded_count': responded_count,
         })
 
+    # Пагинация
+    paginator = Paginator(schedules_with_stats, page_size)
+    page_obj = paginator.get_page(request.GET.get('page', 1))
+
     context = {
-        'schedules_with_stats': schedules_with_stats,
+        'schedules_with_stats': page_obj,
+        'page_obj': page_obj,
+        'page_size': page_size,
+        'current_sort': sort_by,
     }
     return render(request, 'core/schedules/schedule_list.html', context)
-
 
 
 
@@ -1083,10 +1088,10 @@ def reports_view(request):
         'total_salary': total_salary,
     }
 
-    # === ОТВЕТ ===
+    # ответ
     resp = render(request, 'core/reports/reports.html', context)
 
-    # === СОХРАНЕНИЕ В КУКИ ===
+    # сохранение в куки
     if 'set_hour_rate' in request.GET or 'reset_rate' in request.GET:
         if hour_rate is not None:
             resp.set_cookie('hour_rate', str(hour_rate), max_age=365*24*60*60)  # 1 год
@@ -1096,153 +1101,8 @@ def reports_view(request):
     return resp
 
 
-#ЭКСПОРТ ФАЙЛОВ
-# from openpyxl import Workbook
-# from django.http import HttpResponse
-#
-# @login_required
-# def export_report_detailed(request):
-#     if request.user.profile.role != 'manager':
-#         return redirect('dashboard')
-#
-#     period = request.GET.get('period', 'week')
-#     today = datetime.today().date()
-#
-#     if period == 'week':
-#         start_date = today - timedelta(days=7)
-#     elif period == 'month':
-#         start_date = today - timedelta(days=30)
-#     elif period == 'year':
-#         start_date = today - timedelta(days=365)
-#     else:
-#         start_date = today - timedelta(days=7)
-#
-#     assignments = ShiftAssignment.objects.filter(
-#         date__date__gte=start_date,
-#         date__date__lte=today
-#     ).select_related('employee__user', 'workout_type', 'schedule')
-#
-#     wb = Workbook()
-#     ws = wb.active
-#     ws.title = "Аналитика"
-#
-#     headers = ["Сотрудник", "Дата", "Время", "Тип", "Часов", "График"]
-#     ws.append(headers)
-#
-#     for a in assignments.order_by('-date', 'start_time'):
-#         dur = (datetime.combine(date.min, a.end_time) - datetime.combine(date.min, a.start_time)).total_seconds() / 3600
-#         ws.append([
-#             a.employee.user.username,
-#             a.date.strftime('%d.%m.%Y'),
-#             f"{a.start_time.strftime('%H:%M')}-{a.end_time.strftime('%H:%M')}",
-#             a.workout_type.name,
-#             round(dur, 2),
-#             a.schedule.name if a.schedule else "-"
-#         ])
-#
-#     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-#     response['Content-Disposition'] = f'attachment; filename=analytics_{period}_{today.strftime("%Y%m%d")}.xlsx'
-#     wb.save(response)
-#     return response
 
-
-
-
-#для документа кто сколько работал
-# from datetime import date, datetime, timedelta
-# from collections import defaultdict
-#
-# @login_required
-# def operational_report(request):
-#     if request.user.profile.role != 'manager':
-#         messages.error(request, "Доступ запрещён.")
-#         return redirect('dashboard')
-#
-#     # Выбор периода
-#     period = request.GET.get('period', 'month')
-#     today = date.today()
-#
-#     if period == 'week':
-#         start_date = today - timedelta(days=7)
-#     elif period == 'month':
-#         start_date = today.replace(day=1)
-#     elif period == 'year':
-#         start_date = today.replace(month=1, day=1)
-#     else:
-#         start_date = today.replace(day=1)
-#
-#     # Определяем конец периода
-#     if period == 'week':
-#         end_date = today
-#     elif period == 'month':
-#         # Последний день месяца
-#         if today.month == 12:
-#             end_date = today.replace(year=today.year + 1, month=1, day=1) - timedelta(days=1)
-#         else:
-#             end_date = today.replace(month=today.month + 1, day=1) - timedelta(days=1)
-#     elif period == 'year':
-#         end_date = today.replace(year=today.year, month=12, day=31)
-#     else:
-#         end_date = today
-#
-#     # Все даты в периоде
-#     delta = end_date - start_date
-#     all_dates = [start_date + timedelta(days=i) for i in range(delta.days + 1)]
-#
-#     # Сотрудники
-#     employees = UserProfile.objects.filter(role='employee').order_by('user__username')
-#
-#     # Загружаем назначения
-#     assignments = ShiftAssignment.objects.filter(
-#         date__date__gte=start_date,
-#         date__date__lte=end_date
-#     ).select_related('employee', 'workout_type')
-#
-#     # Собираем данные: employee -> date -> hours
-#     data = defaultdict(lambda: defaultdict(float))  # {emp_id: {date: hours}}
-#     for a in assignments:
-#         dur = (datetime.combine(date.min, a.end_time) - datetime.combine(date.min, a.start_time)).total_seconds() / 3600
-#         data[a.employee_id][a.date] += dur
-#
-#     # Подготавливаем для шаблона
-#     rows = []
-#     total_hours_per_day = [0.0] * len(all_dates)
-#     total_shifts_per_day = [0] * len(all_dates)
-#
-#     for emp in employees:
-#         row = {
-#             'employee': emp,
-#             'hours': [],
-#             'total': 0.0,
-#         }
-#         for i, d in enumerate(all_dates):
-#             h = data[emp.id].get(d, 0.0)
-#             row['hours'].append(round(h, 1) if h > 0 else '')
-#             row['total'] += h
-#             total_hours_per_day[i] += h
-#             if h > 0:
-#                 total_shifts_per_day[i] += 1
-#         rows.append(row)
-#
-#     # Итоговая строка
-#     total_row = {
-#         'employee': {'user': {'username': 'Итого кол-часов'}},
-#         'hours': [round(h, 1) for h in total_hours_per_day],
-#         'total': round(sum(total_hours_per_day), 1)
-#     }
-#
-#     context = {
-#         'period': period,
-#         'start_date': start_date,
-#         'end_date': end_date,
-#         'all_dates': all_dates,
-#         'rows': rows,
-#         'total_row': total_row,
-#         'total_shifts_per_day': total_shifts_per_day,
-#     }
-#     return render(request, 'core/reports/operational.html', context)
-
-
+""" === ЭКСПОРТ В ЭКСЕЛЬ === """
 from openpyxl import Workbook
 from openpyxl.styles import PatternFill, Font, Border, Side
 from openpyxl.utils import get_column_letter

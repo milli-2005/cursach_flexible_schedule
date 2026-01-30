@@ -6,37 +6,52 @@
 {% block content %}
 <div class="management-container">
 
-    <!-- ТАБЛИЦА ГРАФИКОВ -->
+    <!-- ЗАГОЛОВОК И КНОПКИ -->
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h2>Управление графиками</h2>
         {% if user.profile.role == 'manager' %}
-        <form method="post" action="{% url 'send_availability_reminder' %}" style="display:inline;">
-    {% csrf_token %}
-    <button type="submit" class="btn btn-outline-warning">
-        <i class="bi bi-bell"></i> Напомнить о доступности
-    </button>
-</form>
-            <a href="{% url 'create_schedule' %}" class="nav-link text-white">
-                <i class="bi bi-plus-circle"></i> Создать график
-            </a>
+            <div class="d-flex gap-2">
+                <form method="post" action="{% url 'send_availability_reminder' %}" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-warning">
+                        <i class="bi bi-bell"></i> Напомнить о доступности
+                    </button>
+                </form>
+                <a href="{% url 'create_schedule' %}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> Создать график
+                </a>
+<!--                <a href="{% url 'create_schedule' %}" class="nav-link text-white">-->
+<!--                <i class="bi bi-plus-circle"></i> Создать график-->
+<!--            </a>-->
+            </div>
         {% endif %}
     </div>
 
+
+
+    <!-- ТАБЛИЦА -->
     <div class="management-table">
-        <table>
+        <table class="table table-dark table-striped">
             <thead>
-                <tr>
-                    <th>Название</th>
-                    <th>Дата начала</th>
-                    <th>Дата окончания</th>
-                    <th>Статус</th>
-                    <th>Согласование</th>
-                    <th>Создатель</th>
-<!--                    {% if user.profile.role == 'manager' %}-->
-<!--                        <th>Действия</th>-->
-<!--                    {% endif %}-->
-                </tr>
-            </thead>
+    <tr>
+        <th>Название</th>
+        <th>
+            <a href="?sort={% if current_sort == 'start_date' %}-start_date{% else %}start_date{% endif %}{% for key, value in request.GET.items %}{% if key != 'sort' and key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}"
+               class="text-decoration-none d-flex align-items-center gap-1">
+                Дата начала
+                {% if current_sort == 'start_date' %}
+                    <i class="bi bi-sort-up"></i>
+                {% else %}
+                    <i class="bi bi-sort-down"></i>
+                {% endif %}
+            </a>
+        </th>
+        <th>Дата окончания</th>
+        <th>Статус</th>
+        <th>Согласование</th>
+        <th>Создатель</th>
+    </tr>
+</thead>
             <tbody>
                 {% for item in schedules_with_stats %}
                     {% with s=item.schedule %}
@@ -56,24 +71,46 @@
                             {% endif %}
                         </td>
                         <td>{{ s.created_by.username }}</td>
-<!--                        {% if user.profile.role == 'manager' %}-->
-<!--                            <td>-->
-<!--                                <a href="{% url 'edit_schedule' s.id %}" class="btn btn-sm btn-outline-primary">Редактировать</a>-->
-<!--                                <form method="post" action="{% url 'delete_schedule' s.id %}" style="display:inline;" onsubmit="return confirm('Удалить график?')">-->
-<!--                                    {% csrf_token %}-->
-<!--                                    <button type="submit" class="btn btn-sm btn-outline-danger">Удалить</button>-->
-<!--                                </form>-->
-<!--                            </td>-->
-<!--                        {% endif %}-->
                     </tr>
                     {% endwith %}
                 {% empty %}
-                <tr>
-                    <td colspan="7">Графики не найдены.</td>
-                </tr>
+                    <tr>
+                        <td colspan="6" class="text-center">Графики не найдены.</td>
+                    </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
+
+    <!-- ПАГИНАЦИЯ — минималистичная -->
+{% if page_obj.has_other_pages %}
+<div class="d-flex justify-content-center align-items-center mt-4 gap-3">
+    {% if page_obj.has_previous %}
+        <a href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}"
+           class="btn btn-outline-light btn-sm">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+    {% else %}
+        <span class="btn btn-light btn-sm disabled">
+            <i class="bi bi-arrow-left"></i>
+        </span>
+    {% endif %}
+
+    <span class="text-white">
+        Стр. {{ page_obj.number }} из {{ page_obj.paginator.num_pages }}
+    </span>
+
+    {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}"
+           class="btn btn-outline-light btn-sm">
+            <i class="bi bi-arrow-right"></i>
+        </a>
+    {% else %}
+        <span class="btn btn-light btn-sm disabled">
+            <i class="bi bi-arrow-right"></i>
+        </span>
+    {% endif %}
+</div>
+{% endif %}
 </div>
 {% endblock %}
