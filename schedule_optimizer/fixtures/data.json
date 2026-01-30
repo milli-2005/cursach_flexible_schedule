@@ -134,7 +134,7 @@
   "pk": 1,
   "fields": {
     "password": "pbkdf2_sha256$720000$uVtmt84hk1qXievjfWTPE5$SH2+9EaVe7LSbmwKWLZFqV9l6yk6D2aeGjFbOTzT2BI=",
-    "last_login": "2026-01-29T08:11:16.735Z",
+    "last_login": "2026-01-30T09:54:45.062Z",
     "is_superuser": true,
     "username": "manager",
     "first_name": "",
@@ -188,7 +188,7 @@
   "pk": 4,
   "fields": {
     "password": "pbkdf2_sha256$720000$aPEUoB416LTsFGVq3qA2RJ$+CQQuyLjq9NZ7+E4PQ1o52m9fFsxCvCVqeH4JlpgCl8=",
-    "last_login": "2026-01-29T08:10:54.302Z",
+    "last_login": "2026-01-30T09:51:39.696Z",
     "is_superuser": false,
     "username": "alina",
     "first_name": "алина",
