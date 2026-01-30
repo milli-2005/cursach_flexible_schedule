@@ -5,7 +5,8 @@
 
 {% block content %}
 <div class="management-container">
-    <h2 class="mb-4">📊 Аналитика загрузки</h2>
+    <h2 class="mb-4">Аналитика загрузки</h2>
+</div>
 
     <!-- ФИЛЬТРЫ -->
     <form method="get" class="row g-3 mb-4 p-3 bg-dark rounded">
@@ -98,75 +99,91 @@
         </div>
         <div class="col-lg-6 mb-4">
             <div class="card h-100">
-                <div class="card-header">Загрузка по дням</div>
+                <div class="card-header">Загрузка по дням месяца</div>
                 <div class="card-body"><canvas id="chart-dates" height="200"></canvas></div>
             </div>
         </div>
     </div>
 
-    <!-- ТАБЕЛЬ -->
-    <div class="card mb-4">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <span>📋 Табель учёта за {{ all_dates.0|date:"F Y" }}</span>
-        </div>
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-bordered table-dark text-center">
-                    <thead>
-                        <tr>
-                            <th>Сотрудник</th>
-                            {% for d in all_dates %}
-                                <th style="min-width:40px;">
-                                    {{ d.day }}<br><small>{{ d|date:"D" }}</small>
-                                </th>
-                            {% endfor %}
-                            <th>Смен</th>
-                            <th>Часов</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for emp in employees %}
-                            <tr>
-                                <td>{{ emp.user.username }}</td>
-                                {% for d in all_dates %}
-                                    {% with hours=data|get_item:emp.id|get_item:d %}
-                                        <td class="{% if hours > 0 %}bg-success text-white{% else %}bg-light text-dark{% endif %}">
-                                            {% if hours > 0 %}{{ hours|floatformat:1 }}{% else %}0{% endif %}
-                                        </td>
-                                    {% endwith %}
-                                {% endfor %}
-                                <td>{{ total_shifts|get_item:emp.id }}</td>
-                                <td>{{ total_hours|get_item:emp.id }}</td>
-                            </tr>
+    <!-- === ТАБЕЛЬ УЧЁТА РАБОЧЕГО ВРЕМЕНИ === -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Табель учёта за {{ all_dates.0|date:"F Y" }}</span>
+        <a href="{% url 'export_operational_excel' %}?{% if period %}period={{ period }}&{% endif %}{% if employee_id != 'all' %}employee={{ employee_id }}&{% endif %}{% if workout_id != 'all' %}workout={{ workout_id }}&{% endif %}{% if search_query %}search={{ search_query }}{% endif %}"
+           class="btn btn-success btn-sm">
+            <i class="bi bi-file-earmark-excel me-2"></i>Экспорт Excel
+        </a>
+    </div>
+
+    <!-- СТАВКА ЗА ЧАС — ВНУТРИ КАРТОЧКИ -->
+    <div class="card-body border-bottom">
+        <form method="get" class="d-inline-flex align-items-center gap-2">
+            {% for key, value in request.GET.items %}
+                {% if key != 'hour_rate' and key != 'set_hour_rate' %}
+                    <input type="hidden" name="{{ key }}" value="{{ value }}">
+                {% endif %}
+            {% endfor %}
+            <strong>Ставка:</strong>
+            <input type="number" name="hour_rate" value="{{ hour_rate }}" min="0" step="1" class="form-control form-control-sm" style="width:100px;">
+            <button type="submit" name="set_hour_rate" class="btn btn-sm btn-primary">Сохранить</button>
+            <span class="ms-2 text-muted">₽/час</span>
+        </form>
+    </div>
+
+    <!-- ТАБЛИЦА -->
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-bordered table-dark text-center">
+                <thead>
+                    <tr>
+                        <th>Сотрудник</th>
+                        {% for d in all_dates %}
+                            <th style="min-width:40px;">
+                                {{ d.day }}<br><small>{{ d|date:"D" }}</small>
+                            </th>
                         {% endfor %}
-                        <tr class="fw-bold bg-secondary">
-                            <td>Итого</td>
+                        <th>Часов</th>
+                        <th>ЗП</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for emp in employees %}
+                        <tr>
+                            <td>{{ emp.user.username }}</td>
                             {% for d in all_dates %}
-                                <td>
-                                    {% with total=0 %}
-                                        {% for emp in employees %}
-                                            {% with h=data|get_item:emp.id|get_item:d %}
-                                                {% if h > 0 %}
-                                                    {% with total=total|hadd:h %}
-                                                        {{ total|floatformat:1 }}
-                                                    {% endwith %}
-                                                {% endif %}
-                                            {% endwith %}
-                                        {% endfor %}
-                                    {% endwith %}
-                                </td>
+                                {% with hours=data|get_item:emp.id|get_item:d %}
+                                    <td class="{% if hours > 0 %}bg-success text-white{% else %}bg-light text-dark{% endif %}">
+                                        {% if hours > 0 %}{{ hours|floatformat:0 }}{% else %}0{% endif %}
+                                    </td>
+                                {% endwith %}
                             {% endfor %}
-                            <td>{{ total_shifts.values|length }}</td>
-                            <td>{{ total_all_hours|floatformat:2 }}</td>
+                            <td>{{ total_hours|get_item:emp.id|floatformat:0 }}</td>
+                            <td>{{ total_hours|get_item:emp.id|multiply:hour_rate|floatformat:0 }}</td>
                         </tr>
-                    </tbody>
-                </table>
-            </div>
+                    {% endfor %}
+
+                    <!-- ИТОГО ПО ДНЯМ -->
+                    <tr class="fw-bold bg-secondary">
+    <td>Итого по дням</td>
+    {% for total in daily_totals %}
+        <td>{{ total|floatformat:0 }}</td>
+    {% endfor %}
+    <td>{{ total_all_hours|floatformat:0 }}</td>
+    <td>{{ total_all_hours|multiply:hour_rate|floatformat:0 }}</td>
+</tr>
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
 
-<!-- ДАННЫЕ ДЛЯ ГРАФИКОВ -->
+</div>
+
+
+
+
+
+<!-- ДАННЫЕ -->
 <script id="report-data" type="application/json">
 {{ chart_data_json|safe }}
 </script>
@@ -191,7 +208,14 @@ document.addEventListener('DOMContentLoaded', function() {
     if (empEl && data.empNames?.length > 0) {
         new Chart(empEl.getContext('2d'), {
             type: 'bar',
-             { labels: data.empNames, datasets: [{ label: 'Часов',  data.empValues, backgroundColor: '#9b59b6' }] },
+            data: {
+                labels: data.empNames,
+                datasets: [{
+                    label: 'Часов',
+                    data: data.empValues,
+                    backgroundColor: '#9b59b6'
+                }]
+            },
             options: { responsive: true, scales: { y: { beginAtZero: true } } }
         });
     }
@@ -201,7 +225,16 @@ document.addEventListener('DOMContentLoaded', function() {
     if (daysEl && data.dayLabels?.length > 0) {
         new Chart(daysEl.getContext('2d'), {
             type: 'line',
-             { labels: data.dayLabels, datasets: [{ label: 'Часов',  data.dayValues, borderColor: '#3498db', fill: false, tension: 0.3 }] },
+            data: {
+                labels: data.dayLabels,
+                datasets: [{
+                    label: 'Часов',
+                    data: data.dayValues,
+                    borderColor: '#3498db',
+                    fill: false,
+                    tension: 0.3
+                }]
+            },
             options: { responsive: true, scales: { y: { beginAtZero: true } } }
         });
     }
@@ -211,7 +244,13 @@ document.addEventListener('DOMContentLoaded', function() {
     if (wtEl && data.workoutLabels?.length > 0) {
         new Chart(wtEl.getContext('2d'), {
             type: 'doughnut',
-             { labels: data.workoutLabels, datasets: [{  data.workoutValues, backgroundColor: ['#e74c3c', '#3498db', '#2ecc71', '#f39c12'] }] },
+            data: {
+                labels: data.workoutLabels,
+                datasets: [{
+                    data: data.workoutValues,
+                    backgroundColor: ['#e74c3c', '#3498db', '#2ecc71', '#f39c12']
+                }]
+            },
             options: { responsive: true, plugins: { legend: { position: 'right' } } }
         });
     }
@@ -221,7 +260,14 @@ document.addEventListener('DOMContentLoaded', function() {
     if (datesEl && data.dateLabels?.length > 0) {
         new Chart(datesEl.getContext('2d'), {
             type: 'bar',
-             { labels: data.dateLabels, datasets: [{ label: 'Часов',  data.dateValues, backgroundColor: '#3498db' }] },
+            data: {
+                labels: data.dateLabels,
+                datasets: [{
+                    label: 'Часов',
+                    data: data.dateValues,
+                    backgroundColor: '#3498db'
+                }]
+            },
             options: { responsive: true, scales: { y: { beginAtZero: true } } }
         });
     }

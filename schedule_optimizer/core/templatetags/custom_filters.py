@@ -12,3 +12,12 @@ def hadd(value, arg):
         return float(value) + float(arg)
     except (ValueError, TypeError):
         return value
+
+
+#    Это гарантирует целые числа без .0.
+@register.filter
+def multiply(value, arg):
+    try:
+        return int(float(value) * float(arg))
+    except (ValueError, TypeError):
+        return 0

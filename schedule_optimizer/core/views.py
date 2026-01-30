@@ -937,6 +937,19 @@ def reports_view(request):
         messages.error(request, "Доступ запрещён.")
         return redirect('dashboard')
 
+    # Ставка за час (по умолчанию 500 руб)
+    hour_rate = request.session.get('hour_rate', 500)
+    if 'set_hour_rate' in request.GET:
+        try:
+            new_rate = float(request.GET['hour_rate'])
+            if new_rate >= 0:
+                request.session['hour_rate'] = new_rate
+                hour_rate = new_rate
+                messages.success(request, f"Ставка обновлена: {hour_rate} ₽/час")
+        except ValueError:
+            messages.error(request, "Введите корректную ставку")
+
+
     period = request.GET.get('period', 'month')
     employee_id = request.GET.get('employee')
     workout_id = request.GET.get('workout')
@@ -998,6 +1011,12 @@ def reports_view(request):
         workout_hours[a.workout_type.name] += dur
         date_hours[a.date] += dur
 
+    # === СУММА ЧАСОВ ПО ДНЯМ (для строки "Итого по дням") ===
+    daily_totals = []
+    for d in all_dates:
+        total = sum(data[emp.id].get(d, 0) for emp in employees)
+        daily_totals.append(int(total))  # целое число
+
     total_hours = {}
     total_shifts = {}
     for emp in employees:
@@ -1035,6 +1054,8 @@ def reports_view(request):
         'total_all_assignments': assignments.count(),
         'active_employees': len(employees),
         'chart_data_json': json.dumps(chart_data, ensure_ascii=False),
+        'hour_rate': hour_rate,
+        'daily_totals': daily_totals,
     }
     return render(request, 'core/reports/reports.html', context)
 
