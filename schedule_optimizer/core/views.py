@@ -937,19 +937,37 @@ def reports_view(request):
         messages.error(request, "Доступ запрещён.")
         return redirect('dashboard')
 
-    # Ставка за час (по умолчанию 500 руб)
-    hour_rate = request.session.get('hour_rate', 500)
-    if 'set_hour_rate' in request.GET:
+    # === ПОЛУЧЕНИЕ СТАВКИ ИЗ КУКИ ===
+    hour_rate = request.COOKIES.get('hour_rate')
+    if hour_rate:
         try:
-            new_rate = float(request.GET['hour_rate'])
-            if new_rate >= 0:
-                request.session['hour_rate'] = new_rate
-                hour_rate = new_rate
-                messages.success(request, f"Ставка обновлена: {hour_rate} ₽/час")
+            hour_rate = float(hour_rate)
         except ValueError:
-            messages.error(request, "Введите корректную ставку")
+            hour_rate = None
 
+    # === ОБРАБОТКА СОХРАНЕНИЯ СТАВКИ ===
+    if 'set_hour_rate' in request.GET:
+        new_rate_str = request.GET.get('hour_rate', '').strip()
+        if new_rate_str:
+            try:
+                new_rate = float(new_rate_str)
+                if new_rate >= 0:
+                    hour_rate = new_rate
+                    messages.success(request, f"Ставка сохранена: {int(hour_rate)} ₽/час")
+                else:
+                    messages.error(request, "Ставка не может быть отрицательной")
+            except ValueError:
+                messages.error(request, "Введите корректное число")
+        else:
+            hour_rate = None
+            messages.info(request, "Ставка сброшена")
 
+    # === ОБРАБОТКА СБРОСА ===
+    if 'reset_rate' in request.GET:
+        hour_rate = None
+        messages.info(request, "Ставка сброшена")
+
+    # === ПАРАМЕТРЫ ФИЛЬТРАЦИИ ===
     period = request.GET.get('period', 'month')
     employee_id = request.GET.get('employee')
     workout_id = request.GET.get('workout')
@@ -997,6 +1015,7 @@ def reports_view(request):
             Q(workout_type__name__icontains=search_query)
         )
 
+    # === АГРЕГАЦИЯ ===
     data = defaultdict(lambda: defaultdict(float))
     emp_hours = defaultdict(float)
     day_hours = [0.0] * 7
@@ -1011,12 +1030,6 @@ def reports_view(request):
         workout_hours[a.workout_type.name] += dur
         date_hours[a.date] += dur
 
-    # === СУММА ЧАСОВ ПО ДНЯМ (для строки "Итого по дням") ===
-    daily_totals = []
-    for d in all_dates:
-        total = sum(data[emp.id].get(d, 0) for emp in employees)
-        daily_totals.append(int(total))  # целое число
-
     total_hours = {}
     total_shifts = {}
     for emp in employees:
@@ -1026,7 +1039,18 @@ def reports_view(request):
         total_hours[emp.id] = round(hours, 2)
         total_shifts[emp.id] = shifts
 
-    # Подготовка данных для графиков
+    # === СУММА ПО ДНЯМ (для "Итого по дням") ===
+    daily_totals = []
+    for d in all_dates:
+        total = sum(data[emp.id].get(d, 0) for emp in employees)
+        daily_totals.append(int(total))
+
+    # === ОБЩАЯ ЗП ===
+    total_salary = 0
+    if hour_rate is not None:
+        total_salary = int(sum(total_hours.values()) * hour_rate)
+
+    # === ГРАФИКИ ===
     chart_data = {
         'empNames': list(emp_hours.keys()) or [],
         'empValues': [round(v, 2) for v in emp_hours.values()] or [],
@@ -1050,14 +1074,26 @@ def reports_view(request):
         'data': data,
         'total_hours': total_hours,
         'total_shifts': total_shifts,
+        'daily_totals': daily_totals,
         'total_all_hours': round(sum(total_hours.values()), 2),
         'total_all_assignments': assignments.count(),
         'active_employees': len(employees),
         'chart_data_json': json.dumps(chart_data, ensure_ascii=False),
         'hour_rate': hour_rate,
-        'daily_totals': daily_totals,
+        'total_salary': total_salary,
     }
-    return render(request, 'core/reports/reports.html', context)
+
+    # === ОТВЕТ ===
+    resp = render(request, 'core/reports/reports.html', context)
+
+    # === СОХРАНЕНИЕ В КУКИ ===
+    if 'set_hour_rate' in request.GET or 'reset_rate' in request.GET:
+        if hour_rate is not None:
+            resp.set_cookie('hour_rate', str(hour_rate), max_age=365*24*60*60)  # 1 год
+        else:
+            resp.delete_cookie('hour_rate')
+
+    return resp
 
 
 #ЭКСПОРТ ФАЙЛОВ
@@ -1206,9 +1242,18 @@ def reports_view(request):
 #     }
 #     return render(request, 'core/reports/operational.html', context)
 
-#
+
 from openpyxl import Workbook
+from openpyxl.styles import PatternFill, Font, Border, Side
+from openpyxl.utils import get_column_letter
 from django.http import HttpResponse
+from datetime import date, timedelta, datetime
+from .models import ShiftAssignment, UserProfile
+
+def _format_number(value):
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
+    return round(value, 1) if isinstance(value, float) else value
 
 @login_required
 def export_operational_excel(request):
@@ -1218,72 +1263,165 @@ def export_operational_excel(request):
     period = request.GET.get('period', 'month')
     today = date.today()
 
+    # Определяем период
     if period == 'week':
         start_date = today - timedelta(days=7)
-    elif period == 'month':
-        start_date = today.replace(day=1)
-    elif period == 'year':
-        start_date = today.replace(month=1, day=1)
-    else:
-        start_date = today.replace(day=1)
-
-    if period == 'week':
         end_date = today
     elif period == 'month':
+        start_date = today.replace(day=1)
         if today.month == 12:
             end_date = today.replace(year=today.year + 1, month=1, day=1) - timedelta(days=1)
         else:
             end_date = today.replace(month=today.month + 1, day=1) - timedelta(days=1)
     elif period == 'year':
-        end_date = today.replace(year=today.year, month=12, day=31)
+        start_date = today.replace(month=1, day=1)
+        end_date = today.replace(month=12, day=31)
     else:
-        end_date = today
+        start_date = today.replace(day=1)
+        if today.month == 12:
+            end_date = today.replace(year=today.year + 1, month=1, day=1) - timedelta(days=1)
+        else:
+            end_date = today.replace(month=today.month + 1, day=1) - timedelta(days=1)
 
-    all_dates = [start_date + timedelta(days=i) for i in range((end_date - start_date).days + 1)]
+    # Все даты периода
+    all_dates = []
+    d = start_date
+    while d <= end_date:
+        all_dates.append(d)
+        d += timedelta(days=1)
+
     employees = UserProfile.objects.filter(role='employee').order_by('user__username')
 
     assignments = ShiftAssignment.objects.filter(
-        date__date__gte=start_date,
-        date__date__lte=end_date
+        date__gte=start_date,
+        date__lte=end_date
     ).select_related('employee')
 
-    data = {}
-    for emp in employees:
-        data[emp.id] = {d: 0.0 for d in all_dates}
-
+    from collections import defaultdict
+    data = defaultdict(lambda: defaultdict(float))
     for a in assignments:
         dur = (datetime.combine(date.min, a.end_time) - datetime.combine(date.min, a.start_time)).total_seconds() / 3600
         data[a.employee_id][a.date] += dur
 
+    # Ставка из куки
+    hour_rate = request.COOKIES.get('hour_rate')
+    if hour_rate:
+        try:
+            hour_rate = float(hour_rate)
+        except:
+            hour_rate = None
+    else:
+        hour_rate = None
+
+    # Подсчёт
+    total_hours_per_emp = {}
+    total_salary_per_emp = {}
+    for emp in employees:
+        emp_id = emp.id
+        hours = sum(data[emp_id].values())
+        total_hours_per_emp[emp.id] = _format_number(hours)
+        salary = hours * hour_rate if hour_rate else 0
+        total_salary_per_emp[emp.id] = _format_number(salary)
+
+    # === EXCEL ===
     wb = Workbook()
     ws = wb.active
-    ws.title = "Операционный график"
+    ws.title = "Табель"
 
-    # Заголовок
-    headers = ["Сотрудник"] + [d.strftime("%d.%m") for d in all_dates] + ["Итого"]
-    ws.append(headers)
+    # Граница: все ячейки — тонкая рамка
+    thin_border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
 
-    # Данные
-    for emp in employees:
-        row = [emp.user.username]
-        total = 0.0
-        for d in all_dates:
-            h = data[emp.id].get(d, 0.0)
-            row.append(round(h, 1) if h > 0 else "")
-            total += h
-        row.append(round(total, 1))
-        ws.append(row)
+    # Ширина столбцов
+    ws.column_dimensions['A'].width = 25          # Сотрудник — широкий
+    ws.column_dimensions['B'].width = 14          # Период
+    ws.column_dimensions['C'].width = 10          # ЗП
+    for i in range(len(all_dates)):
+        col_letter = get_column_letter(4 + i)      # D = 4
+        ws.column_dimensions[col_letter].width = 6  # Узкие дни, но чуть шире для читаемости
 
-    # Итоговая строка
-    total_hours = [0.0] * len(all_dates)
-    for emp in employees:
-        for i, d in enumerate(all_dates):
-            total_hours[i] += data[emp.id].get(d, 0.0)
+    # Заголовки (строка 1)
+    ws.cell(row=1, column=1, value="Сотрудник")
+    period_label = f"{start_date.day}-{end_date.day} {start_date.strftime('%B')}"
+    ws.cell(row=1, column=2, value=period_label)
+    ws.cell(row=1, column=3, value="ЗП")
 
-    ws.append(["Итого кол-часов"] + [round(h, 1) for h in total_hours] + [round(sum(total_hours), 1)])
+    # Даты: "01.01", "02.01"...
+    for i, d in enumerate(all_dates, start=4):  # D = 4
+        ws.cell(row=1, column=i, value=f"{d.day:02d}.{d.month:02d}")
 
-    # Ответ
+    # ЖИРНЫЙ шрифт для всей первой строки
+    bold_font = Font(bold=True)
+    for col in range(1, 4 + len(all_dates)):
+        cell = ws.cell(row=1, column=col)
+        cell.font = bold_font
+        cell.border = thin_border
+
+    # Заливка заголовков B и C — зелёная
+    green_fill = PatternFill(start_color="0099FF00", end_color="0099FF00", fill_type="solid")
+    for col in [2, 3]:
+        ws.cell(row=1, column=col).fill = green_fill
+
+    # Данные по сотрудникам
+    for row_idx, emp in enumerate(employees, start=2):
+        ws.cell(row=row_idx, column=1, value=emp.user.username)
+        ws.cell(row=row_idx, column=2, value=total_hours_per_emp[emp.id])
+        ws.cell(row=row_idx, column=3, value=total_salary_per_emp[emp.id])
+
+        # Зелёная заливка для B и C
+        for col in [2, 3]:
+            cell = ws.cell(row=row_idx, column=col)
+            cell.fill = green_fill
+            cell.border = thin_border
+
+        # Дни: без нулей, с границами
+        for i, d in enumerate(all_dates, start=4):
+            h = data[emp.id].get(d, 0)
+            val = _format_number(h) if h != 0 else ""
+            cell = ws.cell(row=row_idx, column=i, value=val)
+            cell.border = thin_border
+
+    # ИТОГОВАЯ СТРОКА
+    last_row = len(employees) + 2
+    ws.cell(row=last_row, column=1, value="Итого кол-часов")
+
+    total_hours_all = sum(total_hours_per_emp.values())
+    total_salary_all = sum(total_salary_per_emp.values())
+
+    ws.cell(row=last_row, column=2, value=_format_number(total_hours_all))
+    ws.cell(row=last_row, column=3, value=_format_number(total_salary_all))
+
+    # Дни — сумма
+    for i, d in enumerate(all_dates, start=4):
+        total_day = sum(data[emp.id].get(d, 0) for emp in employees)
+        val = _format_number(total_day) if total_day != 0 else ""
+        cell = ws.cell(row=last_row, column=i, value=val)
+        cell.border = thin_border
+
+    # Форматирование итоговой строки
+    yellow_fill = PatternFill(start_color="FFFFCC", end_color="FFFFCC", fill_type="solid")
+    purple_font = Font(color="800080", bold=True)
+
+    for col in range(1, 4 + len(all_dates)):
+        cell = ws.cell(row=last_row, column=col)
+        cell.fill = yellow_fill
+        cell.font = purple_font
+        cell.border = thin_border
+
+    # Применяем границы ко ВСЕМ ячейкам таблицы (включая внутренние)
+    max_row = last_row
+    max_col = 3 + len(all_dates)
+    for row in range(1, max_row + 1):
+        for col in range(1, max_col + 1):
+            cell = ws.cell(row=row, column=col)
+            if not cell.border:
+                cell.border = thin_border
+
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    response['Content-Disposition'] = f'attachment; filename=operational_{period}_{today.strftime("%Y%m%d")}.xlsx'
+    response['Content-Disposition'] = f'attachment; filename=tabel_{period}_{today.strftime("%Y%m%d")}.xlsx'
     wb.save(response)
     return response

@@ -6,7 +6,7 @@
 {% block content %}
 <div class="management-container">
     <h2 class="mb-4">Аналитика загрузки</h2>
-</div>
+
 
     <!-- ФИЛЬТРЫ -->
     <form method="get" class="row g-3 mb-4 p-3 bg-dark rounded">
@@ -53,14 +53,20 @@
     <div class="row mb-4">
         <div class="col-md-3">
             <div class="card bg-gradient-primary text-white p-3">
-                <div class="fs-4">{{ total_all_hours }} ч</div>
+                <div class="fs-4">{{ total_all_hours|floatformat:0 }} ч</div>
                 <div class="text-white-50">Всего часов</div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card bg-gradient-success text-white p-3">
-                <div class="fs-4">{{ total_all_assignments }}</div>
-                <div class="text-white-50">Смен</div>
+            <div class="card bg-gradient-warning text-white p-3">
+                <div class="fs-4">
+                    {% if hour_rate %}
+                        {{ total_salary }} ₽
+                    {% else %}
+                        —
+                    {% endif %}
+                </div>
+                <div class="text-white-50">Общая ЗП</div>
             </div>
         </div>
         <div class="col-md-3">
@@ -105,83 +111,92 @@
         </div>
     </div>
 
-    <!-- === ТАБЕЛЬ УЧЁТА РАБОЧЕГО ВРЕМЕНИ === -->
-<div class="card mb-4">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <span>Табель учёта за {{ all_dates.0|date:"F Y" }}</span>
-        <a href="{% url 'export_operational_excel' %}?{% if period %}period={{ period }}&{% endif %}{% if employee_id != 'all' %}employee={{ employee_id }}&{% endif %}{% if workout_id != 'all' %}workout={{ workout_id }}&{% endif %}{% if search_query %}search={{ search_query }}{% endif %}"
-           class="btn btn-success btn-sm">
-            <i class="bi bi-file-earmark-excel me-2"></i>Экспорт Excel
-        </a>
-    </div>
+    <!-- ТАБЕЛЬ -->
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>📋 Табель учёта за {{ all_dates.0|date:"F Y" }}</span>
+            <a href="{% url 'export_operational_excel' %}?{% if period %}period={{ period }}&{% endif %}{% if employee_id != 'all' %}employee={{ employee_id }}&{% endif %}{% if workout_id != 'all' %}workout={{ workout_id }}&{% endif %}{% if search_query %}search={{ search_query }}{% endif %}"
+               class="btn btn-success btn-sm">
+                <i class="bi bi-file-earmark-excel me-2"></i>Экспорт Excel
+            </a>
+        </div>
 
-    <!-- СТАВКА ЗА ЧАС — ВНУТРИ КАРТОЧКИ -->
-    <div class="card-body border-bottom">
-        <form method="get" class="d-inline-flex align-items-center gap-2">
-            {% for key, value in request.GET.items %}
-                {% if key != 'hour_rate' and key != 'set_hour_rate' %}
-                    <input type="hidden" name="{{ key }}" value="{{ value }}">
+        <!-- СТАВКА ЗА ЧАС -->
+        <div class="card-body border-bottom">
+            <form method="get" class="d-inline-flex align-items-center gap-2 flex-wrap">
+                {% for key, value in request.GET.items %}
+                    {% if key != 'hour_rate' and key != 'set_hour_rate' and key != 'reset_rate' %}
+                        <input type="hidden" name="{{ key }}" value="{{ value }}">
+                    {% endif %}
+                {% endfor %}
+                <strong>Ставка:</strong>
+                <input type="number" name="hour_rate" value="{% if hour_rate %}{{ hour_rate|floatformat:0 }}{% endif %}" min="0" step="1" class="form-control form-control-sm" style="width:100px;" placeholder="₽/час">
+                <button type="submit" name="set_hour_rate" class="btn btn-sm btn-primary">Сохранить</button>
+                {% if hour_rate %}
+                    <a href="?reset_rate=1" class="btn btn-sm btn-outline-secondary ms-2">Сбросить</a>
                 {% endif %}
-            {% endfor %}
-            <strong>Ставка:</strong>
-            <input type="number" name="hour_rate" value="{{ hour_rate }}" min="0" step="1" class="form-control form-control-sm" style="width:100px;">
-            <button type="submit" name="set_hour_rate" class="btn btn-sm btn-primary">Сохранить</button>
-            <span class="ms-2 text-muted">₽/час</span>
-        </form>
-    </div>
+            </form>
+        </div>
 
-    <!-- ТАБЛИЦА -->
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-bordered table-dark text-center">
-                <thead>
-                    <tr>
-                        <th>Сотрудник</th>
-                        {% for d in all_dates %}
-                            <th style="min-width:40px;">
-                                {{ d.day }}<br><small>{{ d|date:"D" }}</small>
-                            </th>
-                        {% endfor %}
-                        <th>Часов</th>
-                        <th>ЗП</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for emp in employees %}
+        <!-- ТАБЛИЦА -->
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-bordered table-dark text-center">
+                    <thead>
                         <tr>
-                            <td>{{ emp.user.username }}</td>
+                            <th>Сотрудник</th>
                             {% for d in all_dates %}
-                                {% with hours=data|get_item:emp.id|get_item:d %}
-                                    <td class="{% if hours > 0 %}bg-success text-white{% else %}bg-light text-dark{% endif %}">
-                                        {% if hours > 0 %}{{ hours|floatformat:0 }}{% else %}0{% endif %}
-                                    </td>
-                                {% endwith %}
+                                <th style="min-width:40px;">
+                                    {{ d.day }}<br><small>{{ d|date:"D" }}</small>
+                                </th>
                             {% endfor %}
-                            <td>{{ total_hours|get_item:emp.id|floatformat:0 }}</td>
-                            <td>{{ total_hours|get_item:emp.id|multiply:hour_rate|floatformat:0 }}</td>
+                            <th>Часов</th>
+                            <th>ЗП</th>
                         </tr>
-                    {% endfor %}
+                    </thead>
+                    <tbody>
+                        {% for emp in employees %}
+                            <tr>
+                                <td>{{ emp.user.username }}</td>
+                                {% for d in all_dates %}
+                                    {% with hours=data|get_item:emp.id|get_item:d %}
+                                        <td class="{% if hours > 0 %}bg-success text-white{% else %}bg-light text-dark{% endif %}">
+                                            {% if hours > 0 %}{{ hours|floatformat:0 }}{% else %}0{% endif %}
+                                        </td>
+                                    {% endwith %}
+                                {% endfor %}
+                                <td>{{ total_hours|get_item:emp.id|floatformat:0 }}</td>
+                                <td>
+                                    {% if hour_rate %}
+                                        {{ total_hours|get_item:emp.id|multiply:hour_rate|floatformat:0 }}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
 
-                    <!-- ИТОГО ПО ДНЯМ -->
-                    <tr class="fw-bold bg-secondary">
-    <td>Итого по дням</td>
-    {% for total in daily_totals %}
-        <td>{{ total|floatformat:0 }}</td>
-    {% endfor %}
-    <td>{{ total_all_hours|floatformat:0 }}</td>
-    <td>{{ total_all_hours|multiply:hour_rate|floatformat:0 }}</td>
-</tr>
-                </tbody>
-            </table>
+                        <!-- ИТОГО ПО ДНЯМ -->
+                        <tr class="fw-bold bg-secondary">
+                            <td>Итого по дням</td>
+                            {% for total in daily_totals %}
+                                <td>{{ total }}</td>
+                            {% endfor %}
+                            <td>{{ total_all_hours|floatformat:0 }}</td>
+                            <td>
+                                {% if hour_rate %}
+                                    {{ total_all_hours|multiply:hour_rate|floatformat:0 }}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
-
-</div>
-
-
-
-
 
 <!-- ДАННЫЕ -->
 <script id="report-data" type="application/json">
@@ -271,6 +286,14 @@ document.addEventListener('DOMContentLoaded', function() {
             options: { responsive: true, scales: { y: { beginAtZero: true } } }
         });
     }
+
+    // активный поиск (мгновенный)
+document.querySelector('input[name="search"]').addEventListener('input', function(e) {
+    clearTimeout(window.searchTimer);
+    window.searchTimer = setTimeout(() => {
+        this.form.submit();
+    }, 500); // Отправка через 500мс после остановки ввода
+});
 });
 </script>
 {% endblock %}
