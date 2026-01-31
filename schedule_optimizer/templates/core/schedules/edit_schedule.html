@@ -114,7 +114,7 @@ document.getElementById('auto-fill-btn').addEventListener('click', function () {
         });
     });
 
-    alert('График заполнен с учётом доступности сотрудников.');
+    showGlobalNotification('График заполнен с учётом доступности сотрудников.');
 });
 </script>
 
@@ -166,7 +166,7 @@ document.getElementById('save-schedule-btn').addEventListener('click', function 
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert('График успешно сохранён!');
+            showGlobalNotification('График успешно сохранён!');
             window.location.href = "{% url 'schedule_detail' schedule.id %}";
         } else {
             alert('Ошибка сохранения: ' + (data.error || JSON.stringify(data)));

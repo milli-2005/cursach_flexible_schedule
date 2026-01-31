@@ -423,7 +423,7 @@ function submitEditUser() {
 
     .catch(error => {
         console.error('Error updating user:', error);
-        showGlobalNotification('Произошла ошибка при обновлении пользователя. Проверьте консоль.');
+        showGlobalNotification('Произошла ошибка при обновлении пользователя', 'error');
     });
 }
 
@@ -446,14 +446,15 @@ function confirmDeleteUser() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showGlobalNotification('Пользователь успешно удален.');
+            showGlobalNotification('Пользователь успешно удален.', 'success');
             bootstrap.Modal.getInstance(document.getElementById('deleteUserModal')).hide();
             loadUsers();
         } else {
-            showGlobalNotification('Ошибка при удалении пользователя.');
+            showGlobalNotification('Ошибка при удалении пользователя.', 'error');
         }
     })
     .catch(error => console.error('Error deleting user:', error));
+    showGlobalNotification('Не удалось удалить пользователя.', 'error');
 }
 
 function openResetPasswordModal(userId, username) {
@@ -476,13 +477,14 @@ function confirmResetPassword() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showGlobalNotification('Пароль успешно сброшен.');
+            showGlobalNotification('Пароль успешно сброшен.', 'success');
             bootstrap.Modal.getInstance(document.getElementById('resetPasswordModal')).hide();
         } else {
-            showGlobalNotification('Ошибка при сбросе пароля.');
+            showGlobalNotification('Ошибка при сбросе пароля.', 'error');
         }
     })
     .catch(error => console.error('Error resetting password:', error));
+    showGlobalNotification('Не удалось сбросить пароль.', 'error');
 }
 </script>
 {% endblock %}

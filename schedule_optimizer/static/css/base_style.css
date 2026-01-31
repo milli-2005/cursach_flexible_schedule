@@ -1036,3 +1036,35 @@ h1, h2, h3 {
     background-size: calc(0.75em + 0.1875rem) calc(0.75em + 0.1875rem);
 }
 
+
+/* === ГАРАНТИЯ БЕЛОГО ТЕКСТА ВО ВСЕХ ПОЛЯХ === */
+.form-control,
+.form-select,
+.form-check-input,
+.form-check-label,
+input[type="text"],
+input[type="email"],
+input[type="tel"],
+select,
+textarea {
+    color: #ffffff !important;
+    background-color: #2d2d2d !important;
+    border-color: #444444 !important;
+}
+
+/* Для плейсхолдеров */
+.form-control::placeholder,
+.form-select::placeholder {
+    color: #aaaaaa !important;
+    opacity: 1;
+}
+
+/* При фокусе — чтобы было видно */
+.form-control:focus,
+.form-select:focus {
+    color: #ffffff !important;
+    background-color: #2d2d2d !important;
+    border-color: #9b59b6 !important;
+    box-shadow: 0 0 0 0.2rem rgba(155, 89, 182, 0.25) !important;
+}
+

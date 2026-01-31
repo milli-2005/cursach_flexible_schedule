@@ -134,7 +134,7 @@
   "pk": 1,
   "fields": {
     "password": "pbkdf2_sha256$720000$uVtmt84hk1qXievjfWTPE5$SH2+9EaVe7LSbmwKWLZFqV9l6yk6D2aeGjFbOTzT2BI=",
-    "last_login": "2026-01-30T09:54:45.062Z",
+    "last_login": "2026-01-31T08:29:35.378Z",
     "is_superuser": true,
     "username": "manager",
     "first_name": "",
@@ -152,7 +152,7 @@
   "pk": 2,
   "fields": {
     "password": "pbkdf2_sha256$720000$J31nMIwIaPWtlpddnpXMbW$4uig7EkQnbDiFQs7qtc4Txz1Q9sYQExlTT21wIkoH3M=",
-    "last_login": "2026-01-28T07:11:35.268Z",
+    "last_login": "2026-01-31T07:45:32.668Z",
     "is_superuser": false,
     "username": "milena",
     "first_name": "милена",
@@ -202,12 +202,30 @@
   }
 },
 {
+  "model": "auth.user",
+  "pk": 5,
+  "fields": {
+    "password": "pbkdf2_sha256$720000$aN0UKe4stz3LPsNhFpXp7O$TIAO1SpzxE7nbGbU6sP3qpp/Td7qOgXjygYpqhRgJJw=",
+    "last_login": null,
+    "is_superuser": false,
+    "username": "mil",
+    "first_name": "Милена",
+    "last_name": "Степан",
+    "email": "millimail.com",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-01-31T07:32:06.559Z",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
   "model": "core.userprofile",
   "pk": 1,
   "fields": {
     "user": 1,
     "role": "manager",
-    "phone": "",
+    "phone": "89872724005",
     "position": "trainer",
     "invitation_timestamp": null
   }
@@ -219,7 +237,7 @@
     "user": 2,
     "role": "employee",
     "phone": "89872724005",
-    "position": "тренер",
+    "position": "trainer",
     "invitation_timestamp": null
   }
 },
@@ -243,6 +261,17 @@
     "phone": "89872724000",
     "position": "тренер",
     "invitation_timestamp": null
+  }
+},
+{
+  "model": "core.userprofile",
+  "pk": 5,
+  "fields": {
+    "user": 5,
+    "role": "employee",
+    "phone": "+79872724005",
+    "position": "trainer",
+    "invitation_timestamp": "2026-01-31T07:40:36.831Z"
   }
 },
 {

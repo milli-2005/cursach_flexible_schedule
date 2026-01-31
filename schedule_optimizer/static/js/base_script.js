@@ -24,51 +24,38 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 
-// === ГЛОБАЛЬНЫЙ УВЕДОМИТЕЛЬ ===
+// === УВЕДОМЛЕНИЕ В ШАПКЕ (как на дашборде) ===
+
 function showGlobalNotification(text, type = 'info') {
-    const bar = document.getElementById('global-notification-bar');
-    const textEl = document.getElementById('global-notification-text');
+    const container = document.getElementById('persistent-notification');
+    const textEl = document.getElementById('persistent-notification-text');
 
-    // Стили
-    bar.className = 'fixed-top alert alert-dismissible fade show mb-0 border-0 rounded-0 text-center';
-    bar.style.display = 'block';
-
-    switch (type) {
-        case 'success':
-            bar.style.backgroundColor = '#28a745'; // зелёный
-            break;
-        case 'error':
-            bar.style.backgroundColor = '#dc3545'; // красный
-            break;
-        case 'warning':
-            bar.style.backgroundColor = '#ffc107'; // жёлтый
-            break;
-        default:
-            bar.style.backgroundColor = '#17a2b8'; // синий
+    if (!container || !textEl) {
+        console.warn('⚠️ persistent-notification не найден.');
+        return;
     }
 
     textEl.textContent = text;
-    bar.classList.add('show');
 
-    // Авто-скрытие через 3 сек
-    setTimeout(() => {
-        hideGlobalNotification();
-    }, 3000);
+    // Цвета
+    if (type === 'success') {
+        container.style.backgroundColor = '#1e3a2e';
+        container.style.borderLeftColor = '#22c55e';
+    } else if (type === 'error') {
+        container.style.backgroundColor = '#475569';
+        container.style.borderLeftColor = '#ef4444';
+    } else {
+        container.style.backgroundColor = '#1e3a2e';
+        container.style.borderLeftColor = '#22c55e';
+    }
+
+    // Показываем
+    container.style.display = 'block'; // ← главное!
 }
 
-function hideGlobalNotification() {
-    const bar = document.getElementById('global-notification-bar');
-    bar.classList.remove('show');
-    setTimeout(() => {
-        bar.style.display = 'none';
-    }, 300);
-}
-
-// === ПЕРЕОПРЕДЕЛЕНИЕ alert() ===
-if (typeof window !== 'undefined') {
-    const originalAlert = window.alert;
-    window.alert = function(message) {
-        showGlobalNotification(String(message), 'info');
-        // Не вызываем originalAlert — мы его полностью заменяем
-    };
+function hidePersistentNotification() {
+    const container = document.getElementById('persistent-notification');
+    if (container) {
+        container.style.display = 'none';
+    }
 }

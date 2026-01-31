@@ -82,7 +82,7 @@ document.getElementById('copy-prev-week').addEventListener('click', function () 
         const checkbox = document.querySelector(`input[name="${item.date}_${item.time}"]`);
         if (checkbox) checkbox.checked = true;
     });
-    alert('Данные с прошлой недели загружены.');
+    showGlobalNotification('Данные с прошлой недели загружены.', 'succes');
 });
 </script>
 {% endblock %}

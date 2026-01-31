@@ -164,16 +164,16 @@
         .then(response => response.json())
         .then(result => {
             if (result.success) {
-                alert('Тип занятия успешно сохранен.');
+                showGlobalNotification('Тип занятия успешно сохранен.');
                 bootstrap.Modal.getInstance(document.getElementById('workoutTypeModal')).hide();
                 loadWorkoutTypes();
             } else {
-                alert('Ошибка при сохранении: ' + JSON.stringify(result.errors));
+                showGlobalNotification('Ошибка при сохранении: ' + JSON.stringify(result.errors));
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Произошла ошибка. Проверьте консоль.');
+            showGlobalNotification('Произошла ошибка. Проверьте консоль.');
         });
     }
 
@@ -194,16 +194,16 @@
         .then(response => response.json())
         .then(result => {
             if (result.success) {
-                alert('Тип занятия успешно удален.');
+                showGlobalNotification('Тип занятия успешно удален.');
                 bootstrap.Modal.getInstance(document.getElementById('deleteWorkoutTypeModal')).hide();
                 loadWorkoutTypes();
             } else {
-                alert('Ошибка при удалении: ' + JSON.stringify(result.errors));
+                showGlobalNotification('Ошибка при удалении: ' + JSON.stringify(result.errors));
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Произошла ошибка. Проверьте консоль.');
+            showGlobalNotification('Произошла ошибка. Проверьте консоль.');
         });
     }
 </script>

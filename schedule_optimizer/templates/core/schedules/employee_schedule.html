@@ -131,12 +131,12 @@ document.querySelectorAll('.approve-btn').forEach(btn => {
                     </div>
                 `;
             } else {
-                alert('Ошибка: ' + (data.error || 'Неизвестная ошибка'));
+                showGlobalNotification('Ошибка: ' + (data.error || 'Неизвестная ошибка'));
             }
         })
         .catch(error => {
             console.error('Ошибка:', error);
-            alert('Не удалось отправить запрос.');
+            showGlobalNotification('Не удалось отправить запрос.');
         });
     });
 });
@@ -150,7 +150,7 @@ document.querySelectorAll('.submit-comment-btn').forEach(btn => {
         const comment = textarea.value.trim();
 
         if (!comment) {
-            alert('Пожалуйста, напишите замечание.');
+            showGlobalNotification('Пожалуйста, напишите замечание.');
             return;
         }
 
@@ -176,12 +176,12 @@ document.querySelectorAll('.submit-comment-btn').forEach(btn => {
                 const bootstrapModal = bootstrap.Modal.getInstance(modal);
                 if (bootstrapModal) bootstrapModal.hide();
             } else {
-                alert('Ошибка: ' + (data.error || 'Неизвестная ошибка'));
+                showGlobalNotification('Ошибка: ' + (data.error || 'Неизвестная ошибка'));
             }
         })
         .catch(error => {
             console.error('Ошибка:', error);
-            alert('Не удалось отправить запрос.');
+            showGlobalNotification('Не удалось отправить запрос.');
         });
     });
 });

@@ -108,7 +108,7 @@ document.getElementById('auto-fill-btn').addEventListener('click', function () {
         });
     });
 
-    alert('График заполнен с учётом доступности сотрудников.');
+    showGlobalNotification('График заполнен с учётом доступности сотрудников.');
 });
 </script>
 
@@ -154,15 +154,15 @@ document.getElementById('save-schedule-btn').addEventListener('click', function 
     .then(r => r.json())
     .then(data => {
         if (data.success) {
-            alert('График успешно сохранён!');
+            showGlobalNotification('График успешно сохранён!');
             window.location.href = '/schedules/';
         } else {
-            alert('Ошибка: ' + (data.error || 'Неизвестная ошибка'));
+            showGlobalNotification('Ошибка: ' + (data.error || 'Неизвестная ошибка'));
         }
     })
     .catch(e => {
         console.error(e);
-        alert('Ошибка сети');
+        showGlobalNotification('Ошибка сети');
     });
 });
 </script>
