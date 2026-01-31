@@ -8,8 +8,22 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h2 class="mb-4">Управление пользователями</h2>
         <a class="nav-link text-white" onclick="openCreateUserModal()"><i class="bi bi-plus-circle"></i> Пригласить нового пользователя</a>
-
     </div>
+
+    <!-- ПОИСК И ФИЛЬТР -->
+<div class="d-flex gap-3 mb-3">
+    <div class="flex-grow-1">
+        <input type="text" id="user-search" class="form-control" placeholder="Поиск по имени, фамилии, email, логину...">
+    </div>
+    <div style="width: 200px;">
+        <select id="position-filter" class="form-select">
+            <option value="">Все должности</option>
+            <option value="trainer">Тренер</option>
+            <option value="administrator">Администратор</option>
+            <option value="manager">Руководитель</option>
+        </select>
+    </div>
+</div>
 
     <div class="management-table">
         <table>
@@ -258,35 +272,74 @@
         modal.show();
     }
 
-    function loadUsers() {
+    let allUsers = []; // глобальное хранилище
+
+function loadUsers() {
     fetch('/api/users/')
         .then(response => response.json())
         .then(data => {
-            const tbody = document.getElementById('userTableBody');
-            tbody.innerHTML = '';
-            data.forEach(user => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${user.username}</td>
-                    <td>${user.email}</td>
-                    <td>${user.profile.role_display}</td>
-                    <td>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="openEditUserModal(${user.id})">
-                            <i class="bi bi-pencil"></i>
-                        </button>
-                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="openDeleteUserModal(${user.id}, '${user.username}')">
-                            <i class="bi bi-trash"></i>
-                        </button>
-                        <button type="button" class="btn btn-sm btn-outline-warning" onclick="openResetPasswordModal(${user.id}, '${user.username}')">
-                            <i class="bi bi-key"></i>
-                        </button>
-                    </td>
-                `;
-                tbody.appendChild(row);
-            });
+            allUsers = data;
+            filterAndRenderUsers();
         })
         .catch(error => console.error('Error loading users:', error));
 }
+
+function filterAndRenderUsers() {
+    const searchTerm = document.getElementById('user-search').value.toLowerCase().trim();
+    const positionFilter = document.getElementById('position-filter').value;
+
+    const filtered = allUsers.filter(user => {
+        // Поиск по всем полям
+        const matchesSearch =
+            user.username.toLowerCase().includes(searchTerm) ||
+            user.email.toLowerCase().includes(searchTerm) ||
+            (user.first_name || '').toLowerCase().includes(searchTerm) ||
+            (user.last_name || '').toLowerCase().includes(searchTerm);
+
+        // Фильтр по должности
+        const matchesPosition = !positionFilter || user.profile.position === positionFilter;
+
+        return matchesSearch && matchesPosition;
+    });
+
+    const tbody = document.getElementById('userTableBody');
+    tbody.innerHTML = '';
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">Пользователи не найдены</td></tr>`;
+        return;
+    }
+
+    filtered.forEach(user => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${user.username}</td>
+            <td>${user.email}</td>
+            <td>${user.profile.role_display}</td>
+            <td>
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="openEditUserModal(${user.id})">
+                    <i class="bi bi-pencil"></i>
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="openDeleteUserModal(${user.id}, '${user.username}')">
+                    <i class="bi bi-trash"></i>
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-warning" onclick="openResetPasswordModal(${user.id}, '${user.username}')">
+                    <i class="bi bi-key"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+// Привязка событий
+document.addEventListener('DOMContentLoaded', function () {
+    loadUsers();
+
+    // Активный поиск
+    document.getElementById('user-search').addEventListener('input', filterAndRenderUsers);
+    document.getElementById('position-filter').addEventListener('change', filterAndRenderUsers);
+});
 
   // Инициализация маски телефона
 document.addEventListener('DOMContentLoaded', function() {
