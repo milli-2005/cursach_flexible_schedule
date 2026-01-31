@@ -14,14 +14,13 @@
                 <li><strong>Имя:</strong> {{ user.first_name }}</li>
                 <li><strong>Фамилия:</strong> {{ user.last_name }}</li>
                 <li><strong>Роль:</strong> {{ profile.get_role_display }}</li>
-                <li><strong>Текущая роль:</strong> {{ profile.get_current_role_display }}</li>
                 <li><strong>Должность:</strong> {{ profile.position|default:"-" }}</li>
                 <li><strong>Телефон:</strong> {{ profile.phone|default:"-" }}</li>
             </ul>
         </div>
         <div class="profile-actions">
-            <a href="{% url 'profile_edit' %}" class="btn btn-primary">Редактировать</a>
-            <a href="{% url 'change_password' %}" class="btn btn-secondary">Сменить пароль</a>
+<!--            <a href="{% url 'profile_edit' %}" class="btn btn-primary">Редактировать</a>-->
+            <a href="{% url 'change_password' %}" class="btn btn-primary">Сменить пароль</a>
         </div>
     </div>
 </div>

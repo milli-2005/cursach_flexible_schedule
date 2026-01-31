@@ -83,28 +83,29 @@ def api_invite_user(request):
                 username=form.cleaned_data['username'],
                 email=form.cleaned_data['email'],
                 password=raw_password,
-                first_name=form.cleaned_data.get('first_name', ''),
-                last_name=form.cleaned_data.get('last_name', ''),
+                first_name=form.cleaned_data['first_name'],
+                last_name=form.cleaned_data['last_name'],
             )
             profile = user.profile
             profile.role = form.cleaned_data['role']
-            profile.position = form.cleaned_data.get('position', '')
-            profile.phone = form.cleaned_data.get('phone', '')
-            profile.invitation_timestamp = timezone.now() # Устанавливаем временную метку
+            profile.position = form.cleaned_data['position']
+            profile.phone = form.cleaned_data['phone']  # уже нормализован
+            profile.invitation_timestamp = timezone.now()
             profile.save()
 
             try:
                 send_user_invitation(user, raw_password)
             except Exception as e:
-                # Логгируем ошибку, но не прерываем создание
                 import logging
-                logging.error(f'Ошибка отправки email для пользователя {user.username}: {str(e)}')
+                logging.error(f'Ошибка отправки email для {user.username}: {str(e)}')
 
             return JsonResponse({'success': True})
         except Exception as e:
-            return JsonResponse({'success': False, 'errors': {'__all__': [str(e)]}})
+            return JsonResponse({'success': False, 'errors': {'__all__': [f'Ошибка создания: {str(e)}']}})
     else:
         return JsonResponse({'success': False, 'errors': form.errors})
+
+
 
 @login_required
 @user_passes_test(is_admin)
@@ -116,6 +117,8 @@ def api_get_user_detail(request, user_id):
             'id': user.id,
             'username': user.username,
             'email': user.email,
+            'first_name': user.first_name or '',
+            'last_name': user.last_name or '',
             'profile': {
                 'role': user.profile.role,
                 'position': user.profile.position,
@@ -141,18 +144,24 @@ def api_update_user(request, user_id):
         return JsonResponse({'success': False, 'errors': {'__all__': ['Пользователь не найден.']}})
 
     try:
-        # Парсим JSON из тела запроса
         data = json.loads(request.body.decode('utf-8'))
         logger.info(f"Received JSON data for update: {data}")
     except json.JSONDecodeError:
         logger.error("Invalid JSON in request body")
         return JsonResponse({'success': False, 'errors': {'__all__': ['Неверный формат данных.']}})
 
+    # Получаем и очищаем все поля
     username = data.get('username', '').strip()
     email = data.get('email', '').strip()
+    first_name = data.get('first_name', '').strip()
+    last_name = data.get('last_name', '').strip()
     role = data.get('role', '').strip()
+    position = data.get('position', '').strip()
+    phone = data.get('phone', '').strip()
 
     errors = {}
+
+    # === ОБЯЗАТЕЛЬНЫЕ ПОЛЯ ===
 
     if not username:
         errors['username'] = ['Это поле обязательно.']
@@ -164,22 +173,48 @@ def api_update_user(request, user_id):
     elif User.objects.exclude(id=user_id).filter(email=email).exists():
         errors['email'] = ['Пользователь с таким email уже существует.']
 
+    if not first_name:
+        errors['first_name'] = ['Имя обязательно.']
+
+    if not last_name:
+        errors['last_name'] = ['Фамилия обязательна.']
+
     if not role:
-        errors['role'] = ['Это поле обязательно.']
+        errors['role'] = ['Роль обязательна.']
     elif role not in dict(UserProfile.ROLE_CHOICES):
         errors['role'] = ['Выбрана недопустимая роль.']
 
+    if not position:
+        errors['position'] = ['Должность обязательна.']
+    elif position not in dict(UserProfile.POSITION_CHOICES):
+        errors['position'] = ['Выбрана недопустимая должность.']
+
+    if not phone:
+        errors['phone'] = ['Телефон обязателен.']
+    else:
+        # Опциональная проверка формата (можно убрать, если не нужна)
+        import re
+        if not re.match(r'^[\+]?[0-9\s\-\(\)]{7,}$', phone):
+            errors['phone'] = ['Неверный формат телефона. Пример: +7 999 123-45-67']
+
+    # === Если есть ошибки ===
     if errors:
         logger.warning(f"Validation errors for user {user_id}: {errors}")
         return JsonResponse({'success': False, 'errors': errors})
 
-    # Сохраняем
+    # === Сохранение ===
     try:
+        # User
         user.username = username
         user.email = email
+        user.first_name = first_name
+        user.last_name = last_name
         user.save()
 
+        # Profile
         profile.role = role
+        profile.position = position
+        profile.phone = phone
         profile.save()
 
         logger.info(f"User {user_id} updated successfully")
@@ -187,6 +222,7 @@ def api_update_user(request, user_id):
     except Exception as e:
         logger.error(f"Error saving user {user_id}: {str(e)}")
         return JsonResponse({'success': False, 'errors': {'__all__': [f'Ошибка при сохранении: {str(e)}']}})
+
 
 
 @login_required

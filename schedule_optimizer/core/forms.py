@@ -4,59 +4,80 @@ from django.contrib.auth.models import User
 from django.contrib.auth.forms import UserCreationForm, SetPasswordForm
 from .models import UserProfile
 
-class UserInvitationForm(forms.Form):
-    username = forms.CharField(
-        max_length=150,
-        label="Имя пользователя",
-        help_text="Латинские буквы, цифры и символы @/./+/-/_"
-    )
-    email = forms.EmailField(
-        label="Email",
-        help_text="На этот email будет отправлено приглашение"
-    )
-    first_name = forms.CharField(
-        max_length=30,
-        required=False,
-        label="Имя"
-    )
-    last_name = forms.CharField(
-        max_length=30,
-        required=False,
-        label="Фамилия"
-    )
+from django import forms
+from django.contrib.auth.models import User
+from .models import UserProfile
+import re
 
-    ROLE_CHOICES = [
-        ('employee', 'Сотрудник'),
-        ('studio_admin', 'Администратор студии'),
-        ('manager', 'Руководитель'),
-    ]
-    role = forms.ChoiceField(
-        choices=ROLE_CHOICES,
-        label="Роль в системе",
-        initial='employee'
-    )
-    position = forms.CharField(
-        max_length=100,
-        required=False,
-        label="Должность"
-    )
-    phone = forms.CharField(
-        max_length=20,
-        required=False,
-        label="Телефон"
-    )
+class UserInvitationForm(forms.ModelForm):
+    username = forms.CharField(max_length=150, label="Имя пользователя")
+    email = forms.EmailField(label="Email")
+    first_name = forms.CharField(max_length=150, label="Имя")
+    last_name = forms.CharField(max_length=150, label="Фамилия")
+    phone = forms.CharField(max_length=20, label="Телефон")
+
+    class Meta:
+        model = UserProfile
+        fields = ['role', 'position', 'phone']
 
     def clean_username(self):
-        username = self.cleaned_data['username']
+        username = self.cleaned_data['username'].strip()
+        if not username:
+            raise forms.ValidationError("Имя пользователя обязательно.")
         if User.objects.filter(username=username).exists():
             raise forms.ValidationError("Пользователь с таким именем уже существует.")
+        # Только латиница, цифры, _ и -
+        if not re.match(r'^[a-zA-Z0-9_-]+$', username):
+            raise forms.ValidationError("Имя пользователя может содержать только латинские буквы, цифры, _ и -.")
         return username
 
     def clean_email(self):
-        email = self.cleaned_data['email']
+        email = self.cleaned_data['email'].strip()
+        if not email:
+            raise forms.ValidationError("Email обязателен.")
         if User.objects.filter(email=email).exists():
             raise forms.ValidationError("Пользователь с таким email уже существует.")
         return email
+
+    def clean_first_name(self):
+        name = self.cleaned_data['first_name'].strip()
+        if not name:
+            raise forms.ValidationError("Имя обязательно.")
+        # Только кириллица и пробелы
+        if not re.match(r'^[а-яА-ЯёЁ\s]+$', name):
+            raise forms.ValidationError("Имя должно содержать только русские буквы.")
+        return name
+
+    def clean_last_name(self):
+        name = self.cleaned_data['last_name'].strip()
+        if not name:
+            raise forms.ValidationError("Фамилия обязательна.")
+        if not re.match(r'^[а-яА-ЯёЁ\s]+$', name):
+            raise forms.ValidationError("Фамилия должна содержать только русские буквы.")
+        return name
+
+    def clean_phone(self):
+        phone = self.cleaned_data['phone'].strip()
+        if not phone:
+            raise forms.ValidationError("Телефон обязателен.")
+        cleaned = re.sub(r'[^\d+]', '', phone)
+        if not re.match(r'^(\+7|8)\d{10}$', cleaned):
+            raise forms.ValidationError("Неверный формат телефона. Пример: +7 999 123-45-67")
+        if cleaned.startswith('8'):
+            cleaned = '+7' + cleaned[1:]
+        return cleaned
+
+    def clean_role(self):
+        role = self.cleaned_data['role']
+        if not role:
+            raise forms.ValidationError("Роль обязательна.")
+        return role
+
+    def clean_position(self):
+        position = self.cleaned_data['position']
+        if not position:
+            raise forms.ValidationError("Должность обязательна.")
+        return position
 
 
 

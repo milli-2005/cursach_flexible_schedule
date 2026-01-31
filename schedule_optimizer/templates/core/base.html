@@ -24,6 +24,18 @@
     {% block extra_css %}{% endblock %}
 </head>
 <body>
+
+<!-- ГЛОБАЛЬНЫЙ БАР УВЕДОМЛЕНИЙ -->
+<div id="global-notification-bar" class="fixed-top alert alert-dismissible fade show mb-0 border-0 rounded-0 text-center"
+     style="background-color: #2d2d2d; color: #fff; z-index: 10000; display: none;">
+    <div class="container">
+        <span id="global-notification-text"></span>
+        <button type="button" class="btn-close btn-close-white ms-2" aria-label="Закрыть"
+                onclick="hideGlobalNotification()"></button>
+    </div>
+</div>
+
+
     <!-- Основной контейнер -->
     <div class="d-flex">
         <!-- Sidebar / Navigation -->
@@ -34,7 +46,7 @@
             <nav class="px-3">
                 <ul class="nav flex-column">
                     <li><a href="{% url 'dashboard' %}" class="nav-link text-white"><i class="bi bi-house-door"></i> Дашборд</a></li>
-                    <li><a href="{% url 'about' %}" class="nav-link text-white"><i class="bi bi-info-circle"></i> О нас</a></li>
+<!--                    <li><a href="{% url 'about' %}" class="nav-link text-white"><i class="bi bi-info-circle"></i> О нас</a></li>-->
 
                     {% if user.is_authenticated %}
                         {% if user.profile.role == 'employee' %}
@@ -109,5 +121,60 @@
     <!-- Custom JS -->
     <script src="/static/js/base_script.js"></script>
     {% block extra_js %}{% endblock %}
+
+    <!-- IMask — маска телефона -->
+    <script src="https://unpkg.com/imask"></script>
+<script>
+// === ГЛОБАЛЬНЫЙ УВЕДОМИТЕЛЬ ===
+function showGlobalNotification(text, type = 'info') {
+    const bar = document.getElementById('global-notification-bar');
+    const textEl = document.getElementById('global-notification-text');
+
+    // Стили
+    bar.className = 'fixed-top alert alert-dismissible fade show mb-0 border-0 rounded-0 text-center';
+    bar.style.display = 'block';
+
+    switch (type) {
+        case 'success':
+            bar.style.backgroundColor = '#28a745'; // зелёный
+            break;
+        case 'error':
+            bar.style.backgroundColor = '#dc3545'; // красный
+            break;
+        case 'warning':
+            bar.style.backgroundColor = '#ffc107'; // жёлтый
+            break;
+        default:
+            bar.style.backgroundColor = '#17a2b8'; // синий
+    }
+
+    textEl.textContent = text;
+    bar.classList.add('show');
+
+    // Авто-скрытие через 3 сек
+    setTimeout(() => {
+        hideGlobalNotification();
+    }, 3000);
+}
+
+function hideGlobalNotification() {
+    const bar = document.getElementById('global-notification-bar');
+    bar.classList.remove('show');
+    setTimeout(() => {
+        bar.style.display = 'none';
+    }, 300);
+}
+
+// === ПЕРЕОПРЕДЕЛЕНИЕ alert() ===
+if (typeof window !== 'undefined') {
+    const originalAlert = window.alert;
+    window.alert = function(message) {
+        showGlobalNotification(String(message), 'info');
+        // Не вызываем originalAlert — мы его полностью заменяем
+    };
+}
+</script>
 </body>
+
+
 </html>

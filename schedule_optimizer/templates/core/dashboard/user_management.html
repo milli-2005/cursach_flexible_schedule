@@ -3,12 +3,10 @@
 {% block title %}Управление пользователями - {{ block.super }}{% endblock %}
 
 {% block content %}
+
 <div class="management-container">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="mb-0">Управление пользователями</h2>
-<!--        <button type="button" class="btn btn-primary" onclick="openCreateUserModal()">-->
-<!--            Пригласить нового пользователя-->
-<!--        </button>-->
+        <h2 class="mb-4">Управление пользователями</h2>
         <a class="nav-link text-white" onclick="openCreateUserModal()"><i class="bi bi-plus-circle"></i> Пригласить нового пользователя</a>
 
     </div>
@@ -33,7 +31,6 @@
 
 {% block modals %}
 <!-- Модальное окно для создания пользователя -->
-<!-- Модальное окно для создания пользователя -->
 <div class="modal fade" id="createUserModal" tabindex="-1" aria-labelledby="createUserModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -42,6 +39,13 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
+
+
+                <!-- ГЛОБАЛЬНАЯ ОШИБКА — розовый блок сверху -->
+                <div class="alert alert-danger mb-3 d-none" id="global-error-box">
+                    <strong>Ошибка:</strong> <span id="global-error-text"></span>
+                </div>
+
                 <form id="createUserForm">
                     {% csrf_token %}
                     <div class="row">
@@ -49,55 +53,65 @@
                             <div class="mb-3">
                                 <label for="id_username" class="form-label">Имя пользователя *</label>
                                 <input type="text" class="form-control" id="id_username" name="username" required>
-                                <div class="invalid-feedback"></div>
+                                <div class="invalid-feedback" id="error-username"></div>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="id_email" class="form-label">Email *</label>
                                 <input type="email" class="form-control" id="id_email" name="email" required>
-                                <div class="invalid-feedback"></div>
+                                <div class="invalid-feedback" id="error-email"></div>
                             </div>
                         </div>
                     </div>
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="id_first_name" class="form-label">Имя</label>
-                                <input type="text" class="form-control" id="id_first_name" name="first_name">
+                                <label for="id_first_name" class="form-label">Имя *</label>
+                                <input type="text" class="form-control" id="id_first_name" name="first_name" required>
+                                <div class="invalid-feedback" id="error-first_name"></div>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="id_last_name" class="form-label">Фамилия</label>
-                                <input type="text" class="form-control" id="id_last_name" name="last_name">
+                                <label for="id_last_name" class="form-label">Фамилия *</label>
+                                <input type="text" class="form-control" id="id_last_name" name="last_name" required>
+                                <div class="invalid-feedback" id="error-last_name"></div>
                             </div>
                         </div>
                     </div>
                     <div class="row">
+                       <div class="col-md-6">
+    <div class="mb-3">
+        <label for="id_role" class="form-label">Роль *</label>
+        <select class="form-select" id="id_role" name="role" required>
+            <option value="">Выберите...</option>
+            <option value="employee">Сотрудник</option>
+            <option value="studio_admin">Администратор</option>
+            <option value="manager">Руководитель</option>
+        </select>
+        <div class="invalid-feedback" id="error-role"></div>
+    </div>
+</div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="id_role" class="form-label">Роль *</label>
-                                <select class="form-select" id="id_role" name="role" required>
-                                    <option value="employee">Сотрудник</option>
-                                    <option value="studio_admin">Администратор</option>
+                                <label for="id_position" class="form-label">Должность *</label>
+                                <select class="form-select" id="id_position" name="position" required>
+                                    <option value="">Выберите...</option>
+                                    <option value="trainer">Тренер</option>
+                                    <option value="administrator">Администратор</option>
                                     <option value="manager">Руководитель</option>
                                 </select>
-                                <div class="invalid-feedback"></div>
+                                <div class="invalid-feedback" id="error-position"></div>
                             </div>
                         </div>
                     </div>
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="id_position" class="form-label">Должность</label>
-                                <input type="text" class="form-control" id="id_position" name="position">
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="id_phone" class="form-label">Телефон</label>
-                                <input type="text" class="form-control" id="id_phone" name="phone">
+                                <label for="id_phone" class="form-label">Телефон *</label>
+                                <input type="text" class="form-control" id="id_phone" name="phone" placeholder="+7 999 123-45-67" required>
+                                <div class="invalid-feedback" id="error-phone"></div>
                             </div>
                         </div>
                     </div>
@@ -110,6 +124,7 @@
         </div>
     </div>
 </div>
+
 <!-- Модальное окно для редактирования пользователя -->
 <div class="modal fade" id="editUserModal" tabindex="-1" aria-labelledby="editUserModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
@@ -127,14 +142,26 @@
                             <div class="mb-3">
                                 <label for="editUsername" class="form-label">Имя пользователя *</label>
                                 <input type="text" class="form-control" id="editUsername" name="username" required>
-                                <div class="invalid-feedback"></div>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="editEmail" class="form-label">Email *</label>
                                 <input type="email" class="form-control" id="editEmail" name="email" required>
-                                <div class="invalid-feedback"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editFirstName" class="form-label">Имя</label>
+                                <input type="text" class="form-control" id="editFirstName" name="first_name">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editLastName" class="form-label">Фамилия</label>
+                                <input type="text" class="form-control" id="editLastName" name="last_name">
                             </div>
                         </div>
                     </div>
@@ -144,13 +171,29 @@
                                 <label for="editRole" class="form-label">Роль *</label>
                                 <select class="form-select" id="editRole" name="role" required>
                                     <option value="employee">Сотрудник</option>
-                                    <option value="studio_admin">Администратор</option>
+<!--                                    <option value="studio_admin">Администратор</option>-->
                                     <option value="manager">Руководитель</option>
                                 </select>
-                                <div class="invalid-feedback"></div>
                             </div>
                         </div>
-
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editPosition" class="form-label">Должность</label>
+                                <select class="form-select" id="editPosition" name="position">
+                                    <option value="trainer">Тренер</option>
+                                    <option value="administrator">Администратор</option>
+                                    <option value="manager">Руководитель</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editPhone" class="form-label">Телефон</label>
+                                <input type="text" class="form-control" id="editPhone" name="phone">
+                            </div>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -161,6 +204,7 @@
         </div>
     </div>
 </div>
+
 
 <!-- Модальное окно для удаления пользователя -->
 <div class="modal fade" id="deleteUserModal" tabindex="-1" aria-labelledby="deleteUserModalLabel" aria-hidden="true">
@@ -244,30 +288,77 @@
         .catch(error => console.error('Error loading users:', error));
 }
 
-    function submitCreateUser() {
-        const form = document.getElementById('createUserForm');
-        const formData = new FormData(form);
-
-        fetch('/api/invite-user/', {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert('Пользователь успешно приглашен.');
-                bootstrap.Modal.getInstance(document.getElementById('createUserModal')).hide();
-                form.reset();
-                loadUsers();
-            } else {
-                alert('Ошибка при создании пользователя.');
-            }
-        })
-        .catch(error => console.error('Error creating user:', error));
+  // Инициализация маски телефона
+document.addEventListener('DOMContentLoaded', function() {
+    const phoneInput = document.getElementById('id_phone');
+    if (phoneInput) {
+        IMask(phoneInput, {
+            mask: '+{7} (000) 000-00-00',
+            lazy: false, // показывать маску сразу
+            placeholderChar: '_'
+        });
     }
+});
+
+
+// Функция отправки
+function submitCreateUser() {
+    // Сброс ошибок
+    document.querySelectorAll('.invalid-feedback').forEach(el => {
+        el.textContent = '';
+        el.style.display = 'none';
+    });
+    document.querySelectorAll('.form-control, .form-select').forEach(el => {
+        el.classList.remove('is-invalid');
+    });
+    document.getElementById('global-error-box').classList.add('d-none');
+
+    const formData = new FormData(document.getElementById('createUserForm'));
+
+    fetch('/api/invite-user/', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('createUserModal')).hide();
+            document.getElementById('createUserForm').reset();
+            loadUsers();
+        } else {
+            // Глобальная ошибка (например, "Пользователь уже существует")
+            if (data.errors && data.errors['__all__']) {
+                const msg = Array.isArray(data.errors['__all__'])
+                    ? data.errors['__all__'][0]
+                    : String(data.errors['__all__']);
+                document.getElementById('global-error-text').textContent = msg;
+                document.getElementById('global-error-box').classList.remove('d-none');
+            }
+
+            // Ошибки по полям
+            if (data.errors) {
+                for (const [field, messages] of Object.entries(data.errors)) {
+                    if (field === '__all__') continue;
+                    const errorText = Array.isArray(messages) ? messages[0] : String(messages);
+                    const errorEl = document.getElementById(`error-${field}`);
+                    const inputEl = document.getElementById(`id_${field}`);
+                    if (errorEl && inputEl) {
+                        errorEl.textContent = errorText;
+                        errorEl.style.display = 'block';
+                        inputEl.classList.add('is-invalid');
+                    }
+                }
+            }
+        }
+    })
+    .catch(() => {
+        document.getElementById('global-error-text').textContent = 'Сетевая ошибка. Проверьте подключение.';
+        document.getElementById('global-error-box').classList.remove('d-none');
+    });
+}
 
     function openEditUserModal(userId) {
     fetch(`/api/users/${userId}/`)
@@ -276,7 +367,11 @@
             document.getElementById('editUserId').value = user.id;
             document.getElementById('editUsername').value = user.username;
             document.getElementById('editEmail').value = user.email;
+            document.getElementById('editFirstName').value = user.first_name || '';
+            document.getElementById('editLastName').value = user.last_name || '';
             document.getElementById('editRole').value = user.profile.role;
+            document.getElementById('editPosition').value = user.profile.position;
+            document.getElementById('editPhone').value = user.profile.phone || '';
 
             const modal = new bootstrap.Modal(document.getElementById('editUserModal'));
             modal.show();
@@ -287,16 +382,23 @@
 
 function submitEditUser() {
     const userId = document.getElementById('editUserId').value;
-    const username = document.getElementById('editUsername').value;
-    const email = document.getElementById('editEmail').value;
-    const role = document.getElementById('editRole').value;
-
-    // Создаем объект данных
     const data = {
-        username: username,
-        email: email,
-        role: role
+        username: document.getElementById('editUsername').value,
+        email: document.getElementById('editEmail').value,
+        first_name: document.getElementById('editFirstName').value,
+        last_name: document.getElementById('editLastName').value,
+        role: document.getElementById('editRole').value,
+        position: document.getElementById('editPosition').value,
+        phone: document.getElementById('editPhone').value
     };
+
+
+<!--    // Создаем объект данных-->
+<!--    const data = {-->
+<!--        username: username,-->
+<!--        email: email,-->
+<!--        role: role-->
+<!--    };-->
 
     fetch(`/api/users/${userId}/update/`, {
         method: 'POST', // Меняем на POST
@@ -306,32 +408,22 @@ function submitEditUser() {
             'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
         }
     })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response.json();
-    })
-    .then(data => {
-        if (data.success) {
-            alert('Пользователь успешно обновлен.');
+
+
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            showGlobalNotification('Пользователь успешно обновлён.', 'success');
             bootstrap.Modal.getInstance(document.getElementById('editUserModal')).hide();
             loadUsers();
         } else {
-            let errorMessage = 'Ошибка при обновлении пользователя:\n';
-            if (data.errors) {
-                for (const [field, messages] of Object.entries(data.errors)) {
-                    errorMessage += `${field}: ${messages.join(', ')}\n`;
-                }
-            } else {
-                errorMessage += 'Неизвестная ошибка.';
-            }
-            alert(errorMessage);
+             showGlobalNotification('Ошибка: ' + (result.error || 'Неизвестная ошибка'), 'error');
         }
     })
+
     .catch(error => {
         console.error('Error updating user:', error);
-        alert('Произошла ошибка при обновлении пользователя. Проверьте консоль.');
+        showGlobalNotification('Произошла ошибка при обновлении пользователя. Проверьте консоль.');
     });
 }
 
@@ -354,11 +446,11 @@ function confirmDeleteUser() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert('Пользователь успешно удален.');
+            showGlobalNotification('Пользователь успешно удален.');
             bootstrap.Modal.getInstance(document.getElementById('deleteUserModal')).hide();
             loadUsers();
         } else {
-            alert('Ошибка при удалении пользователя.');
+            showGlobalNotification('Ошибка при удалении пользователя.');
         }
     })
     .catch(error => console.error('Error deleting user:', error));
@@ -384,10 +476,10 @@ function confirmResetPassword() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert('Пароль успешно сброшен.');
+            showGlobalNotification('Пароль успешно сброшен.');
             bootstrap.Modal.getInstance(document.getElementById('resetPasswordModal')).hide();
         } else {
-            alert('Ошибка при сбросе пароля.');
+            showGlobalNotification('Ошибка при сбросе пароля.');
         }
     })
     .catch(error => console.error('Error resetting password:', error));
