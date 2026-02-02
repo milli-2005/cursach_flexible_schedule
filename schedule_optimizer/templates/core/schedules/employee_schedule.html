@@ -56,17 +56,25 @@
                                     <th>Дата</th>
                                     <th>Время</th>
                                     <th>Тип занятия</th>
+                                    <th>Действия</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for a in item.assignments %}
-                                    <tr>
-                                        <td>{{ a.date|date:"D, d M" }}</td>
-                                        <td>{{ a.start_time|time:"H:i" }} – {{ a.end_time|time:"H:i" }}</td>
-                                        <td>{{ a.workout_type.name|default:"Работа" }}</td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
+    {% for a in item.assignments %}
+        <tr>
+            <td>{{ a.date|date:"D, d M" }}</td>
+            <td>{{ a.start_time|time:"H:i" }} – {{ a.end_time|time:"H:i" }}</td>
+            <td>{{ a.workout_type.name|default:"Работа" }}</td>
+            <td>
+                <!-- КНОПКА ОБМЕНА -->
+                <a href="{% url 'shift_swaps' %}?shift_id={{ a.id }}"
+                   class="btn btn-sm btn-outline-info">
+                    <i class="bi bi-arrow-left-right"></i> Обменять
+                </a>
+            </td>
+        </tr>
+    {% endfor %}
+</tbody>
                         </table>
                     </div>
                 </div>

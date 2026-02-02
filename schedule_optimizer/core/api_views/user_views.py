@@ -1,4 +1,25 @@
 # core/api_views.py
+# import logging
+# from django.http import JsonResponse
+# from django.contrib.auth.decorators import login_required, user_passes_test
+# from django.views.decorators.csrf import csrf_exempt
+# from django.views.decorators.http import require_http_methods
+# from django.contrib.auth.models import User
+# from django.utils import timezone
+# from django.core.mail import send_mail
+# from django.template.loader import render_to_string
+# from django.utils.html import strip_tags
+# from django.conf import settings
+# from schedule_optimizer.core.models import UserProfile
+# from schedule_optimizer.core.forms import UserInvitationForm
+# import json
+# import secrets
+# import string
+# from django.views.decorators.http import require_http_methods
+
+
+
+# core/api_views/user_views.py
 import logging
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -10,12 +31,11 @@ from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from django.conf import settings
-from .models import UserProfile
-from .forms import UserInvitationForm
+from ..models import UserProfile
+from ..forms import UserInvitationForm
 import json
 import secrets
 import string
-from django.views.decorators.http import require_http_methods
 
 logger = logging.getLogger(__name__)
 

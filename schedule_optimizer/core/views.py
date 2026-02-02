@@ -415,6 +415,10 @@ def timeoff_requests(request):
 
 
 
+
+
+from .models import Employee, ShiftAssignment
+
 @login_required
 def shift_swaps(request):
     if not hasattr(request.user, 'profile'):
@@ -422,13 +426,45 @@ def shift_swaps(request):
         return redirect('dashboard')
 
     user_profile = request.user.profile
-    current_role = user_profile.role # Берём роль из профиля
+    current_role = user_profile.role
 
-    # Права доступа могут отличаться
+    # Получаем ID смены из URL (если есть)
+    shift_id = request.GET.get('shift_id')
+    selected_shift = None
+
+    if shift_id:
+        try:
+            # Проверяем, что смена принадлежит пользователю
+            selected_shift = ShiftAssignment.objects.get(
+                id=shift_id,
+                employee__user=request.user
+            )
+        except ShiftAssignment.DoesNotExist:
+            messages.warning(request, "Смена не найдена или не принадлежит вам.")
+
+    # Получаем других сотрудников
+    available_employees = []
+    if hasattr(request.user, 'profile'):
+        available_employees = Employee.objects.select_related('user_profile__user').exclude(
+            user_profile__user=request.user
+        ).values('id', 'user_profile__user__last_name', 'user_profile__user__first_name', 'user_profile__patronymic')
+
+        available_employees = [
+            {
+                'id': emp['id'],
+                'name': f"{emp['user_profile__user__last_name']} {emp['user_profile__user__first_name']} {emp['user_profile__patronymic'] or ''}".strip()
+            }
+            for emp in available_employees
+        ]
+
     context = {
         'current_role': current_role,
+        'selected_shift': selected_shift,
+        'available_employees': available_employees,
     }
     return render(request, 'core/shift_swaps.html', context)
+
+
 
 
 def dashboard_employee(request):

@@ -5,5 +5,66 @@
 
 {% block content %}
 <h2>Обмены сменами</h2>
-<p>Здесь будут отображаться заявки на обмен сменами.</p>
+
+{% if selected_shift %}
+    <div class="alert alert-info">
+        <strong>Вы хотите обменять смену:</strong><br>
+        {{ selected_shift.date }} | {{ selected_shift.start_time }}–{{ selected_shift.end_time }} |
+        {{ selected_shift.workout_type.name|default:"Работа" }}
+    </div>
+
+    <!-- Форма для выбора сотрудника и причины -->
+    <form id="swapForm">
+        {% csrf_token %}
+        <input type="hidden" name="shift_id" value="{{ selected_shift.id }}">
+
+        <div class="mb-3">
+            <label class="form-label">Выберите сотрудника для обмена</label>
+            <select name="to_employee_id" class="form-select" required>
+                <option value="">-- Выберите --</option>
+                {% for emp in available_employees %}
+                    <option value="{{ emp.id }}">{{ emp.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Причина</label>
+            <textarea name="reason" class="form-control" rows="3" placeholder="Например: болею, семейные обстоятельства..."></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Отправить заявку</button>
+    </form>
+{% else %}
+    <p>Выберите смену для обмена на странице расписания.</p>
+{% endif %}
+
+<!-- Список ваших заявок -->
+<h3>Ваши заявки на обмен</h3>
+<!-- (можно добавить позже) -->
+
+<script>
+document.getElementById('swapForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const data = Object.fromEntries(formData);
+
+    const response = await fetch('{% url "api_create_swap_request" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        },
+        body: JSON.stringify(data)
+    });
+
+    const result = await response.json();
+    if (result.success) {
+        showGlobalNotification(result.message, 'success');
+        // Можно перенаправить или обновить
+    } else {
+        showGlobalNotification('Ошибка: ' + result.error, 'error');
+    }
+});
+</script>
 {% endblock %}

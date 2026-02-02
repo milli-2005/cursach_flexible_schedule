@@ -5,6 +5,7 @@ from . import views
 from . import api_views
 from . import api_workout_views
 from . import api_schedule_views
+from .api_views import swap_views, user_views
 
 urlpatterns = [
     # Основные страницы
@@ -64,5 +65,10 @@ path('reports/export/tabel/', views.export_operational_excel, name='export_opera
 #для отправки напоминаний о доступности
 path('remind/availability/', views.send_availability_reminder_manual, name='send_availability_reminder'),
 
-    path('optimization/', views.optimization_view, name='optimization'),
+    # === Обмен сменами ===
+    path('api/my-shifts-for-swap/', swap_views.api_my_shifts_for_swap, name='api_my_shifts_for_swap'),
+    path('api/employees-for-swap/', swap_views.api_employees_for_swap, name='api_employees_for_swap'),
+    path('api/create-swap-request/', swap_views.api_create_swap_request, name='api_create_swap_request'),
+
+    # path('optimization/', views.optimization_view, name='optimization'),
 ]
