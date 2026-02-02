@@ -59,3 +59,5 @@ function hidePersistentNotification() {
         container.style.display = 'none';
     }
 }
+
+console.log("✅ base_script.js загружен");

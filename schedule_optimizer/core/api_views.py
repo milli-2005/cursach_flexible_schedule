@@ -54,21 +54,28 @@ def send_user_invitation(user, raw_password):
 @user_passes_test(is_admin)
 @require_http_methods(["GET"])
 def api_get_users(request):
-    users = User.objects.select_related('profile').all()
-    users_data = []
-    for user in users:
-        users_data.append({
-            'id': user.id,
-            'username': user.username,
-            'email': user.email,
+    users = User.objects.select_related('profile').all().order_by('username')
+    data = []
+    for u in users:
+        profile = u.profile
+        data.append({
+            'id': u.id,
+            'username': u.username,
+            'email': u.email,
+            'first_name': u.first_name or '',
+            'last_name': u.last_name or '',
             'profile': {
-                'role': user.profile.role,
-                'role_display': user.profile.get_role_display(),
-                'position': user.profile.position,
-                'phone': user.profile.phone,
+                'role': profile.role,
+                'role_display': dict(UserProfile.ROLE_CHOICES).get(profile.role, profile.role),
+                # 'position': profile.position,
+                # 'position_display': dict(UserProfile.POSITION_CHOICES).get(profile.position, profile.position),
+                'phone': profile.phone or '',
+                'patronymic': profile.patronymic or '',
             }
         })
-    return JsonResponse(users_data, safe=False)
+    return JsonResponse(data, safe=False)
+
+
 
 @login_required
 @user_passes_test(is_admin)
@@ -89,7 +96,8 @@ def api_invite_user(request):
             profile = user.profile
             profile.role = form.cleaned_data['role']
             profile.position = form.cleaned_data['position']
-            profile.phone = form.cleaned_data['phone']  # уже нормализован
+            profile.phone = form.cleaned_data['phone']
+            profile.patronymic = form.cleaned_data['patronymic']
             profile.invitation_timestamp = timezone.now()
             profile.save()
 
@@ -121,8 +129,9 @@ def api_get_user_detail(request, user_id):
             'last_name': user.last_name or '',
             'profile': {
                 'role': user.profile.role,
-                'position': user.profile.position,
-                'phone': user.profile.phone,
+                # 'position': user.profile.position,
+                'phone': user.profile.phone or '',
+                'patronymic': user.profile.patronymic or '',  # ← ИСПРАВЛЕНО
             }
         }
         return JsonResponse(user_data)
@@ -155,6 +164,7 @@ def api_update_user(request, user_id):
     email = data.get('email', '').strip()
     first_name = data.get('first_name', '').strip()
     last_name = data.get('last_name', '').strip()
+    patronymic = data.get('patronymic', '').strip()
     role = data.get('role', '').strip()
     position = data.get('position', '').strip()
     phone = data.get('phone', '').strip()
@@ -184,10 +194,10 @@ def api_update_user(request, user_id):
     elif role not in dict(UserProfile.ROLE_CHOICES):
         errors['role'] = ['Выбрана недопустимая роль.']
 
-    if not position:
-        errors['position'] = ['Должность обязательна.']
-    elif position not in dict(UserProfile.POSITION_CHOICES):
-        errors['position'] = ['Выбрана недопустимая должность.']
+    # if not position:
+    #     errors['position'] = ['Должность обязательна.']
+    # elif position not in dict(UserProfile.POSITION_CHOICES):
+    #     errors['position'] = ['Выбрана недопустимая должность.']
 
     if not phone:
         errors['phone'] = ['Телефон обязателен.']
@@ -215,6 +225,7 @@ def api_update_user(request, user_id):
         profile.role = role
         profile.position = position
         profile.phone = phone
+        profile.patronymic = patronymic
         profile.save()
 
         logger.info(f"User {user_id} updated successfully")

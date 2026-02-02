@@ -16,10 +16,9 @@
         <input type="text" id="user-search" class="form-control" placeholder="Поиск по имени, фамилии, email, логину...">
     </div>
     <div style="width: 200px;">
-        <select id="position-filter" class="form-select">
-            <option value="">Все должности</option>
-            <option value="trainer">Тренер</option>
-            <option value="administrator">Администратор</option>
+        <select id="role-filter" class="form-select">
+            <option value="">Все роли</option>
+            <option value="employee">Сотрудник</option>
             <option value="manager">Руководитель</option>
         </select>
     </div>
@@ -93,6 +92,13 @@
                                 <div class="invalid-feedback" id="error-last_name"></div>
                             </div>
                         </div>
+                        <div class="col-md-6">
+    <div class="mb-3">
+        <label for="id_patronymic" class="form-label">Отчество</label>
+        <input type="text" class="form-control" id="id_patronymic" name="patronymic">
+        <div class="invalid-feedback" id="error-patronymic"></div>
+    </div>
+</div>
                     </div>
                     <div class="row">
                        <div class="col-md-6">
@@ -101,24 +107,24 @@
         <select class="form-select" id="id_role" name="role" required>
             <option value="">Выберите...</option>
             <option value="employee">Сотрудник</option>
-            <option value="studio_admin">Администратор</option>
+<!--            <option value="studio_admin">Администратор</option>-->
             <option value="manager">Руководитель</option>
         </select>
         <div class="invalid-feedback" id="error-role"></div>
     </div>
 </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="id_position" class="form-label">Должность *</label>
-                                <select class="form-select" id="id_position" name="position" required>
-                                    <option value="">Выберите...</option>
-                                    <option value="trainer">Тренер</option>
-                                    <option value="administrator">Администратор</option>
-                                    <option value="manager">Руководитель</option>
-                                </select>
-                                <div class="invalid-feedback" id="error-position"></div>
-                            </div>
-                        </div>
+<!--                        <div class="col-md-6">-->
+<!--                            <div class="mb-3">-->
+<!--                                <label for="id_position" class="form-label">Должность *</label>-->
+<!--                                <select class="form-select" id="id_position" name="position" required>-->
+<!--                                    <option value="">Выберите...</option>-->
+<!--                                    <option value="trainer">Тренер</option>-->
+<!--                                    <option value="administrator">Администратор</option>-->
+<!--                                    <option value="manager">Руководитель</option>-->
+<!--                                </select>-->
+<!--                                <div class="invalid-feedback" id="error-position"></div>-->
+<!--                            </div>-->
+<!--                        </div>-->
                     </div>
                     <div class="row">
                         <div class="col-md-6">
@@ -178,6 +184,12 @@
                                 <input type="text" class="form-control" id="editLastName" name="last_name">
                             </div>
                         </div>
+                        <div class="col-md-6">
+    <div class="mb-3">
+        <label for="editPatronymic" class="form-label">Отчество</label>
+        <input type="text" class="form-control" id="editPatronymic" name="patronymic">
+    </div>
+</div>
                     </div>
                     <div class="row">
                         <div class="col-md-6">
@@ -190,16 +202,16 @@
                                 </select>
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="editPosition" class="form-label">Должность</label>
-                                <select class="form-select" id="editPosition" name="position">
-                                    <option value="trainer">Тренер</option>
-                                    <option value="administrator">Администратор</option>
-                                    <option value="manager">Руководитель</option>
-                                </select>
-                            </div>
-                        </div>
+<!--                        <div class="col-md-6">-->
+<!--                            <div class="mb-3">-->
+<!--                                <label for="editPosition" class="form-label">Должность</label>-->
+<!--                                <select class="form-select" id="editPosition" name="position">-->
+<!--                                    <option value="trainer">Тренер</option>-->
+<!--                                    <option value="administrator">Администратор</option>-->
+<!--                                    <option value="manager">Руководитель</option>-->
+<!--                                </select>-->
+<!--                            </div>-->
+<!--                        </div>-->
                     </div>
                     <div class="row">
                         <div class="col-md-6">
@@ -263,8 +275,24 @@
 
 {% block extra_js %}
 <script>
+    let allUsers = [];
+
     document.addEventListener('DOMContentLoaded', function () {
         loadUsers();
+
+        // Активный поиск и фильтр
+        document.getElementById('user-search').addEventListener('input', filterAndRenderUsers);
+        document.getElementById('role-filter').addEventListener('change', filterAndRenderUsers);
+
+        // Инициализация маски телефона
+        const phoneInput = document.getElementById('id_phone');
+        if (phoneInput) {
+            IMask(phoneInput, {
+                mask: '+{7} (000) 000-00-00',
+                lazy: false,
+                placeholderChar: '_'
+            });
+        }
     });
 
     function openCreateUserModal() {
@@ -272,34 +300,32 @@
         modal.show();
     }
 
-    let allUsers = []; // глобальное хранилище
+    function loadUsers() {
+        fetch('/api/users/')
+            .then(response => response.json())
+            .then(data => {
+                allUsers = data;
+                filterAndRenderUsers();
+            })
+            .catch(error => console.error('Error loading users:', error));
+    }
 
-function loadUsers() {
-    fetch('/api/users/')
-        .then(response => response.json())
-        .then(data => {
-            allUsers = data;
-            filterAndRenderUsers();
-        })
-        .catch(error => console.error('Error loading users:', error));
-}
-
-function filterAndRenderUsers() {
+    function filterAndRenderUsers() {
     const searchTerm = document.getElementById('user-search').value.toLowerCase().trim();
-    const positionFilter = document.getElementById('position-filter').value;
+    const roleFilter = document.getElementById('role-filter').value;
 
     const filtered = allUsers.filter(user => {
-        // Поиск по всем полям
         const matchesSearch =
             user.username.toLowerCase().includes(searchTerm) ||
             user.email.toLowerCase().includes(searchTerm) ||
-            (user.first_name || '').toLowerCase().includes(searchTerm) ||
-            (user.last_name || '').toLowerCase().includes(searchTerm);
+            user.first_name.toLowerCase().includes(searchTerm) ||
+            user.last_name.toLowerCase().includes(searchTerm) ||
+            (user.profile?.patronymic || '').toLowerCase().includes(searchTerm) ||
+            (user.profile?.phone || '').toLowerCase().includes(searchTerm);
 
-        // Фильтр по должности
-        const matchesPosition = !positionFilter || user.profile.position === positionFilter;
+        const matchesRole = !roleFilter || user.profile.role === roleFilter;
 
-        return matchesSearch && matchesPosition;
+        return matchesSearch && matchesRole;
     });
 
     const tbody = document.getElementById('userTableBody');
@@ -332,212 +358,181 @@ function filterAndRenderUsers() {
     });
 }
 
-// Привязка событий
-document.addEventListener('DOMContentLoaded', function () {
-    loadUsers();
 
-    // Активный поиск
-    document.getElementById('user-search').addEventListener('input', filterAndRenderUsers);
-    document.getElementById('position-filter').addEventListener('change', filterAndRenderUsers);
-});
-
-  // Инициализация маски телефона
-document.addEventListener('DOMContentLoaded', function() {
-    const phoneInput = document.getElementById('id_phone');
-    if (phoneInput) {
-        IMask(phoneInput, {
-            mask: '+{7} (000) 000-00-00',
-            lazy: false, // показывать маску сразу
-            placeholderChar: '_'
+    // === СОЗДАНИЕ ПОЛЬЗОВАТЕЛЯ ===
+    function submitCreateUser() {
+        // Сброс ошибок
+        document.querySelectorAll('.invalid-feedback').forEach(el => {
+            el.textContent = '';
+            el.style.display = 'none';
         });
-    }
-});
+        document.querySelectorAll('.form-control, .form-select').forEach(el => {
+            el.classList.remove('is-invalid');
+        });
+        document.getElementById('global-error-box')?.classList.add('d-none');
 
+        const formData = new FormData();
+        formData.append('username', document.getElementById('id_username').value);
+        formData.append('email', document.getElementById('id_email').value);
+        formData.append('first_name', document.getElementById('id_first_name').value);
+        formData.append('last_name', document.getElementById('id_last_name').value);
+        formData.append('patronymic', document.getElementById('id_patronymic').value);
+        formData.append('role', document.getElementById('id_role').value);
+        formData.append('position', document.getElementById('id_position').value);
+        formData.append('phone', document.getElementById('id_phone').value);
+        formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
 
-// Функция отправки
-function submitCreateUser() {
-    // Сброс ошибок
-    document.querySelectorAll('.invalid-feedback').forEach(el => {
-        el.textContent = '';
-        el.style.display = 'none';
-    });
-    document.querySelectorAll('.form-control, .form-select').forEach(el => {
-        el.classList.remove('is-invalid');
-    });
-    document.getElementById('global-error-box').classList.add('d-none');
-
-    const formData = new FormData(document.getElementById('createUserForm'));
-
-    fetch('/api/invite-user/', {
-        method: 'POST',
-        body: formData,
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            bootstrap.Modal.getInstance(document.getElementById('createUserModal')).hide();
-            document.getElementById('createUserForm').reset();
-            loadUsers();
-        } else {
-            // Глобальная ошибка (например, "Пользователь уже существует")
-            if (data.errors && data.errors['__all__']) {
-                const msg = Array.isArray(data.errors['__all__'])
-                    ? data.errors['__all__'][0]
-                    : String(data.errors['__all__']);
-                document.getElementById('global-error-text').textContent = msg;
-                document.getElementById('global-error-box').classList.remove('d-none');
-            }
-
-            // Ошибки по полям
-            if (data.errors) {
-                for (const [field, messages] of Object.entries(data.errors)) {
+        fetch('/api/invite-user/', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showGlobalNotification('Пользователь успешно приглашён.', 'success');
+                bootstrap.Modal.getInstance(document.getElementById('createUserModal')).hide();
+                document.getElementById('createUserForm').reset();
+                loadUsers();
+            } else {
+                // Глобальная ошибка
+                if (data.errors?.__all__) {
+                    showGlobalNotification('Ошибка: ' + data.errors.__all__[0], 'error');
+                }
+                // Ошибки полей
+                for (const [field, messages] of Object.entries(data.errors || {})) {
                     if (field === '__all__') continue;
-                    const errorText = Array.isArray(messages) ? messages[0] : String(messages);
                     const errorEl = document.getElementById(`error-${field}`);
                     const inputEl = document.getElementById(`id_${field}`);
                     if (errorEl && inputEl) {
-                        errorEl.textContent = errorText;
+                        errorEl.textContent = messages[0];
                         errorEl.style.display = 'block';
                         inputEl.classList.add('is-invalid');
                     }
                 }
             }
-        }
-    })
-    .catch(() => {
-        document.getElementById('global-error-text').textContent = 'Сетевая ошибка. Проверьте подключение.';
-        document.getElementById('global-error-box').classList.remove('d-none');
-    });
-}
-
-    function openEditUserModal(userId) {
-    fetch(`/api/users/${userId}/`)
-        .then(response => response.json())
-        .then(user => {
-            document.getElementById('editUserId').value = user.id;
-            document.getElementById('editUsername').value = user.username;
-            document.getElementById('editEmail').value = user.email;
-            document.getElementById('editFirstName').value = user.first_name || '';
-            document.getElementById('editLastName').value = user.last_name || '';
-            document.getElementById('editRole').value = user.profile.role;
-            document.getElementById('editPosition').value = user.profile.position;
-            document.getElementById('editPhone').value = user.profile.phone || '';
-
-            const modal = new bootstrap.Modal(document.getElementById('editUserModal'));
-            modal.show();
         })
-        .catch(error => console.error('Error fetching user:', error));
-}
+        .catch(() => {
+            showGlobalNotification('Сетевая ошибка. Проверьте подключение.', 'error');
+        });
+    }
 
+    // === РЕДАКТИРОВАНИЕ ===
+    function openEditUserModal(userId) {
+        fetch(`/api/users/${userId}/`)
+            .then(response => response.json())
+            .then(user => {
+                document.getElementById('editUserId').value = user.id;
+                document.getElementById('editUsername').value = user.username;
+                document.getElementById('editEmail').value = user.email;
+                document.getElementById('editFirstName').value = user.first_name || '';
+                document.getElementById('editLastName').value = user.last_name || '';
+                document.getElementById('editPatronymic').value = user.profile?.patronymic || '';
+                document.getElementById('editRole').value = user.profile?.role || '';
+                document.getElementById('editPhone').value = user.profile?.phone || '';
 
-function submitEditUser() {
-    const userId = document.getElementById('editUserId').value;
-    const data = {
-        username: document.getElementById('editUsername').value,
-        email: document.getElementById('editEmail').value,
-        first_name: document.getElementById('editFirstName').value,
-        last_name: document.getElementById('editLastName').value,
-        role: document.getElementById('editRole').value,
-        position: document.getElementById('editPosition').value,
-        phone: document.getElementById('editPhone').value
-    };
+                const modal = new bootstrap.Modal(document.getElementById('editUserModal'));
+                modal.show();
+            })
+            .catch(error => console.error('Error fetching user:', error));
+    }
 
+    function submitEditUser() {
+        const userId = document.getElementById('editUserId').value;
+        const data = {
+            username: document.getElementById('editUsername').value,
+            email: document.getElementById('editEmail').value,
+            first_name: document.getElementById('editFirstName').value,
+            last_name: document.getElementById('editLastName').value,
+            patronymic: document.getElementById('editPatronymic').value,
+            role: document.getElementById('editRole').value,
+            phone: document.getElementById('editPhone').value
+        };
 
-<!--    // Создаем объект данных-->
-<!--    const data = {-->
-<!--        username: username,-->
-<!--        email: email,-->
-<!--        role: role-->
-<!--    };-->
+        fetch(`/api/users/${userId}/update/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                showGlobalNotification('Пользователь успешно обновлён.', 'success');
+                bootstrap.Modal.getInstance(document.getElementById('editUserModal')).hide();
+                loadUsers();
+            } else {
+                showGlobalNotification('Ошибка: ' + (result.error || 'Неизвестная ошибка'), 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error updating user:', error);
+            showGlobalNotification('Не удалось обновить пользователя.', 'error');
+        });
+    }
 
-    fetch(`/api/users/${userId}/update/`, {
-        method: 'POST', // Меняем на POST
-        body: JSON.stringify(data), // Отправляем как JSON
-        headers: {
-            'Content-Type': 'application/json', // Указываем тип контента
-            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-        }
-    })
+    // === УДАЛЕНИЕ ===
+    function openDeleteUserModal(userId, username) {
+        document.getElementById('deleteUserId').value = userId;
+        document.getElementById('deleteUserName').textContent = username;
+        const modal = new bootstrap.Modal(document.getElementById('deleteUserModal'));
+        modal.show();
+    }
 
+    function confirmDeleteUser() {
+        const userId = document.getElementById('deleteUserId').value;
+        fetch(`/api/users/${userId}/delete/`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showGlobalNotification('Пользователь успешно удалён.', 'success');
+                bootstrap.Modal.getInstance(document.getElementById('deleteUserModal')).hide();
+                loadUsers();
+            } else {
+                showGlobalNotification('Ошибка при удалении пользователя.', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error deleting user:', error);
+            showGlobalNotification('Не удалось удалить пользователя.', 'error');
+        });
+    }
 
-    .then(response => response.json())
-    .then(result => {
-        if (result.success) {
-            showGlobalNotification('Пользователь успешно обновлён.', 'success');
-            bootstrap.Modal.getInstance(document.getElementById('editUserModal')).hide();
-            loadUsers();
-        } else {
-             showGlobalNotification('Ошибка: ' + (result.error || 'Неизвестная ошибка'), 'error');
-        }
-    })
+    // === СБРОС ПАРОЛЯ ===
+    function openResetPasswordModal(userId, username) {
+        document.getElementById('resetPasswordUserId').value = userId;
+        document.getElementById('resetPasswordUserName').textContent = username;
+        const modal = new bootstrap.Modal(document.getElementById('resetPasswordModal'));
+        modal.show();
+    }
 
-    .catch(error => {
-        console.error('Error updating user:', error);
-        showGlobalNotification('Произошла ошибка при обновлении пользователя', 'error');
-    });
-}
-
-function openDeleteUserModal(userId, username) {
-    document.getElementById('deleteUserId').value = userId;
-    document.getElementById('deleteUserName').textContent = username;
-
-    const modal = new bootstrap.Modal(document.getElementById('deleteUserModal'));
-    modal.show();
-}
-
-function confirmDeleteUser() {
-    const userId = document.getElementById('deleteUserId').value;
-    fetch(`/api/users/${userId}/delete/`, {
-        method: 'DELETE',
-        headers: {
-            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showGlobalNotification('Пользователь успешно удален.', 'success');
-            bootstrap.Modal.getInstance(document.getElementById('deleteUserModal')).hide();
-            loadUsers();
-        } else {
-            showGlobalNotification('Ошибка при удалении пользователя.', 'error');
-        }
-    })
-    .catch(error => console.error('Error deleting user:', error));
-    showGlobalNotification('Не удалось удалить пользователя.', 'error');
-}
-
-function openResetPasswordModal(userId, username) {
-    document.getElementById('resetPasswordUserId').value = userId;
-    document.getElementById('resetPasswordUserName').textContent = username;
-
-    const modal = new bootstrap.Modal(document.getElementById('resetPasswordModal'));
-    modal.show();
-}
-
-function confirmResetPassword() {
-    const userId = document.getElementById('resetPasswordUserId').value;
-
-    fetch(`/api/users/${userId}/reset-password/`, {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showGlobalNotification('Пароль успешно сброшен.', 'success');
-            bootstrap.Modal.getInstance(document.getElementById('resetPasswordModal')).hide();
-        } else {
-            showGlobalNotification('Ошибка при сбросе пароля.', 'error');
-        }
-    })
-    .catch(error => console.error('Error resetting password:', error));
-    showGlobalNotification('Не удалось сбросить пароль.', 'error');
-}
+    function confirmResetPassword() {
+        const userId = document.getElementById('resetPasswordUserId').value;
+        fetch(`/api/users/${userId}/reset-password/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showGlobalNotification('Пароль успешно сброшен.', 'success');
+                bootstrap.Modal.getInstance(document.getElementById('resetPasswordModal')).hide();
+            } else {
+                showGlobalNotification('Ошибка при сбросе пароля.', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error resetting password:', error);
+            showGlobalNotification('Не удалось сбросить пароль.', 'error');
+        });
+    }
 </script>
 {% endblock %}

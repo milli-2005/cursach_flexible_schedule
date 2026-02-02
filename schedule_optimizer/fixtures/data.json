@@ -7,7 +7,7 @@
     "user": 1,
     "content_type": 10,
     "object_id": "2",
-    "object_repr": "–ª–∞–ª–∞ (2026-01-05 - 2026-01-11)",
+    "object_repr": "Î‡Î‡ (2026-01-05 - 2026-01-11)",
     "action_flag": 1,
     "change_message": "[{\"added\": {}}]"
   }
@@ -20,7 +20,7 @@
     "user": 1,
     "content_type": 10,
     "object_id": "3",
-    "object_repr": "12-18 —è–Ω–≤–∞—Ä—è (2026-01-12 - 2026-01-18)",
+    "object_repr": "12-18 ˇÌ‚‡ˇ (2026-01-12 - 2026-01-18)",
     "action_flag": 1,
     "change_message": "[{\"added\": {}}]"
   }
@@ -33,7 +33,7 @@
     "user": 1,
     "content_type": 10,
     "object_id": "2",
-    "object_repr": "5-11 —è–Ω–≤–∞—Ä—è (2026-01-05 - 2026-01-11)",
+    "object_repr": "5-11 ˇÌ‚‡ˇ (2026-01-05 - 2026-01-11)",
     "action_flag": 2,
     "change_message": "[{\"changed\": {\"fields\": [\"\\u041d\\u0430\\u0437\\u0432\\u0430\\u043d\\u0438\\u0435 \\u0433\\u0440\\u0430\\u0444\\u0438\\u043a\\u0430\"]}}]"
   }
@@ -46,7 +46,7 @@
     "user": 1,
     "content_type": 10,
     "object_id": "1",
-    "object_repr": "2-8 —Ñ–µ–≤—Ä–∞–ª—è (2026-02-02 - 2026-02-08)",
+    "object_repr": "2-8 ÙÂ‚‡Îˇ (2026-02-02 - 2026-02-08)",
     "action_flag": 2,
     "change_message": "[{\"changed\": {\"fields\": [\"\\u041d\\u0430\\u0437\\u0432\\u0430\\u043d\\u0438\\u0435 \\u0433\\u0440\\u0430\\u0444\\u0438\\u043a\\u0430\"]}}]"
   }
@@ -59,7 +59,7 @@
     "user": 1,
     "content_type": 10,
     "object_id": "4",
-    "object_repr": "19-25 —è–Ω–≤–∞—Ä—è (2026-01-19 - 2026-01-25)",
+    "object_repr": "19-25 ˇÌ‚‡ˇ (2026-01-19 - 2026-01-25)",
     "action_flag": 1,
     "change_message": "[{\"added\": {}}]"
   }
@@ -98,7 +98,7 @@
     "user": 1,
     "content_type": 10,
     "object_id": "4",
-    "object_repr": "19-25 —è–Ω–≤–∞—Ä—è (2026-01-19 - 2026-01-25)",
+    "object_repr": "19-25 ˇÌ‚‡ˇ (2026-01-19 - 2026-01-25)",
     "action_flag": 3,
     "change_message": ""
   }
@@ -111,7 +111,7 @@
     "user": 1,
     "content_type": 10,
     "object_id": "3",
-    "object_repr": "12-18 —è–Ω–≤–∞—Ä—è (2026-01-12 - 2026-01-18)",
+    "object_repr": "12-18 ˇÌ‚‡ˇ (2026-01-12 - 2026-01-18)",
     "action_flag": 3,
     "change_message": ""
   }
@@ -124,7 +124,7 @@
     "user": 1,
     "content_type": 10,
     "object_id": "2",
-    "object_repr": "5-11 —è–Ω–≤–∞—Ä—è (2026-01-05 - 2026-01-11)",
+    "object_repr": "5-11 ˇÌ‚‡ˇ (2026-01-05 - 2026-01-11)",
     "action_flag": 3,
     "change_message": ""
   }
@@ -133,8 +133,8 @@
   "model": "auth.user",
   "pk": 1,
   "fields": {
-    "password": "pbkdf2_sha256$720000$uVtmt84hk1qXievjfWTPE5$SH2+9EaVe7LSbmwKWLZFqV9l6yk6D2aeGjFbOTzT2BI=",
-    "last_login": "2026-01-31T08:29:35.378Z",
+    "password": "pbkdf2_sha256$1200000$0a6fuNWe3vHMZ7uUjJbj76$FOC6yiU3BsqFowj5KbxdrE/BBmVHDLO4zT0VdHuCsNE=",
+    "last_login": "2026-02-02T12:17:42.976Z",
     "is_superuser": true,
     "username": "manager",
     "first_name": "",
@@ -155,8 +155,8 @@
     "last_login": "2026-01-31T07:45:32.668Z",
     "is_superuser": false,
     "username": "milena",
-    "first_name": "–º–∏–ª–µ–Ω–∞",
-    "last_name": "—Å—Ç–µ–ø–∞–Ω–æ–≤–∞",
+    "first_name": "ÏËÎÂÌ‡",
+    "last_name": "ÒÚÂÔ‡ÌÓ‚‡",
     "email": "milenast2021lili@gmail.com",
     "is_staff": false,
     "is_active": true,
@@ -169,12 +169,12 @@
   "model": "auth.user",
   "pk": 3,
   "fields": {
-    "password": "pbkdf2_sha256$720000$fsNnJos2cLT19Jplu1UymN$UT2vxohp2OpOdO8j1EvIrIA/S1L+djbfGHY2ak9R7Ow=",
-    "last_login": "2026-01-28T07:11:53.428Z",
+    "password": "pbkdf2_sha256$1200000$n867vsgnysDWv6mznqQ3Ao$VzJ3ZGZZjQ8kVijSK5RCxd3w0Y5oKmcO8SB5kghwmfg=",
+    "last_login": "2026-02-02T12:22:52.139Z",
     "is_superuser": false,
     "username": "sofa",
-    "first_name": "—Å–æ—Ñ–∞",
-    "last_name": "—Ç–æ–∫–∞—Ä–µ–≤–∞",
+    "first_name": "ÒÓÙ‡",
+    "last_name": "ÚÓÍ‡Â‚‡",
     "email": "sh998135@gmail.com",
     "is_staff": false,
     "is_active": true,
@@ -187,12 +187,12 @@
   "model": "auth.user",
   "pk": 4,
   "fields": {
-    "password": "pbkdf2_sha256$720000$aPEUoB416LTsFGVq3qA2RJ$+CQQuyLjq9NZ7+E4PQ1o52m9fFsxCvCVqeH4JlpgCl8=",
-    "last_login": "2026-01-30T09:51:39.696Z",
+    "password": "pbkdf2_sha256$1200000$OjNdYyOP8xhF92JwNKlDQB$fJBSp45zL/rVzSMSlXw+tLW+UXeOPv5KJXufjKHS2j8=",
+    "last_login": "2026-02-02T11:18:19.973Z",
     "is_superuser": false,
     "username": "alina",
-    "first_name": "–∞–ª–∏–Ω–∞",
-    "last_name": "–º–∞–Ω–Ω—É—Ä–æ–≤–∞",
+    "first_name": "‡ÎËÌ‡",
+    "last_name": "Ï‡ÌÌÛÓ‚‡",
     "email": "aliiiin12e@gmail.com",
     "is_staff": false,
     "is_active": true,
@@ -209,8 +209,8 @@
     "last_login": null,
     "is_superuser": false,
     "username": "mil",
-    "first_name": "–ú–∏–ª–µ–Ω–∞",
-    "last_name": "–°—Ç–µ–ø–∞–Ω",
+    "first_name": "ÃËÎÂÌ‡",
+    "last_name": "—ÚÂÔ‡Ì",
     "email": "millimail.com",
     "is_staff": false,
     "is_active": true,
@@ -226,7 +226,7 @@
     "user": 1,
     "role": "manager",
     "phone": "89872724005",
-    "position": "trainer",
+    "patronymic": "",
     "invitation_timestamp": null
   }
 },
@@ -237,7 +237,7 @@
     "user": 2,
     "role": "employee",
     "phone": "89872724005",
-    "position": "trainer",
+    "patronymic": "",
     "invitation_timestamp": null
   }
 },
@@ -248,7 +248,7 @@
     "user": 3,
     "role": "employee",
     "phone": "89872724001",
-    "position": "—Ç—Ä–µ–Ω–µ—Ä",
+    "patronymic": "‡ÎÓjjjjjjjjjjj",
     "invitation_timestamp": null
   }
 },
@@ -259,7 +259,7 @@
     "user": 4,
     "role": "employee",
     "phone": "89872724000",
-    "position": "—Ç—Ä–µ–Ω–µ—Ä",
+    "patronymic": "‡ÎÓ",
     "invitation_timestamp": null
   }
 },
@@ -270,7 +270,7 @@
     "user": 5,
     "role": "employee",
     "phone": "+79872724005",
-    "position": "trainer",
+    "patronymic": "",
     "invitation_timestamp": "2026-01-31T07:40:36.831Z"
   }
 },
@@ -292,22 +292,9 @@
 },
 {
   "model": "core.schedule",
-  "pk": 1,
-  "fields": {
-    "name": "2-8 —Ñ–µ–≤—Ä–∞–ª—è",
-    "start_date": "2026-02-02",
-    "end_date": "2026-02-08",
-    "status": "pending",
-    "created_by": 1,
-    "created_at": "2026-01-28T06:12:22.636Z",
-    "updated_at": "2026-01-29T07:13:19.173Z"
-  }
-},
-{
-  "model": "core.schedule",
   "pk": 5,
   "fields": {
-    "name": "–î–µ–º–æ-–≥—Ä–∞—Ñ–∏–∫ –∑–∞ 19.01‚Äì25.01.2026",
+    "name": "ƒÂÏÓ-„‡ÙËÍ Á‡ 19.01ñ25.01.2026",
     "start_date": "2026-01-19",
     "end_date": "2026-01-25",
     "status": "approved",
@@ -320,7 +307,7 @@
   "model": "core.schedule",
   "pk": 6,
   "fields": {
-    "name": "–î–µ–º–æ-–≥—Ä–∞—Ñ–∏–∫ –∑–∞ 12.01‚Äì18.01.2026",
+    "name": "ƒÂÏÓ-„‡ÙËÍ Á‡ 12.01ñ18.01.2026",
     "start_date": "2026-01-12",
     "end_date": "2026-01-18",
     "status": "approved",
@@ -333,7 +320,7 @@
   "model": "core.schedule",
   "pk": 7,
   "fields": {
-    "name": "–î–µ–º–æ-–≥—Ä–∞—Ñ–∏–∫ –∑–∞ 05.01‚Äì11.01.2026",
+    "name": "ƒÂÏÓ-„‡ÙËÍ Á‡ 05.01ñ11.01.2026",
     "start_date": "2026-01-05",
     "end_date": "2026-01-11",
     "status": "approved",
@@ -346,7 +333,7 @@
   "model": "core.schedule",
   "pk": 8,
   "fields": {
-    "name": "–î–µ–º–æ-–≥—Ä–∞—Ñ–∏–∫ –∑–∞ 29.12‚Äì04.01.2026",
+    "name": "ƒÂÏÓ-„‡ÙËÍ Á‡ 29.12ñ04.01.2026",
     "start_date": "2025-12-29",
     "end_date": "2026-01-04",
     "status": "approved",
@@ -356,409 +343,16 @@
   }
 },
 {
-  "model": "core.shiftassignment",
-  "pk": 67,
+  "model": "core.schedule",
+  "pk": 9,
   "fields": {
-    "schedule": 1,
-    "employee": 4,
-    "workout_type": 1,
-    "date": "2026-02-02",
-    "start_time": "09:00:00",
-    "end_time": null,
-    "status": "scheduled",
-    "actual_hours": null
-  }
-},
-{
-  "model": "core.shiftassignment",
-  "pk": 68,
-  "fields": {
-    "schedule": 1,
-    "employee": 2,
-    "workout_type": 1,
-    "date": "2026-02-03",
-    "start_time": "09:00:00",
-    "end_time": null,
-    "status": "scheduled",
-    "actual_hours": null
-  }
-},
-{
-  "model": "core.shiftassignment",
-  "pk": 69,
-  "fields": {
-    "schedule": 1,
-    "employee": 4,
-    "workout_type": 1,
-    "date": "2026-02-05",
-    "start_time": "09:00:00",
-    "end_time": null,
-    "status": "scheduled",
-    "actual_hours": null
-  }
-},
-{
-  "model": "core.shiftassignment",
-  "pk": 70,
-  "fields": {
-    "schedule": 1,
-    "employee": 4,
-    "workout_type": 1,
-    "date": "2026-02-02",
-    "start_time": "10:00:00",
-    "end_time": null,
-    "status": "scheduled",
-    "actual_hours": null
-  }
-},
-{
-  "model": "core.shiftassignment",
-  "pk": 71,
-  "fields": {
-    "schedule": 1,
-    "employee": 3,
-    "workout_type": 1,
-    "date": "2026-02-03",
-    "start_time": "10:00:00",
-    "end_time": null,
-    "status": "scheduled",
-    "actual_hours": null
-  }
-},
-{
-  "model": "core.shiftassignment",
-  "pk": 72,
-  "fields": {
-    "schedule": 1,
-    "employee": 4,
-    "workout_type": 1,
-    "date": "2026-02-05",
-    "start_time": "10:00:00",
-    "end_time": null,
-    "status": "scheduled",
-    "actual_hours": null
-  }
-},
-{
-  "model": "core.shiftassignment",
-  "pk": 73,
-  "fields": {
-    "schedule": 1,
-    "employee": 4,
-    "workout_type": 1,
-    "date": "2026-02-02",
-    "start_time": "11:00:00",
-    "end_time": null,
-    "status": "scheduled",
-    "actual_hours": null
-  }
-},
-{
-  "model": "core.shiftassignment",
-  "pk": 74,
-  "fields": {
-    "schedule": 1,
-    "employee": 2,
-    "workout_type": 1,
-    "date": "2026-02-03",
-    "start_time": "11:00:00",
-    "end_time": null,
-    "status": "scheduled",
-    "actual_hours": null
-  }
-},
-{
-  "model": "core.shiftassignment",
-  "pk": 75,
-  "fields": {
-    "schedule": 1,
-    "employee": 4,
-    "workout_type": 1,
-    "date": "2026-02-05",
-    "start_time": "11:00:00",
-    "end_time": null,
-    "status": "scheduled",
-    "actual_hours": null
-  }
-},
-{
-  "model": "core.shiftassignment",
-  "pk": 76,
-  "fields": {
-    "schedule": 1,
-    "employee": 2,
-    "workout_type": 1,
-    "date": "2026-02-03",
-    "start_time": "12:00:00",
-    "end_time": null,
-    "status": "scheduled",
-    "actual_hours": null
-  }
-},
-{
-  "model": "core.shiftassignment",
-  "pk": 77,
-  "fields": {
-    "schedule": 1,
-    "employee": 4,
-    "workout_type": 1,
-    "date": "2026-02-05",
-    "start_time": "12:00:00",
-    "end_time": null,
-    "status": "scheduled",
-    "actual_hours": null
-  }
-},
-{
-  "model": "core.shiftassignment",
-  "pk": 78,
-  "fields": {
-    "schedule": 1,
-    "employee": 2,
-    "workout_type": 1,
-    "date": "2026-02-03",
-    "start_time": "13:00:00",
-    "end_time": null,
-    "status": "scheduled",
-    "actual_hours": null
-  }
-},
-{
-  "model": "core.shiftassignment",
-  "pk": 79,
-  "fields": {
-    "schedule": 1,
-    "employee": 4,
-    "workout_type": 1,
-    "date": "2026-02-03",
-    "start_time": "15:00:00",
-    "end_time": null,
-    "status": "scheduled",
-    "actual_hours": null
-  }
-},
-{
-  "model": "core.shiftassignment",
-  "pk": 80,
-  "fields": {
-    "schedule": 1,
-    "employee": 3,
-    "workout_type": 1,
-    "date": "2026-02-02",
-    "start_time": "16:00:00",
-    "end_time": null,
-    "status": "scheduled",
-    "actual_hours": null
-  }
-},
-{
-  "model": "core.shiftassignment",
-  "pk": 81,
-  "fields": {
-    "schedule": 1,
-    "employee": 4,
-    "workout_type": 1,
-    "date": "2026-02-03",
-    "start_time": "16:00:00",
-    "end_time": null,
-    "status": "scheduled",
-    "actual_hours": null
-  }
-},
-{
-  "model": "core.shiftassignment",
-  "pk": 82,
-  "fields": {
-    "schedule": 1,
-    "employee": 3,
-    "workout_type": 1,
-    "date": "2026-02-02",
-    "start_time": "17:00:00",
-    "end_time": null,
-    "status": "scheduled",
-    "actual_hours": null
-  }
-},
-{
-  "model": "core.shiftassignment",
-  "pk": 83,
-  "fields": {
-    "schedule": 1,
-    "employee": 2,
-    "workout_type": 1,
-    "date": "2026-02-03",
-    "start_time": "17:00:00",
-    "end_time": null,
-    "status": "scheduled",
-    "actual_hours": null
-  }
-},
-{
-  "model": "core.shiftassignment",
-  "pk": 84,
-  "fields": {
-    "schedule": 1,
-    "employee": 2,
-    "workout_type": 1,
-    "date": "2026-02-05",
-    "start_time": "17:00:00",
-    "end_time": null,
-    "status": "scheduled",
-    "actual_hours": null
-  }
-},
-{
-  "model": "core.shiftassignment",
-  "pk": 85,
-  "fields": {
-    "schedule": 1,
-    "employee": 3,
-    "workout_type": 1,
-    "date": "2026-02-02",
-    "start_time": "18:00:00",
-    "end_time": null,
-    "status": "scheduled",
-    "actual_hours": null
-  }
-},
-{
-  "model": "core.shiftassignment",
-  "pk": 86,
-  "fields": {
-    "schedule": 1,
-    "employee": 2,
-    "workout_type": 1,
-    "date": "2026-02-03",
-    "start_time": "18:00:00",
-    "end_time": null,
-    "status": "scheduled",
-    "actual_hours": null
-  }
-},
-{
-  "model": "core.shiftassignment",
-  "pk": 87,
-  "fields": {
-    "schedule": 1,
-    "employee": 2,
-    "workout_type": 1,
-    "date": "2026-02-05",
-    "start_time": "18:00:00",
-    "end_time": null,
-    "status": "scheduled",
-    "actual_hours": null
-  }
-},
-{
-  "model": "core.shiftassignment",
-  "pk": 88,
-  "fields": {
-    "schedule": 1,
-    "employee": 3,
-    "workout_type": 1,
-    "date": "2026-02-02",
-    "start_time": "19:00:00",
-    "end_time": null,
-    "status": "scheduled",
-    "actual_hours": null
-  }
-},
-{
-  "model": "core.shiftassignment",
-  "pk": 89,
-  "fields": {
-    "schedule": 1,
-    "employee": 2,
-    "workout_type": 1,
-    "date": "2026-02-03",
-    "start_time": "19:00:00",
-    "end_time": null,
-    "status": "scheduled",
-    "actual_hours": null
-  }
-},
-{
-  "model": "core.shiftassignment",
-  "pk": 90,
-  "fields": {
-    "schedule": 1,
-    "employee": 4,
-    "workout_type": 1,
-    "date": "2026-02-04",
-    "start_time": "19:00:00",
-    "end_time": null,
-    "status": "scheduled",
-    "actual_hours": null
-  }
-},
-{
-  "model": "core.shiftassignment",
-  "pk": 91,
-  "fields": {
-    "schedule": 1,
-    "employee": 2,
-    "workout_type": 1,
-    "date": "2026-02-05",
-    "start_time": "19:00:00",
-    "end_time": null,
-    "status": "scheduled",
-    "actual_hours": null
-  }
-},
-{
-  "model": "core.shiftassignment",
-  "pk": 92,
-  "fields": {
-    "schedule": 1,
-    "employee": 3,
-    "workout_type": 1,
-    "date": "2026-02-02",
-    "start_time": "20:00:00",
-    "end_time": null,
-    "status": "scheduled",
-    "actual_hours": null
-  }
-},
-{
-  "model": "core.shiftassignment",
-  "pk": 93,
-  "fields": {
-    "schedule": 1,
-    "employee": 2,
-    "workout_type": 1,
-    "date": "2026-02-03",
-    "start_time": "20:00:00",
-    "end_time": null,
-    "status": "scheduled",
-    "actual_hours": null
-  }
-},
-{
-  "model": "core.shiftassignment",
-  "pk": 94,
-  "fields": {
-    "schedule": 1,
-    "employee": 4,
-    "workout_type": 1,
-    "date": "2026-02-04",
-    "start_time": "20:00:00",
-    "end_time": null,
-    "status": "scheduled",
-    "actual_hours": null
-  }
-},
-{
-  "model": "core.shiftassignment",
-  "pk": 95,
-  "fields": {
-    "schedule": 1,
-    "employee": 2,
-    "workout_type": 1,
-    "date": "2026-02-05",
-    "start_time": "20:00:00",
-    "end_time": null,
-    "status": "scheduled",
-    "actual_hours": null
+    "name": "√‡ÙËÍ Ì‡ ÌÂ‰ÂÎ˛",
+    "start_date": "2026-02-09",
+    "end_date": "2026-02-15",
+    "status": "pending",
+    "created_by": 1,
+    "created_at": "2026-02-02T10:42:21.626Z",
+    "updated_at": "2026-02-02T10:42:21.626Z"
   }
 },
 {
@@ -2540,6 +2134,132 @@
   }
 },
 {
+  "model": "core.shiftassignment",
+  "pk": 225,
+  "fields": {
+    "schedule": 9,
+    "employee": 4,
+    "workout_type": 1,
+    "date": "2026-02-09",
+    "start_time": "09:00:00",
+    "end_time": "09:50:00",
+    "status": "scheduled",
+    "actual_hours": null
+  }
+},
+{
+  "model": "core.shiftassignment",
+  "pk": 226,
+  "fields": {
+    "schedule": 9,
+    "employee": 4,
+    "workout_type": 1,
+    "date": "2026-02-09",
+    "start_time": "10:00:00",
+    "end_time": "10:50:00",
+    "status": "scheduled",
+    "actual_hours": null
+  }
+},
+{
+  "model": "core.shiftassignment",
+  "pk": 227,
+  "fields": {
+    "schedule": 9,
+    "employee": 4,
+    "workout_type": 1,
+    "date": "2026-02-09",
+    "start_time": "11:00:00",
+    "end_time": "11:50:00",
+    "status": "scheduled",
+    "actual_hours": null
+  }
+},
+{
+  "model": "core.shiftassignment",
+  "pk": 228,
+  "fields": {
+    "schedule": 9,
+    "employee": 4,
+    "workout_type": 1,
+    "date": "2026-02-11",
+    "start_time": "14:00:00",
+    "end_time": "14:50:00",
+    "status": "scheduled",
+    "actual_hours": null
+  }
+},
+{
+  "model": "core.shiftassignment",
+  "pk": 229,
+  "fields": {
+    "schedule": 9,
+    "employee": 4,
+    "workout_type": 1,
+    "date": "2026-02-10",
+    "start_time": "15:00:00",
+    "end_time": "15:50:00",
+    "status": "scheduled",
+    "actual_hours": null
+  }
+},
+{
+  "model": "core.shiftassignment",
+  "pk": 230,
+  "fields": {
+    "schedule": 9,
+    "employee": 4,
+    "workout_type": 1,
+    "date": "2026-02-11",
+    "start_time": "15:00:00",
+    "end_time": "15:50:00",
+    "status": "scheduled",
+    "actual_hours": null
+  }
+},
+{
+  "model": "core.shiftassignment",
+  "pk": 231,
+  "fields": {
+    "schedule": 9,
+    "employee": 4,
+    "workout_type": 1,
+    "date": "2026-02-10",
+    "start_time": "16:00:00",
+    "end_time": "16:50:00",
+    "status": "scheduled",
+    "actual_hours": null
+  }
+},
+{
+  "model": "core.shiftassignment",
+  "pk": 232,
+  "fields": {
+    "schedule": 9,
+    "employee": 4,
+    "workout_type": 1,
+    "date": "2026-02-11",
+    "start_time": "16:00:00",
+    "end_time": "16:50:00",
+    "status": "scheduled",
+    "actual_hours": null
+  }
+},
+{
+  "model": "core.shiftassignment",
+  "pk": 233,
+  "fields": {
+    "schedule": 9,
+    "employee": 4,
+    "workout_type": 1,
+    "date": "2026-02-10",
+    "start_time": "17:00:00",
+    "end_time": "17:50:00",
+    "status": "scheduled",
+    "actual_hours": null
+  }
+},
+{
   "model": "core.availability",
   "pk": 1,
   "fields": {
@@ -3045,38 +2765,50 @@
 },
 {
   "model": "core.scheduleapproval",
-  "pk": 1,
+  "pk": 4,
   "fields": {
-    "schedule": 1,
+    "schedule": 9,
     "employee": 2,
-    "approved": true,
+    "approved": null,
     "comment": "",
-    "responded_at": "2026-01-28T06:59:07.654Z",
-    "created_at": "2026-01-28T06:12:22.707Z"
+    "responded_at": null,
+    "created_at": "2026-02-02T10:42:21.698Z"
   }
 },
 {
   "model": "core.scheduleapproval",
-  "pk": 2,
+  "pk": 5,
   "fields": {
-    "schedule": 1,
+    "schedule": 9,
     "employee": 3,
-    "approved": true,
+    "approved": null,
     "comment": "",
-    "responded_at": "2026-01-28T06:56:58.321Z",
-    "created_at": "2026-01-28T06:12:22.710Z"
+    "responded_at": null,
+    "created_at": "2026-02-02T10:42:21.703Z"
   }
 },
 {
   "model": "core.scheduleapproval",
-  "pk": 3,
+  "pk": 6,
   "fields": {
-    "schedule": 1,
+    "schedule": 9,
     "employee": 4,
-    "approved": false,
-    "comment": "—Å –º–∏–ª–µ–Ω–æ–π –≤ 1 –≤—Ä–µ–º—è –ø–æ—á–µ–º—É —É –Ω–µ–µ –Ω–µ —Å–º–µ–Ω–∏–ª—Å—è –µ—â–µ",
-    "responded_at": "2026-01-28T07:12:24.399Z",
-    "created_at": "2026-01-28T07:12:24.403Z"
+    "approved": null,
+    "comment": "",
+    "responded_at": null,
+    "created_at": "2026-02-02T10:42:21.706Z"
+  }
+},
+{
+  "model": "core.scheduleapproval",
+  "pk": 7,
+  "fields": {
+    "schedule": 9,
+    "employee": 5,
+    "approved": null,
+    "comment": "",
+    "responded_at": null,
+    "created_at": "2026-02-02T10:42:21.710Z"
   }
 }
 ]

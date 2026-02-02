@@ -10,9 +10,9 @@ from .models import *
 # --- Обновляем регистрацию UserProfile ---
 @admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):
-    list_display = ('user', 'role', 'position')
-    list_filter = ('role', 'position')
-    search_fields = ('user__username', 'user__email', 'position')
+    list_display = ('user', 'role')
+    list_filter = ['role']
+    search_fields = ('user__username', 'user__email')
 
 # --- Обновляем регистрацию ShiftAssignment ---
 @admin.register(ShiftAssignment)

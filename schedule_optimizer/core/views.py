@@ -161,8 +161,6 @@ def user_management(request):
     return render(request, 'core/dashboard/user_management.html', context)
 
 
-
-
 @login_required
 @user_passes_test(is_admin)
 def reset_user_password(request, user_id):
@@ -243,7 +241,7 @@ def custom_login(request):
 
             login(request, user)
             messages.success(request, f"Добро пожаловать, {user.username}!")
-            return redirect('dashboard') # Перенаправляем на дашборд после входа
+            return redirect('dashboard') # afo Перенаправляем на дашборд после входа
         else:
             messages.error(request, "Неверное имя пользователя или пароль.")
     else:
@@ -313,7 +311,7 @@ def profile_view(request):
 
 
 # core/views.py
-from .forms import UserProfileEditForm
+# from .forms import UserProfileEditForm
 
 @login_required
 def profile_edit(request):
@@ -1028,6 +1026,9 @@ def reports_view(request):
     date_hours = defaultdict(float)
 
     for a in assignments:
+        if a.start_time is None or a.end_time is None:
+            continue
+
         dur = (datetime.combine(date.min, a.end_time) - datetime.combine(date.min, a.start_time)).total_seconds() / 3600
         data[a.employee_id][a.date] += dur
         emp_hours[a.employee.user.username] += dur

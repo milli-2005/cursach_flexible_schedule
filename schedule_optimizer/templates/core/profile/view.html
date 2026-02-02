@@ -13,8 +13,9 @@
                 <li><strong>Email:</strong> {{ user.email }}</li>
                 <li><strong>Имя:</strong> {{ user.first_name }}</li>
                 <li><strong>Фамилия:</strong> {{ user.last_name }}</li>
+               <li><strong>Отчество:</strong> {{ profile.patronymic|default:"—" }}</li>
                 <li><strong>Роль:</strong> {{ profile.get_role_display }}</li>
-                <li><strong>Должность:</strong> {{ profile.position|default:"-" }}</li>
+<!--                <li><strong>Должность:</strong> {{ profile.position|default:"-" }}</li>-->
                 <li><strong>Телефон:</strong> {{ profile.phone|default:"-" }}</li>
             </ul>
         </div>

@@ -16,19 +16,25 @@ class UserProfile(models.Model):
         ('manager', 'Руководитель'),
     ]
     # Должности (для бизнес-логики)
-    POSITION_CHOICES = [
-        ('trainer', 'Тренер'),
-        ('administrator', 'Администратор'),
-    ]
+    # POSITION_CHOICES = [
+    #     ('trainer', 'Тренер'),
+    #     ('administrator', 'Администратор'),
+    # ]
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='employee')
     phone = models.CharField(max_length=20, blank=True, verbose_name="Телефон")
-    position = models.CharField(
-        max_length=20,
-        choices=POSITION_CHOICES,
-        default='trainer',
-        verbose_name="Должность"
+    # position = models.CharField(
+    #     max_length=20,
+    #     choices=POSITION_CHOICES,
+    #     default='trainer',
+    #     verbose_name="Должность"
+    # )
+
+    patronymic = models.CharField(
+        max_length=150,
+        blank=True,
+        verbose_name="Отчество"
     )
 
     # Поле для хранения времени приглашения/сброса пароля
@@ -93,6 +99,7 @@ class WorkoutType(models.Model):
     def rate_per_session(self):
         """Возвращает ставку за занятие как константу."""
         return TRAINER_RATE_PER_SESSION
+
 
 
 class Employee(models.Model):
@@ -257,6 +264,10 @@ class TimeOffRequest(models.Model):
     def __str__(self):
         return f"{self.employee} - {self.get_request_type_display()} ({self.start_date} - {self.end_date})"
 
+
+
+
+
 class ShiftSwapRequest(models.Model):
     """
     Заявка на обмен сменами между сотрудниками.
@@ -282,6 +293,9 @@ class ShiftSwapRequest(models.Model):
 
     def __str__(self):
         return f"Обмен: {self.from_employee} -> {self.to_employee}"
+
+
+
 
 class OptimizationRule(models.Model):
     """
