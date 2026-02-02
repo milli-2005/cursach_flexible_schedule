@@ -414,10 +414,8 @@ def timeoff_requests(request):
     return render(request, 'core/timeoff_requests.html', context)
 
 
+from .models import ShiftSwapRequest
 
-
-
-from .models import Employee, ShiftAssignment
 
 @login_required
 def shift_swaps(request):
@@ -431,10 +429,8 @@ def shift_swaps(request):
     # Получаем ID смены из URL (если есть)
     shift_id = request.GET.get('shift_id')
     selected_shift = None
-
     if shift_id:
         try:
-            # Проверяем, что смена принадлежит пользователю
             selected_shift = ShiftAssignment.objects.get(
                 id=shift_id,
                 employee__user=request.user
@@ -457,12 +453,21 @@ def shift_swaps(request):
             for emp in available_employees
         ]
 
+    # === : получаем заявки пользователя ===
+    my_swap_requests = ShiftSwapRequest.objects.filter(
+        from_employee__user_profile__user=request.user
+    ).select_related(
+        'to_employee__user_profile__user',
+        'shift_assignment__workout_type'
+    ).order_by('-created_at')
+
     context = {
         'current_role': current_role,
         'selected_shift': selected_shift,
         'available_employees': available_employees,
+        'my_swap_requests': my_swap_requests,  # ← передаём в шаблон
     }
-    return render(request, 'core/shift_swaps.html', context)
+    return render(request, 'core/swaps/shift_swaps.html', context)
 
 
 
@@ -1322,3 +1327,22 @@ def export_operational_excel(request):
     response['Content-Disposition'] = f'attachment; filename=tabel_{period}_{today.strftime("%Y%m%d")}.xlsx'
     wb.save(response)
     return response
+
+from .models import ShiftSwapRequest
+
+@login_required
+def manager_swap_requests(request):
+    if request.user.profile.role != 'manager':
+        messages.error(request, "Доступ запрещён.")
+        return redirect('dashboard')
+
+    swap_requests = ShiftSwapRequest.objects.select_related(
+        'from_employee__user_profile__user',
+        'to_employee__user_profile__user',
+        'shift_assignment__workout_type'
+    ).order_by('-created_at')
+
+    context = {
+        'swap_requests': swap_requests,
+    }
+    return render(request, 'core/swaps/manager_swap_requests.html', context)

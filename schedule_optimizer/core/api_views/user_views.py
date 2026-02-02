@@ -121,6 +121,11 @@ def api_invite_user(request):
             profile.invitation_timestamp = timezone.now()
             profile.save()
 
+            # ✅ Автоматически создаём Employee для нового пользователя
+            from .models import Employee
+            Employee.objects.get_or_create(user_profile=user.profile)
+
+
             try:
                 send_user_invitation(user, raw_password)
             except Exception as e:
@@ -295,3 +300,6 @@ def api_reset_user_password(request, user_id):
 
     except User.DoesNotExist:
         return JsonResponse({'success': False, 'message': 'Пользователь не найден.'}, status=404)
+
+
+

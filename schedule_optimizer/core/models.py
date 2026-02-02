@@ -128,6 +128,12 @@ class Employee(models.Model):
         return f"{self.user_profile.user.get_full_name() or self.user_profile.user.username}"
 
 
+# В конец файла core/models.py
+
+@receiver(post_save, sender=UserProfile)
+def create_employee_for_user_profile(sender, instance, created, **kwargs):
+    if created:
+        Employee.objects.get_or_create(user_profile=instance)
 
 
 class Schedule(models.Model):
@@ -359,3 +365,4 @@ class ScheduleApproval(models.Model):
 
     class Meta:
         unique_together = ('schedule', 'employee')
+

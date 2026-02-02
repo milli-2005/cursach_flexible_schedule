@@ -4,7 +4,6 @@
 {% block title %}Обмены сменами - {{ block.super }}{% endblock %}
 
 {% block content %}
-<h2>Обмены сменами</h2>
 
 {% if selected_shift %}
     <div class="alert alert-info">
@@ -36,12 +35,56 @@
         <button type="submit" class="btn btn-primary">Отправить заявку</button>
     </form>
 {% else %}
-    <p>Выберите смену для обмена на странице расписания.</p>
+
 {% endif %}
 
+
 <!-- Список ваших заявок -->
-<h3>Ваши заявки на обмен</h3>
-<!-- (можно добавить позже) -->
+<h2>Ваши заявки на обмен</h2>
+<p>Выберите смену для обмена на странице расписания.</p>
+{% if my_swap_requests %}
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Смена</th>
+                    <th>Кому</th>
+                    <th>Причина</th>
+                    <th>Статус</th>
+                    <th>Дата</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for req in my_swap_requests %}
+                <tr>
+                    <td>
+                        {{ req.shift_assignment.date }}<br>
+                        {{ req.shift_assignment.start_time }}–{{ req.shift_assignment.end_time }}
+                    </td>
+                    <td>{{ req.to_employee.user_profile.user.get_full_name }}</td>
+                    <td>{{ req.reason|truncatewords:10 }}</td>
+                    <td>
+                        {% if req.status == 'pending' %}
+                            <span class="badge bg-warning">На рассмотрении</span>
+                        {% elif req.status == 'approved_by_employee' %}
+                            <span class="badge bg-info">Одобрено сотрудником</span>
+                        {% elif req.status == 'approved_by_manager' %}
+                            <span class="badge bg-success">Одобрено менеджером</span>
+                        {% elif req.status == 'completed' %}
+                            <span class="badge bg-success">Завершено</span>
+                        {% elif req.status == 'rejected' %}
+                            <span class="badge bg-danger">Отклонено</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ req.created_at|date:"d.m.Y H:i" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% else %}
+    <p>У вас пока нет заявок на обмен.</p>
+{% endif %}
 
 <script>
 document.getElementById('swapForm')?.addEventListener('submit', async (e) => {

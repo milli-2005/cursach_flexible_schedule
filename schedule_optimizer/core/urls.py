@@ -5,7 +5,21 @@ from . import views
 from . import api_views
 from . import api_workout_views
 from . import api_schedule_views
-from .api_views import swap_views, user_views
+from .api_views.user_views import (
+    api_get_users,
+    api_get_user_detail,
+    api_invite_user,
+    api_update_user,
+    api_delete_user,
+    api_reset_user_password
+)
+from .api_views.swap_views import (
+    api_my_shifts_for_swap,
+    api_employees_for_swap,
+    api_create_swap_request,
+api_approve_swap_request,
+api_reject_swap_request
+)
 
 urlpatterns = [
     # Основные страницы
@@ -35,12 +49,12 @@ path('reports/export/tabel/', views.export_operational_excel, name='export_opera
 
 
     # API для управления пользователями
-    path('api/users/', api_views.api_get_users, name='api_get_users'),
-    path('api/invite-user/', api_views.api_invite_user, name='api_invite_user'),
-    path('api/users/<int:user_id>/', api_views.api_get_user_detail, name='api_get_user_detail'),
-    path('api/users/<int:user_id>/update/', api_views.api_update_user, name='api_update_user'),
-    path('api/users/<int:user_id>/delete/', api_views.api_delete_user, name='api_delete_user'),
-    path('api/users/<int:user_id>/reset-password/', api_views.api_reset_user_password, name='api_reset_user_password'),
+    # path('api/users/', api_views.api_get_users, name='api_get_users'),
+    # path('api/invite-user/', api_views.api_invite_user, name='api_invite_user'),
+    # path('api/users/<int:user_id>/', api_views.api_get_user_detail, name='api_get_user_detail'),
+    # path('api/users/<int:user_id>/update/', api_views.api_update_user, name='api_update_user'),
+    # path('api/users/<int:user_id>/delete/', api_views.api_delete_user, name='api_delete_user'),
+    # path('api/users/<int:user_id>/reset-password/', api_views.api_reset_user_password, name='api_reset_user_password'),
 
     # API для управления типами занятий
     path('workout-types/', views.workout_types, name='workout_types'),
@@ -65,10 +79,23 @@ path('reports/export/tabel/', views.export_operational_excel, name='export_opera
 #для отправки напоминаний о доступности
 path('remind/availability/', views.send_availability_reminder_manual, name='send_availability_reminder'),
 
-    # === Обмен сменами ===
-    path('api/my-shifts-for-swap/', swap_views.api_my_shifts_for_swap, name='api_my_shifts_for_swap'),
-    path('api/employees-for-swap/', swap_views.api_employees_for_swap, name='api_employees_for_swap'),
-    path('api/create-swap-request/', swap_views.api_create_swap_request, name='api_create_swap_request'),
+    # Пользователи
+    path('api/users/', api_get_users, name='api_get_users'),
+    path('api/users/<int:user_id>/', api_get_user_detail, name='api_get_user_detail'),
+    path('api/invite-user/', api_invite_user, name='api_invite_user'),
+    path('api/users/<int:user_id>/update/', api_update_user, name='api_update_user'),
+    path('api/users/<int:user_id>/delete/', api_delete_user, name='api_delete_user'),
+    path('api/users/<int:user_id>/reset-password/', api_reset_user_password, name='api_reset_user_password'),
+
+    # Обмен сменами
+    path('api/my-shifts-for-swap/', api_my_shifts_for_swap, name='api_my_shifts_for_swap'),
+    path('api/employees-for-swap/', api_employees_for_swap, name='api_employees_for_swap'),
+    path('api/create-swap-request/', api_create_swap_request, name='api_create_swap_request'),
+
+    # Для руководителя
+    path('/swap-requests/', views.manager_swap_requests, name='manager_swap_requests'),
+    path('api/swap-request/<int:swap_id>/approve/', api_approve_swap_request, name='api_approve_swap_request'),
+    path('api/swap-request/<int:swap_id>/reject/', api_reject_swap_request, name='api_reject_swap_request'),
 
     # path('optimization/', views.optimization_view, name='optimization'),
 ]

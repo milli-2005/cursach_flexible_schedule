@@ -1,12 +1,16 @@
 # core/swap_views.py
-import json
 from django.http import JsonResponse
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.utils import timezone
 from ..models import ShiftAssignment, Employee, ShiftSwapRequest
+import json
 
+def is_admin(user):
+    if not hasattr(user, 'profile'):
+        return False
+    return user.profile.role == 'manager' or user.is_superuser
 
 @login_required
 @require_http_methods(["GET"])
@@ -55,28 +59,28 @@ def api_employees_for_swap(request):
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_create_swap_request(request):
-    """Создаёт заявку на обмен сменой."""
     try:
         data = json.loads(request.body)
         shift_id = data.get('shift_id')
-        to_employee_id = data.get('to_employee_id')
+        to_employee_id = data.get('to_employee_id')  # ← это ID сотрудника (Employee.id)
         reason = data.get('reason', '').strip()
 
         if not shift_id or not to_employee_id:
             return JsonResponse({'success': False, 'error': 'Не указаны смена или получатель'})
 
-        # Получаем профиль текущего пользователя → Employee
-        from_employee = Employee.objects.get(user_profile__user=request.user)
-
-        # Проверка: смена принадлежит текущему пользователю
+        # === Проверка: смена принадлежит текущему пользователю ===
+        # ShiftAssignment.employee ссылается на UserProfile
         shift = ShiftAssignment.objects.get(
             id=shift_id,
-            employee=from_employee
+            employee=request.user.profile  # ← правильно: UserProfile
         )
 
+        # === Получаем получателя как Employee по ID ===
         to_employee = Employee.objects.get(id=to_employee_id)
 
-        # Создаём заявку
+        # === Создаём заявку ===
+        from_employee = Employee.objects.get(user_profile=request.user.profile)
+
         ShiftSwapRequest.objects.create(
             from_employee=from_employee,
             to_employee=to_employee,
@@ -93,3 +97,51 @@ def api_create_swap_request(request):
         return JsonResponse({'success': False, 'error': 'Получатель не найден'})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
+
+
+
+@login_required
+def manager_swap_requests(request):
+    if request.user.profile.role != 'manager':
+        messages.error(request, "Доступ запрещён.")
+        return redirect('dashboard')
+
+    # Все заявки на обмен
+    swap_requests = ShiftSwapRequest.objects.select_related(
+        'from_employee__user_profile__user',
+        'to_employee__user_profile__user',
+        'shift_assignment__workout_type'
+    ).order_by('-created_at')
+
+    context = {
+        'swap_requests': swap_requests,
+    }
+    return render(request, 'core/swaps/manager_swap_requests.html', context)
+
+
+#API для одобрения/отклонения
+@login_required
+@user_passes_test(is_admin)
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_approve_swap_request(request, swap_id):
+    try:
+        swap = ShiftSwapRequest.objects.get(id=swap_id)
+        swap.status = 'approved_by_manager'
+        swap.save()
+        return JsonResponse({'success': True})
+    except ShiftSwapRequest.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Заявка не найдена'})
+
+@login_required
+@user_passes_test(is_admin)
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_reject_swap_request(request, swap_id):
+    try:
+        swap = ShiftSwapRequest.objects.get(id=swap_id)
+        swap.status = 'rejected'
+        swap.save()
+        return JsonResponse({'success': True})
+    except ShiftSwapRequest.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Заявка не найдена'})
