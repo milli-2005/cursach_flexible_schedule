@@ -48,14 +48,6 @@ path('reports/', views.reports_view, name='reports'),
 path('reports/export/tabel/', views.export_operational_excel, name='export_operational_excel'),
 
 
-    # API для управления пользователями
-    # path('api/users/', api_views.api_get_users, name='api_get_users'),
-    # path('api/invite-user/', api_views.api_invite_user, name='api_invite_user'),
-    # path('api/users/<int:user_id>/', api_views.api_get_user_detail, name='api_get_user_detail'),
-    # path('api/users/<int:user_id>/update/', api_views.api_update_user, name='api_update_user'),
-    # path('api/users/<int:user_id>/delete/', api_views.api_delete_user, name='api_delete_user'),
-    # path('api/users/<int:user_id>/reset-password/', api_views.api_reset_user_password, name='api_reset_user_password'),
-
     # API для управления типами занятий
     path('workout-types/', views.workout_types, name='workout_types'),
     path('api/workout-types/', api_workout_views.api_get_workout_types, name='api_get_workout_types'),
@@ -93,7 +85,6 @@ path('remind/availability/', views.send_availability_reminder_manual, name='send
     path('api/create-swap-request/', api_create_swap_request, name='api_create_swap_request'),
 
     # Для руководителя
-    path('/swap-requests/', views.manager_swap_requests, name='manager_swap_requests'),
     path('api/swap-request/<int:swap_id>/approve/', api_approve_swap_request, name='api_approve_swap_request'),
     path('api/swap-request/<int:swap_id>/reject/', api_reject_swap_request, name='api_reject_swap_request'),
 

@@ -3,6 +3,7 @@
 {% block title %}Заявки на обмен сменами - {{ block.super }}{% endblock %}
 
 {% block content %}
+
 <h2>Заявки на обмен сменами</h2>
 
 {% if swap_requests %}
@@ -61,21 +62,29 @@
 {% endif %}
 
 <script>
+// Получаем CSRF-токен из метатега
+const csrftoken = document.querySelector('[name=csrf-token]').getAttribute('content');
+
 function approveSwap(swapId) {
     fetch(`/api/swap-request/${swapId}/approve/`, {
         method: 'POST',
         headers: {
-            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            'X-CSRFToken': csrftoken,
+            'Content-Type': 'application/json'
         }
     })
     .then(r => r.json())
     .then(data => {
         if (data.success) {
-            showGlobalNotification('Заявка утверждена.', 'success');
+            showGlobalNotification('Заявка утверждена и смена обновлена.', 'success');
             location.reload();
         } else {
             showGlobalNotification('Ошибка: ' + data.error, 'error');
         }
+    })
+    .catch(err => {
+        console.error('Ошибка:', err);
+        showGlobalNotification('Не удалось выполнить запрос.', 'error');
     });
 }
 
@@ -84,7 +93,8 @@ function rejectSwap(swapId) {
     fetch(`/api/swap-request/${swapId}/reject/`, {
         method: 'POST',
         headers: {
-            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            'X-CSRFToken': csrftoken,
+            'Content-Type': 'application/json'
         }
     })
     .then(r => r.json())

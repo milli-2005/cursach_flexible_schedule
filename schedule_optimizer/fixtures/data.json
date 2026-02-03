@@ -7,7 +7,7 @@
     "user": 1,
     "content_type": 10,
     "object_id": "2",
-    "object_repr": "лала (2026-01-05 - 2026-01-11)",
+    "object_repr": "пїЅпїЅпїЅпїЅ (2026-01-05 - 2026-01-11)",
     "action_flag": 1,
     "change_message": "[{\"added\": {}}]"
   }
@@ -20,7 +20,7 @@
     "user": 1,
     "content_type": 10,
     "object_id": "3",
-    "object_repr": "12-18 января (2026-01-12 - 2026-01-18)",
+    "object_repr": "12-18 пїЅпїЅпїЅпїЅпїЅпїЅ (2026-01-12 - 2026-01-18)",
     "action_flag": 1,
     "change_message": "[{\"added\": {}}]"
   }
@@ -33,7 +33,7 @@
     "user": 1,
     "content_type": 10,
     "object_id": "2",
-    "object_repr": "5-11 января (2026-01-05 - 2026-01-11)",
+    "object_repr": "5-11 пїЅпїЅпїЅпїЅпїЅпїЅ (2026-01-05 - 2026-01-11)",
     "action_flag": 2,
     "change_message": "[{\"changed\": {\"fields\": [\"\\u041d\\u0430\\u0437\\u0432\\u0430\\u043d\\u0438\\u0435 \\u0433\\u0440\\u0430\\u0444\\u0438\\u043a\\u0430\"]}}]"
   }
@@ -46,7 +46,7 @@
     "user": 1,
     "content_type": 10,
     "object_id": "1",
-    "object_repr": "2-8 февраля (2026-02-02 - 2026-02-08)",
+    "object_repr": "2-8 пїЅпїЅпїЅпїЅпїЅпїЅпїЅ (2026-02-02 - 2026-02-08)",
     "action_flag": 2,
     "change_message": "[{\"changed\": {\"fields\": [\"\\u041d\\u0430\\u0437\\u0432\\u0430\\u043d\\u0438\\u0435 \\u0433\\u0440\\u0430\\u0444\\u0438\\u043a\\u0430\"]}}]"
   }
@@ -59,7 +59,7 @@
     "user": 1,
     "content_type": 10,
     "object_id": "4",
-    "object_repr": "19-25 января (2026-01-19 - 2026-01-25)",
+    "object_repr": "19-25 пїЅпїЅпїЅпїЅпїЅпїЅ (2026-01-19 - 2026-01-25)",
     "action_flag": 1,
     "change_message": "[{\"added\": {}}]"
   }
@@ -98,7 +98,7 @@
     "user": 1,
     "content_type": 10,
     "object_id": "4",
-    "object_repr": "19-25 января (2026-01-19 - 2026-01-25)",
+    "object_repr": "19-25 пїЅпїЅпїЅпїЅпїЅпїЅ (2026-01-19 - 2026-01-25)",
     "action_flag": 3,
     "change_message": ""
   }
@@ -111,7 +111,7 @@
     "user": 1,
     "content_type": 10,
     "object_id": "3",
-    "object_repr": "12-18 января (2026-01-12 - 2026-01-18)",
+    "object_repr": "12-18 пїЅпїЅпїЅпїЅпїЅпїЅ (2026-01-12 - 2026-01-18)",
     "action_flag": 3,
     "change_message": ""
   }
@@ -124,7 +124,7 @@
     "user": 1,
     "content_type": 10,
     "object_id": "2",
-    "object_repr": "5-11 января (2026-01-05 - 2026-01-11)",
+    "object_repr": "5-11 пїЅпїЅпїЅпїЅпїЅпїЅ (2026-01-05 - 2026-01-11)",
     "action_flag": 3,
     "change_message": ""
   }
@@ -137,8 +137,8 @@
     "last_login": "2026-02-02T14:45:28.386Z",
     "is_superuser": true,
     "username": "manager",
-    "first_name": "Мария",
-    "last_name": "Рябкова",
+    "first_name": "пїЅпїЅпїЅпїЅпїЅ",
+    "last_name": "пїЅпїЅпїЅпїЅпїЅпїЅпїЅ",
     "email": "manager@gmail.com",
     "is_staff": true,
     "is_active": true,
@@ -155,8 +155,8 @@
     "last_login": "2026-01-31T07:45:32.668Z",
     "is_superuser": false,
     "username": "milena",
-    "first_name": "милена",
-    "last_name": "степанова",
+    "first_name": "пїЅпїЅпїЅпїЅпїЅпїЅ",
+    "last_name": "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ",
     "email": "milenast2021lili@gmail.com",
     "is_staff": false,
     "is_active": true,
@@ -173,8 +173,8 @@
     "last_login": "2026-02-02T14:45:22.399Z",
     "is_superuser": false,
     "username": "sofa",
-    "first_name": "софа",
-    "last_name": "токарева",
+    "first_name": "пїЅпїЅпїЅпїЅ",
+    "last_name": "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ",
     "email": "sh998135@gmail.com",
     "is_staff": false,
     "is_active": true,
@@ -191,8 +191,8 @@
     "last_login": "2026-02-02T12:40:05.622Z",
     "is_superuser": false,
     "username": "alina",
-    "first_name": "алина",
-    "last_name": "маннурова",
+    "first_name": "пїЅпїЅпїЅпїЅпїЅ",
+    "last_name": "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ",
     "email": "aliiiin12e@gmail.com",
     "is_staff": false,
     "is_active": true,
@@ -209,8 +209,8 @@
     "last_login": null,
     "is_superuser": false,
     "username": "mil",
-    "first_name": "Милена",
-    "last_name": "Степан",
+    "first_name": "пїЅпїЅпїЅпїЅпїЅпїЅ",
+    "last_name": "пїЅпїЅпїЅпїЅпїЅпїЅ",
     "email": "millimail.com",
     "is_staff": false,
     "is_active": true,
@@ -226,7 +226,7 @@
     "user": 1,
     "role": "manager",
     "phone": "89872624005",
-    "patronymic": "Александровна",
+    "patronymic": "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ",
     "invitation_timestamp": null
   }
 },
@@ -248,7 +248,7 @@
     "user": 3,
     "role": "employee",
     "phone": "89872724001",
-    "patronymic": "алоjjjjjjjjjjj",
+    "patronymic": "пїЅпїЅпїЅjjjjjjjjjjj",
     "invitation_timestamp": null
   }
 },
@@ -259,7 +259,7 @@
     "user": 4,
     "role": "employee",
     "phone": "89872724000",
-    "patronymic": "ало",
+    "patronymic": "пїЅпїЅпїЅ",
     "invitation_timestamp": null
   }
 },
@@ -359,7 +359,7 @@
   "model": "core.schedule",
   "pk": 5,
   "fields": {
-    "name": "Демо-график за 19.01–25.01.2026",
+    "name": "пїЅпїЅпїЅпїЅ-пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ 19.01пїЅ25.01.2026",
     "start_date": "2026-01-19",
     "end_date": "2026-01-25",
     "status": "approved",
@@ -372,7 +372,7 @@
   "model": "core.schedule",
   "pk": 6,
   "fields": {
-    "name": "Демо-график за 12.01–18.01.2026",
+    "name": "пїЅпїЅпїЅпїЅ-пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ 12.01пїЅ18.01.2026",
     "start_date": "2026-01-12",
     "end_date": "2026-01-18",
     "status": "approved",
@@ -385,7 +385,7 @@
   "model": "core.schedule",
   "pk": 7,
   "fields": {
-    "name": "Демо-график за 05.01–11.01.2026",
+    "name": "пїЅпїЅпїЅпїЅ-пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ 05.01пїЅ11.01.2026",
     "start_date": "2026-01-05",
     "end_date": "2026-01-11",
     "status": "approved",
@@ -398,7 +398,7 @@
   "model": "core.schedule",
   "pk": 8,
   "fields": {
-    "name": "Демо-график за 29.12–04.01.2026",
+    "name": "пїЅпїЅпїЅпїЅ-пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ 29.12пїЅ04.01.2026",
     "start_date": "2025-12-29",
     "end_date": "2026-01-04",
     "status": "approved",
@@ -411,7 +411,7 @@
   "model": "core.schedule",
   "pk": 10,
   "fields": {
-    "name": "График на неделю 9-15.02",
+    "name": "пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ 9-15.02",
     "start_date": "2026-02-09",
     "end_date": "2026-02-15",
     "status": "pending",
@@ -2429,7 +2429,7 @@
     "from_employee": 3,
     "to_employee": 4,
     "shift_assignment": 251,
-    "reason": "вв",
+    "reason": "пїЅпїЅ",
     "status": "pending",
     "created_at": "2026-02-02T14:21:03.216Z"
   }
@@ -3041,7 +3041,7 @@
     "schedule": 10,
     "employee": 3,
     "approved": false,
-    "comment": "не мгу",
+    "comment": "пїЅпїЅ пїЅпїЅпїЅ",
     "responded_at": "2026-02-02T12:42:37.105Z",
     "created_at": "2026-02-02T12:39:10.017Z"
   }

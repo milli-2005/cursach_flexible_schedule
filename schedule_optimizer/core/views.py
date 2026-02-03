@@ -415,18 +415,25 @@ def timeoff_requests(request):
 
 
 from .models import ShiftSwapRequest
-
-
 @login_required
 def shift_swaps(request):
     if not hasattr(request.user, 'profile'):
         messages.error(request, "Профиль пользователя не найден.")
         return redirect('dashboard')
 
-    user_profile = request.user.profile
-    current_role = user_profile.role
+    user_role = request.user.profile.role
 
-    # Получаем ID смены из URL (если есть)
+    # Если руководитель — показываем страницу утверждения
+    if user_role == 'manager':
+        swap_requests = ShiftSwapRequest.objects.select_related(
+            'from_employee__user_profile__user',
+            'to_employee__user_profile__user',
+            'shift_assignment__workout_type'
+        ).order_by('-created_at')
+        context = {'swap_requests': swap_requests}
+        return render(request, 'core/swaps/manager_swap_requests.html', context)
+
+    # Иначе — обычный сотрудник
     shift_id = request.GET.get('shift_id')
     selected_shift = None
     if shift_id:
@@ -438,13 +445,11 @@ def shift_swaps(request):
         except ShiftAssignment.DoesNotExist:
             messages.warning(request, "Смена не найдена или не принадлежит вам.")
 
-    # Получаем других сотрудников
     available_employees = []
     if hasattr(request.user, 'profile'):
         available_employees = Employee.objects.select_related('user_profile__user').exclude(
             user_profile__user=request.user
         ).values('id', 'user_profile__user__last_name', 'user_profile__user__first_name', 'user_profile__patronymic')
-
         available_employees = [
             {
                 'id': emp['id'],
@@ -453,7 +458,6 @@ def shift_swaps(request):
             for emp in available_employees
         ]
 
-    # === : получаем заявки пользователя ===
     my_swap_requests = ShiftSwapRequest.objects.filter(
         from_employee__user_profile__user=request.user
     ).select_related(
@@ -462,10 +466,9 @@ def shift_swaps(request):
     ).order_by('-created_at')
 
     context = {
-        'current_role': current_role,
         'selected_shift': selected_shift,
         'available_employees': available_employees,
-        'my_swap_requests': my_swap_requests,  # ← передаём в шаблон
+        'my_swap_requests': my_swap_requests,
     }
     return render(request, 'core/swaps/shift_swaps.html', context)
 
@@ -1327,22 +1330,3 @@ def export_operational_excel(request):
     response['Content-Disposition'] = f'attachment; filename=tabel_{period}_{today.strftime("%Y%m%d")}.xlsx'
     wb.save(response)
     return response
-
-from .models import ShiftSwapRequest
-
-@login_required
-def manager_swap_requests(request):
-    if request.user.profile.role != 'manager':
-        messages.error(request, "Доступ запрещён.")
-        return redirect('dashboard')
-
-    swap_requests = ShiftSwapRequest.objects.select_related(
-        'from_employee__user_profile__user',
-        'to_employee__user_profile__user',
-        'shift_assignment__workout_type'
-    ).order_by('-created_at')
-
-    context = {
-        'swap_requests': swap_requests,
-    }
-    return render(request, 'core/swaps/manager_swap_requests.html', context)

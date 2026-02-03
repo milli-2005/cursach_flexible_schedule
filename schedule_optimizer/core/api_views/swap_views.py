@@ -126,12 +126,37 @@ def manager_swap_requests(request):
 @require_http_methods(["POST"])
 def api_approve_swap_request(request, swap_id):
     try:
-        swap = ShiftSwapRequest.objects.get(id=swap_id)
+        swap = ShiftSwapRequest.objects.select_related(
+            'from_employee__user_profile',
+            'to_employee__user_profile',
+            'shift_assignment'
+        ).get(id=swap_id)
+
+        # 1. Меняем статус
         swap.status = 'approved_by_manager'
         swap.save()
+
+        # 2. Меняем смену в графике
+        shift = swap.shift_assignment
+
+        # Сохраняем старые данные (на случай отката)
+        original_employee = shift.employee
+
+        # Меняем владельца смены
+        shift.employee = swap.to_employee.user_profile
+        shift.save()
+
+        # Опционально: можно создать запись в лог или отправить уведомление
+
         return JsonResponse({'success': True})
+
     except ShiftSwapRequest.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Заявка не найдена'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+
 
 @login_required
 @user_passes_test(is_admin)

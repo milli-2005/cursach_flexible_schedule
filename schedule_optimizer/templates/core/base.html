@@ -47,7 +47,7 @@
             </div>
             <nav class="px-3">
                 <ul class="nav flex-column">
-                    <li><a href="{% url 'dashboard' %}" class="nav-link text-white"><i class="bi bi-house-door"></i> Дашборд</a></li>
+                    <li><a href="{% url 'dashboard' %}" class="nav-link text-white"><i class="bi bi-house-door"></i> Главная</a></li>
 <!--                    <li><a href="{% url 'about' %}" class="nav-link text-white"><i class="bi bi-info-circle"></i> О нас</a></li>-->
 
                     {% if user.is_authenticated %}
@@ -55,7 +55,7 @@
                             <li><a href="{% url 'profile_view' %}" class="nav-link text-white"><i class="bi bi-person-circle"></i> Профиль</a></li>
                     <li><a href="{% url 'my_availability' %}" class="nav-link text-white"><i class="bi bi-calendar-check"></i> Моя доступность</a></li>
                             <li><a href="{% url 'employee_schedule' %}" class="nav-link text-white"><i class="bi bi-calendar-event"></i> Мой график</a></li>
-                            <li><a href="{% url 'timeoff_requests' %}" class="nav-link text-white"><i class="bi bi-card-text"></i> Заявки на отгул</a></li>
+<!--                            <li><a href="{% url 'timeoff_requests' %}" class="nav-link text-white"><i class="bi bi-card-text"></i> Заявки на отгул</a></li>-->
                             <li><a href="{% url 'shift_swaps' %}" class="nav-link text-white"><i class="bi bi-arrow-left-right"></i> Обмены сменами</a></li>
                         {% elif user.profile.role == 'studio_admin' %}
                             <li><a href="{% url 'profile_view' %}" class="nav-link text-white"><i class="bi bi-person-circle"></i> Профиль</a></li>
@@ -68,7 +68,7 @@
                             <li><a href="{% url 'user_management' %}" class="nav-link text-white"><i class="bi bi-people"></i> Управление пользователями</a></li>
                             <li><a href="{% url 'workout_types' %}" class="nav-link"><i class="bi bi-journal-bookmark"></i> Типы занятий</a></li>
                             <li><a href="{% url 'reports' %}" class="nav-link text-white"><i class="bi bi-file-earmark-bar-graph"></i> Отчеты</a></li>
-                            <li><a href="{% url 'timeoff_requests' %}" class="nav-link text-white"><i class="bi bi-card-text"></i> Заявки на отгул</a></li>
+<!--                            <li><a href="{% url 'timeoff_requests' %}" class="nav-link text-white"><i class="bi bi-card-text"></i> Заявки на отгул</a></li>-->
                             <li><a href="{% url 'shift_swaps' %}" class="nav-link text-white"><i class="bi bi-arrow-left-right"></i> Обмены сменами</a></li>
                         {% endif %}
                     {% else %}
