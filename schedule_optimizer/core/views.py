@@ -980,11 +980,26 @@ from .models import ShiftAssignment, UserProfile, WorkoutType
 
 @login_required
 def reports_view(request):
-    if request.user.profile.role != 'manager':
-        messages.error(request, "Доступ запрещён.")
-        return redirect('dashboard')
+    user = request.user
+    profile = user.profile
 
-    # === ПОЛУЧЕНИЕ СТАВКИ ИЗ КУКИ ===
+    # === ОПРЕДЕЛЯЕМ, КТО ЗАШЁЛ ===
+    is_manager = (profile.role == 'manager')
+
+    # Если не менеджер — показываем только его данные
+    if not is_manager:
+        employee_filter = profile  # текущий пользователь
+    else:
+        employee_id = request.GET.get('employee')
+        if employee_id and employee_id != 'all':
+            try:
+                employee_filter = UserProfile.objects.get(id=employee_id, role='employee')
+            except UserProfile.DoesNotExist:
+                employee_filter = None
+        else:
+            employee_filter = None  # все сотрудники
+
+    # === СТАВКА ИЗ КУКИ ===
     hour_rate = request.COOKIES.get('hour_rate')
     if hour_rate:
         try:
@@ -992,7 +1007,7 @@ def reports_view(request):
         except ValueError:
             hour_rate = None
 
-    # === ОБРАБОТКА СОХРАНЕНИЯ СТАВКИ ===
+    # === ОБРАБОТКА СОХРАНЕНИЯ/СБРОСА СТАВКИ ===
     if 'set_hour_rate' in request.GET:
         new_rate_str = request.GET.get('hour_rate', '').strip()
         if new_rate_str:
@@ -1009,60 +1024,129 @@ def reports_view(request):
             hour_rate = None
             messages.info(request, "Ставка сброшена")
 
-    # === ОБРАБОТКА СБРОСА ===
     if 'reset_rate' in request.GET:
         hour_rate = None
         messages.info(request, "Ставка сброшена")
 
-    # === ПАРАМЕТРЫ ФИЛЬТРАЦИИ ===
+    # === ПЕРИОД ===
     period = request.GET.get('period', 'month')
-    employee_id = request.GET.get('employee')
-    workout_id = request.GET.get('workout')
-    search_query = request.GET.get('search', '').strip()
-
+    # === ОПРЕДЕЛЕНИЕ ПЕРИОДА ===
     today = date.today()
-    if period == 'week':
+
+    # По умолчанию — текущий месяц
+    default_start = today.replace(day=1)
+    if today.month == 12:
+        default_end = today.replace(year=today.year + 1, month=1, day=1) - timedelta(days=1)
+    else:
+        default_end = today.replace(month=today.month + 1, day=1) - timedelta(days=1)
+
+    # Получаем параметры из запроса
+    period = request.GET.get('period', 'month')
+    start_date_str = request.GET.get('start_date')
+    end_date_str = request.GET.get('end_date')
+
+    # Инициализируем даты значениями по умолчанию
+    start_date = default_start
+    end_date = default_end
+
+    # Обработка кастомного периода
+    if start_date_str and end_date_str:
+        try:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+            period = 'custom'
+        except ValueError:
+            messages.error(request, "Неверный формат даты. Используйте ГГГГ-ММ-ДД.")
+    elif period == 'week':
         start_date = today - timedelta(days=7)
         end_date = today
-    elif period == 'month':
-        start_date = today.replace(day=1)
-        if today.month == 12:
-            end_date = today.replace(year=today.year + 1, month=1, day=1) - timedelta(days=1)
-        else:
-            end_date = today.replace(month=today.month + 1, day=1) - timedelta(days=1)
     elif period == 'year':
         start_date = today.replace(month=1, day=1)
         end_date = today.replace(month=12, day=31)
-    else:
-        start_date = today.replace(day=1)
-        if today.month == 12:
-            end_date = today.replace(year=today.year + 1, month=1, day=1) - timedelta(days=1)
-        else:
-            end_date = today.replace(month=today.month + 1, day=1) - timedelta(days=1)
+    # else: остаётся 'month' → уже задан как default
 
     delta = end_date - start_date
     all_dates = [start_date + timedelta(days=i) for i in range(delta.days + 1)]
 
-    all_employees = UserProfile.objects.filter(role='employee').order_by('user__username')
-    employees = all_employees
+    # === ПОЛУЧЕНИЕ КАСТОМНЫХ ДАТ (если есть) ===
+    start_date_str = request.GET.get('start_date')
+    end_date_str = request.GET.get('end_date')
 
+    if start_date_str and end_date_str:
+        try:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+            period = 'custom'  # чтобы отличать от week/month/year
+        except ValueError:
+            messages.error(request, "Неверный формат даты. Используйте ГГГГ-ММ-ДД.")
+            start_date = None
+            end_date = None
+    else:
+        # Старая логика для period
+        today = date.today()
+        if period == 'week':
+            start_date = today - timedelta(days=7)
+            end_date = today
+        elif period == 'month':
+            start_date = today.replace(day=1)
+            if today.month == 12:
+                end_date = today.replace(year=today.year + 1, month=1, day=1) - timedelta(days=1)
+            else:
+                end_date = today.replace(month=today.month + 1, day=1) - timedelta(days=1)
+        elif period == 'year':
+            start_date = today.replace(month=1, day=1)
+            end_date = today.replace(month=12, day=31)
+        else:
+            start_date = today.replace(day=1)
+            if today.month == 12:
+                end_date = today.replace(year=today.year + 1, month=1, day=1) - timedelta(days=1)
+            else:
+                end_date = today.replace(month=today.month + 1, day=1) - timedelta(days=1)
+
+
+
+    # === ФИЛЬТРЫ ДЛЯ МЕНЕДЖЕРА ===
+    workout_id = request.GET.get('workout')
+    search_query = request.GET.get('search', '').strip()
+
+    # === ВЫБОР СОТРУДНИКОВ И ФИЛЬТРАЦИЯ ===
+    if is_manager:
+        all_employees = UserProfile.objects.filter(role='employee').order_by('user__username')
+        if employee_filter:
+            employees = [employee_filter]
+        else:
+            employees = all_employees
+    else:
+        # Сотрудник — только он сам
+        all_employees = [profile]
+        employees = [profile]
+
+    # === ЗАПРОС СМЕН ===
     assignments = ShiftAssignment.objects.filter(
         date__gte=start_date,
         date__lte=end_date
     ).select_related('employee', 'workout_type')
 
-    if employee_id and employee_id != 'all':
-        assignments = assignments.filter(employee_id=employee_id)
-        employees = employees.filter(id=employee_id)
-    if workout_id and workout_id != 'all':
-        assignments = assignments.filter(workout_type_id=workout_id)
-    if search_query:
-        assignments = assignments.filter(
-            Q(employee__user__username__icontains=search_query) |
-            Q(workout_type__name__icontains=search_query)
-        )
+    # Применяем фильтры
+    if is_manager:
+        if employee_filter:
+            assignments = assignments.filter(employee=employee_filter)
+        if workout_id and workout_id != 'all':
+            assignments = assignments.filter(workout_type_id=workout_id)
+        if search_query:
+            assignments = assignments.filter(
+                Q(employee__user__username__icontains=search_query) |
+                Q(workout_type__name__icontains=search_query)
+            )
+    else:
+        # Сотрудник: только свои + фильтр по типу занятия
+        assignments = assignments.filter(employee=profile)
+        if workout_id and workout_id != 'all':
+            assignments = assignments.filter(workout_type_id=workout_id)
+        # Поиск не нужен — только свои данные
 
     # === АГРЕГАЦИЯ ===
+    from collections import defaultdict
     data = defaultdict(lambda: defaultdict(float))
     emp_hours = defaultdict(float)
     day_hours = [0.0] * 7
@@ -1072,7 +1156,6 @@ def reports_view(request):
     for a in assignments:
         if a.start_time is None or a.end_time is None:
             continue
-
         dur = (datetime.combine(date.min, a.end_time) - datetime.combine(date.min, a.start_time)).total_seconds() / 3600
         data[a.employee_id][a.date] += dur
         emp_hours[a.employee.user.username] += dur
@@ -1089,13 +1172,11 @@ def reports_view(request):
         total_hours[emp.id] = round(hours, 2)
         total_shifts[emp.id] = shifts
 
-    # === СУММА ПО ДНЯМ (для "Итого по дням") ===
     daily_totals = []
     for d in all_dates:
         total = sum(data[emp.id].get(d, 0) for emp in employees)
         daily_totals.append(int(total))
 
-    # === ОБЩАЯ ЗП ===
     total_salary = 0
     if hour_rate is not None:
         total_salary = int(sum(total_hours.values()) * hour_rate)
@@ -1113,12 +1194,14 @@ def reports_view(request):
     }
 
     context = {
-        'period': period,
-        'employee_id': employee_id or 'all',
+        'start_date': start_date,
+    'end_date': end_date,
+    'period': period,
+        'employee_id': getattr(employee_filter, 'id', 'all') if is_manager else 'self',
         'workout_id': workout_id or 'all',
         'search_query': search_query,
         'employees': employees,
-        'all_employees': all_employees,
+        'all_employees': all_employees if is_manager else [],
         'workout_types': WorkoutType.objects.all(),
         'all_dates': all_dates,
         'data': data,
@@ -1131,15 +1214,14 @@ def reports_view(request):
         'chart_data_json': json.dumps(chart_data, ensure_ascii=False),
         'hour_rate': hour_rate,
         'total_salary': total_salary,
+        'is_manager': is_manager,
     }
 
-    # ответ
     resp = render(request, 'core/reports/reports.html', context)
 
-    # сохранение в куки
     if 'set_hour_rate' in request.GET or 'reset_rate' in request.GET:
         if hour_rate is not None:
-            resp.set_cookie('hour_rate', str(hour_rate), max_age=365*24*60*60)  # 1 год
+            resp.set_cookie('hour_rate', str(hour_rate), max_age=365*24*60*60)
         else:
             resp.delete_cookie('hour_rate')
 
@@ -1162,49 +1244,65 @@ def _format_number(value):
 
 @login_required
 def export_operational_excel(request):
-    if request.user.profile.role != 'manager':
-        return redirect('dashboard')
+    today = date.today()  # ← ОПРЕДЕЛИ СРАЗУ
 
     period = request.GET.get('period', 'month')
-    today = date.today()
+    start_date_str = request.GET.get('start_date')
+    end_date_str = request.GET.get('end_date')
 
-    # Определяем период
-    if period == 'week':
-        start_date = today - timedelta(days=7)
-        end_date = today
-    elif period == 'month':
-        start_date = today.replace(day=1)
-        if today.month == 12:
-            end_date = today.replace(year=today.year + 1, month=1, day=1) - timedelta(days=1)
-        else:
-            end_date = today.replace(month=today.month + 1, day=1) - timedelta(days=1)
-    elif period == 'year':
-        start_date = today.replace(month=1, day=1)
-        end_date = today.replace(month=12, day=31)
+    if start_date_str and end_date_str:
+        try:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            # fallback на текущий месяц
+            start_date = today.replace(day=1)
+            if today.month == 12:
+                end_date = today.replace(year=today.year + 1, month=1, day=1) - timedelta(days=1)
+            else:
+                end_date = today.replace(month=today.month + 1, day=1) - timedelta(days=1)
     else:
-        start_date = today.replace(day=1)
-        if today.month == 12:
-            end_date = today.replace(year=today.year + 1, month=1, day=1) - timedelta(days=1)
-        else:
-            end_date = today.replace(month=today.month + 1, day=1) - timedelta(days=1)
+        if period == 'week':
+            start_date = today - timedelta(days=7)
+            end_date = today
+        elif period == 'year':
+            start_date = today.replace(month=1, day=1)
+            end_date = today.replace(month=12, day=31)
+        else:  # month
+            start_date = today.replace(day=1)
+            if today.month == 12:
+                end_date = today.replace(year=today.year + 1, month=1, day=1) - timedelta(days=1)
+            else:
+                end_date = today.replace(month=today.month + 1, day=1) - timedelta(days=1)
 
-    # Все даты периода
+
+    # === ГЕНЕРИРУЕМ ВСЕ ДАТЫ ===
     all_dates = []
     d = start_date
     while d <= end_date:
         all_dates.append(d)
         d += timedelta(days=1)
 
-    employees = UserProfile.objects.filter(role='employee').order_by('user__username')
+    # Если сотрудник — только он сам
+    if request.user.profile.role == 'manager':
+        employees = UserProfile.objects.filter(role='employee').order_by('user__username')
+    else:
+        employees = [request.user.profile]
 
     assignments = ShiftAssignment.objects.filter(
         date__gte=start_date,
         date__lte=end_date
     ).select_related('employee')
 
+    # Фильтр по сотруднику (если не менеджер)
+    if request.user.profile.role != 'manager':
+        assignments = assignments.filter(employee=request.user.profile)
+
     from collections import defaultdict
     data = defaultdict(lambda: defaultdict(float))
     for a in assignments:
+        if a.start_time is None or a.end_time is None:
+            continue  # пропускаем смены без времени
         dur = (datetime.combine(date.min, a.end_time) - datetime.combine(date.min, a.start_time)).total_seconds() / 3600
         data[a.employee_id][a.date] += dur
 
@@ -1251,7 +1349,7 @@ def export_operational_excel(request):
 
     # Заголовки (строка 1)
     ws.cell(row=1, column=1, value="Сотрудник")
-    period_label = f"{start_date.day}-{end_date.day} {start_date.strftime('%B')}"
+    period_label = f"{start_date.strftime('%d.%m.%Y')} – {end_date.strftime('%d.%m.%Y')}"
     ws.cell(row=1, column=2, value=period_label)
     ws.cell(row=1, column=3, value="ЗП")
 
@@ -1327,6 +1425,7 @@ def export_operational_excel(request):
                 cell.border = thin_border
 
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    response['Content-Disposition'] = f'attachment; filename=tabel_{period}_{today.strftime("%Y%m%d")}.xlsx'
+    filename = f"tabel_{start_date.strftime('%Y%m%d')}-{end_date.strftime('%Y%m%d')}.xlsx"
+    response['Content-Disposition'] = f'attachment; filename={filename}'
     wb.save(response)
     return response

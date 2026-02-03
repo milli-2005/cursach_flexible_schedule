@@ -7,17 +7,47 @@
 <div class="management-container">
     <h2 class="mb-4">Аналитика загрузки</h2>
 
+    <div class="alert alert-info mb-4">
+        <strong>Период:</strong>
+        {{ start_date|date:"d.m.Y" }} — {{ end_date|date:"d.m.Y" }}
+    </div>
 
-    <!-- ФИЛЬТРЫ -->
-    <form method="get" class="row g-3 mb-4 p-3 bg-dark rounded">
-        <div class="col-md-2">
-            <label class="form-label">Период</label>
-            <select name="period" class="form-select" onchange="this.form.submit()">
-                <option value="week" {% if period == 'week' %}selected{% endif %}>Неделя</option>
-                <option value="month" {% if period == 'month' %}selected{% endif %}>Месяц</option>
-                <option value="year" {% if period == 'year' %}selected{% endif %}>Год</option>
-            </select>
-        </div>
+<!-- ФИЛЬТРЫ -->
+<form method="get" class="row g-3 mb-4 p-3 bg-dark rounded">
+    <div class="col-md-2">
+        <label class="form-label">Период</label>
+    <select name="period" class="form-select" onchange="toggleCustomDateFields(this.value)">
+        <option value="week" {% if period == 'week' %}selected{% endif %}>Неделя</option>
+        <option value="month" {% if period == 'month' %}selected{% endif %}>Месяц</option>
+        <option value="year" {% if period == 'year' %}selected{% endif %}>Год</option>
+        <option value="custom" {% if period == 'custom' %}selected{% endif %}>Свой период</option>
+    </select>
+</div>
+
+<!-- Поля для кастомного периода (скрыты по умолчанию) -->
+<div id="custom-date-fields" class="col-md-4" style="display: none;">
+    <label class="form-label">С</label>
+    <input type="date" name="start_date" class="form-control" value="{% if start_date %}{{ start_date|date:"Y-m-d" }}{% endif %}">
+</div>
+<div id="custom-date-fields-end" class="col-md-4" style="display: none;">
+    <label class="form-label">По</label>
+    <input type="date" name="end_date" class="form-control" value="{% if end_date %}{{ end_date|date:"Y-m-d" }}{% endif %}">
+</div>
+
+    <!-- Тип занятия — для всех -->
+    <div class="col-md-2">
+        <label class="form-label">Тип занятия</label>
+        <select name="workout" class="form-select" onchange="this.form.submit()">
+            <option value="all">Все</option>
+            {% for wt in workout_types %}
+                <option value="{{ wt.id }}" {% if workout_id|slugify == wt.id|slugify %}selected{% endif %}>
+                    {{ wt.name }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    {% if is_manager %}
         <div class="col-md-2">
             <label class="form-label">Сотрудник</label>
             <select name="employee" class="form-select" onchange="this.form.submit()">
@@ -29,17 +59,6 @@
                 {% endfor %}
             </select>
         </div>
-        <div class="col-md-2">
-            <label class="form-label">Тип занятия</label>
-            <select name="workout" class="form-select" onchange="this.form.submit()">
-                <option value="all">Все</option>
-                {% for wt in workout_types %}
-                    <option value="{{ wt.id }}" {% if workout_id|slugify == wt.id|slugify %}selected{% endif %}>
-                        {{ wt.name }}
-                    </option>
-                {% endfor %}
-            </select>
-        </div>
         <div class="col-md-4">
             <label class="form-label">Поиск</label>
             <input type="text" name="search" class="form-control" placeholder="Имя или тип..." value="{{ search_query }}">
@@ -47,7 +66,13 @@
         <div class="col-md-2 d-flex align-items-end">
             <button type="submit" class="btn btn-primary w-100">Применить</button>
         </div>
-    </form>
+    {% else %}
+        <!-- Для сотрудника — только кнопка "Применить" -->
+        <div class="col-md-2 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary w-100">Применить</button>
+        </div>
+    {% endif %}
+</form>
 
     <!-- МЕТРИКИ -->
     <div class="row mb-4">
@@ -76,10 +101,11 @@
             </div>
         </div>
         <div class="col-md-3">
-            <a href="{% url 'export_operational_excel' %}?{% if period %}period={{ period }}&{% endif %}{% if employee_id != 'all' %}employee={{ employee_id }}&{% endif %}{% if workout_id != 'all' %}workout={{ workout_id }}&{% endif %}{% if search_query %}search={{ search_query }}{% endif %}"
-               class="btn btn-success w-100 h-100 d-flex align-items-center justify-content-center">
-                <i class="bi bi-file-earmark-excel me-2"></i>Экспорт Excel
-            </a>
+            <!-- Кнопка экспорта -->
+<button type="button" class="btn btn-success w-100 h-100 d-flex align-items-center justify-content-center"
+        onclick="exportExcel()">
+    <i class="bi bi-file-earmark-excel me-2"></i>Экспорт Excel
+</button>
         </div>
     </div>
 
@@ -114,11 +140,12 @@
     <!-- ТАБЕЛЬ -->
     <div class="card mb-4">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <span>📋 Табель учёта за {{ all_dates.0|date:"F Y" }}</span>
-            <a href="{% url 'export_operational_excel' %}?{% if period %}period={{ period }}&{% endif %}{% if employee_id != 'all' %}employee={{ employee_id }}&{% endif %}{% if workout_id != 'all' %}workout={{ workout_id }}&{% endif %}{% if search_query %}search={{ search_query }}{% endif %}"
-               class="btn btn-success btn-sm">
-                <i class="bi bi-file-earmark-excel me-2"></i>Экспорт Excel
-            </a>
+            <span>Табель учёта за период с {{ start_date|date:"d.m.Y" }} по {{ end_date|date:"d.m.Y" }}</span>
+            <!-- Кнопка экспорта -->
+<button type="button" class="btn btn-success w-100 h-100 d-flex align-items-center justify-content-center"
+        onclick="exportExcel()">
+    <i class="bi bi-file-earmark-excel me-2"></i>Экспорт Excel
+</button>
         </div>
 
         <!-- СТАВКА ЗА ЧАС -->
@@ -295,5 +322,44 @@ document.querySelector('input[name="search"]').addEventListener('input', functio
     }, 500); // Отправка через 500мс после остановки ввода
 });
 });
+
+    function toggleCustomDateFields(value) {
+    const customStart = document.getElementById('custom-date-fields');
+    const customEnd = document.getElementById('custom-date-fields-end');
+    if (value === 'custom') {
+        customStart.style.display = 'block';
+        customEnd.style.display = 'block';
+    } else {
+        customStart.style.display = 'none';
+        customEnd.style.display = 'none';
+        // НЕ ОЧИЩАЙ ЗНАЧЕНИЯ!
+        // startInput.value = '';  ← УДАЛИ ЭТИ СТРОКИ
+        // endInput.value = '';
+    }
+}
+
+// Инициализация при загрузке
+document.addEventListener('DOMContentLoaded', function() {
+    const select = document.querySelector('select[name="period"]');
+    if (select) {
+        toggleCustomDateFields(select.value);
+    }
+});
+
+    function exportExcel() {
+    // Берём ВСЕ параметры из текущего URL
+    const url = new URL(window.location.href);
+    const params = url.searchParams;
+
+    // Убираем служебные параметры (если есть)
+    params.delete('set_hour_rate');
+    params.delete('reset_rate');
+
+    // Формируем URL для экспорта
+    const exportUrl = '/reports/export/tabel/?' + params.toString();
+
+    // Переходим
+    window.location.href = exportUrl;
+}
 </script>
 {% endblock %}

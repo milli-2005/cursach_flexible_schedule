@@ -55,6 +55,7 @@
                             <li><a href="{% url 'profile_view' %}" class="nav-link text-white"><i class="bi bi-person-circle"></i> Профиль</a></li>
                     <li><a href="{% url 'my_availability' %}" class="nav-link text-white"><i class="bi bi-calendar-check"></i> Моя доступность</a></li>
                             <li><a href="{% url 'employee_schedule' %}" class="nav-link text-white"><i class="bi bi-calendar-event"></i> Мой график</a></li>
+                    <li><a href="{% url 'reports' %}" class="nav-link text-white"><i class="bi bi-file-earmark-bar-graph"></i> Отчеты</a></li>
 <!--                            <li><a href="{% url 'timeoff_requests' %}" class="nav-link text-white"><i class="bi bi-card-text"></i> Заявки на отгул</a></li>-->
                             <li><a href="{% url 'shift_swaps' %}" class="nav-link text-white"><i class="bi bi-arrow-left-right"></i> Обмены сменами</a></li>
                         {% elif user.profile.role == 'studio_admin' %}
