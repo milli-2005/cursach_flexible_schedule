@@ -736,49 +736,78 @@ def delete_schedule_view(request, schedule_id):
 
 
 """ === ГРАФИК В ЛИЧНОМ КАБИНЕТЕ У ТРЕНЕРОВ === """
+from datetime import date, timedelta
+import calendar
+
 @login_required
 def employee_schedule(request):
-    user_profile = request.user.profile
-    if user_profile.role != 'employee':
-        messages.error(request, "Доступно только для сотрудников.")
+    if not hasattr(request.user, 'profile'):
         return redirect('dashboard')
 
-    # Получаем все назначения текущего сотрудника
+    today = date.today()
+    try:
+        year = int(request.GET.get('year', today.year))
+        month = int(request.GET.get('month', today.month))
+    except (TypeError, ValueError):
+        year, month = today.year, today.month
+
+    # Исправляем некорректные значения месяца
+    if month < 1:
+        year -= 1
+        month = 12
+    elif month > 12:
+        year += 1
+        month = 1
+
+    # Теперь можно безопасно создавать дату
+    first_day = date(year, month, 1)
+    if month == 12:
+        last_day = date(year + 1, 1, 1) - timedelta(days=1)
+    else:
+        last_day = date(year, month + 1, 1) - timedelta(days=1)
+
+
+    # Все дни месяца
+    all_dates = [first_day + timedelta(days=i) for i in range((last_day - first_day).days + 1)]
+
+    # Смены сотрудника в этом месяце
     assignments = ShiftAssignment.objects.filter(
-        employee=user_profile
-    ).select_related('schedule', 'workout_type').order_by('date', 'start_time')
+        employee__user=request.user,
+        date__gte=first_day,
+        date__lte=last_day
+    ).select_related('workout_type').order_by('date', 'start_time')
 
-    # Группируем по графикам
-    schedules_dict = {}
-    for a in assignments:
-        key = a.schedule.id
-        if key not in schedules_dict:
-            schedules_dict[key] = {
-                'schedule': a.schedule,
-                'assignments': []
-            }
-        schedules_dict[key]['assignments'].append(a)
+    shifts_by_date = {}
+    for d in all_dates:
+        shifts_by_date[d] = []
+    for shift in assignments:
+        shifts_by_date[shift.date].append(shift)
 
-    # Добавляем флаг ответа
-    schedules = []
-    for item in schedules_dict.values():
-        schedule = item['schedule']
-        # Проверяем, отвечал ли сотрудник
-        approval = ScheduleApproval.objects.filter(
-            schedule=schedule,
-            employee=user_profile
-        ).first()
-        has_responded = approval is not None and approval.approved is not None
-
-        schedules.append({
-            'schedule': schedule,
-            'assignments': item['assignments'],
-            'has_responded': has_responded,
-            'approval': approval,
-        })
+    # Для календаря: недели
+    cal = calendar.monthcalendar(year, month)
+    weeks = []
+    for week in cal:
+        week_days = []
+        for day in week:
+            if day == 0:
+                week_days.append(None)
+            else:
+                d = date(year, month, day)
+                week_days.append({
+                    'date': d,
+                    'has_shift': len(shifts_by_date.get(d, [])) > 0,
+                    'is_today': d == date.today()
+                })
+        weeks.append(week_days)
 
     context = {
-        'schedules': schedules,
+        'current_year': year,
+        'current_month': month,
+        'month_name': first_day.strftime('%B %Y'),
+        'weeks': weeks,
+        'shifts_by_date': shifts_by_date,
+        'all_dates': all_dates,
+        'today': date.today(),
     }
     return render(request, 'core/schedules/employee_schedule.html', context)
 

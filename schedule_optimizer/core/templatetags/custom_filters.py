@@ -4,7 +4,8 @@ register = template.Library()
 
 @register.filter
 def get_item(dictionary, key):
-    return dictionary.get(key, 0)
+    """Позволяет делать {{ dict|get_item:key }} в шаблонах"""
+    return dictionary.get(key)
 
 @register.filter
 def hadd(value, arg):
