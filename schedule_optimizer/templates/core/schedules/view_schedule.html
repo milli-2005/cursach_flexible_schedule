@@ -91,4 +91,171 @@
         {% endwith %}
     </div>
 {% endif %}
+
+<!-- УТВЕРЖДЕНИЕ ГРАФИКА (только для сотрудников) -->
+{% if request.user.profile.role == 'employee' and schedule.status == 'pending' %}
+    {% with approval=approval_for_user %}
+        {% if approval and approval.approved is None %}
+            <div class="card mb-4 border-purple shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Требуется ваше подтверждение</h5>
+                    <p class="text-grey-400 small">График: {{ schedule.name }}</p>
+                    <form id="approval-form" class="mt-3">
+                        <input type="hidden" name="schedule_id" value="{{ schedule.id }}">
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="radio" name="decision" value="approve" id="approve" required>
+                            <label class="form-check-label" for="approve">Утвердить</label>
+                        </div>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="radio" name="decision" value="reject" id="reject" required>
+                            <label class="form-check-label" for="reject">Отклонить</label>
+                        </div>
+                        <div class="mb-3 d-none" id="comment-group">
+                            <label for="comment">Комментарий (обязателен при отклонении)</label>
+                            <textarea class="form-control form-control-sm" id="comment" rows="2" placeholder="Например: не могу работать в выходные"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm">Отправить решение</button>
+                    </form>
+                </div>
+            </div>
+        {% elif approval and approval.approved %}
+            <div class="alert alert-success mb-4">
+                <i class="bi bi-check-circle"></i> Вы утвердили этот график.
+            </div>
+        {% elif approval and approval.approved == False %}
+            <div class="alert alert-danger mb-4">
+                <i class="bi bi-x-circle"></i> Вы отклонили этот график.<br>
+                <small>Комментарий: "{{ approval.comment }}"</small>
+            </div>
+        {% endif %}
+    {% endwith %}
+{% endif %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Показ/скрытие комментария
+    const approveRadio = document.getElementById('approve');
+    const rejectRadio = document.getElementById('reject');
+    const commentGroup = document.getElementById('comment-group');
+
+    if (approveRadio && rejectRadio) {
+        [approveRadio, rejectRadio].forEach(radio => {
+            radio.addEventListener('change', function() {
+                if (this.value === 'reject') {
+                    commentGroup.classList.remove('d-none');
+                    commentGroup.querySelector('textarea').required = true;
+                } else {
+                    commentGroup.classList.add('d-none');
+                    commentGroup.querySelector('textarea').required = false;
+                }
+            });
+        });
+
+        // Отправка формы
+        const form = document.getElementById('approval-form');
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const decision = form.querySelector('input[name="decision"]:checked')?.value;
+                const comment = document.getElementById('comment')?.value || '';
+                const scheduleId = form.querySelector('input[name="schedule_id"]').value;
+
+                if (!decision) return;
+
+                const approved = decision === 'approve';
+                if (!approved && !comment.trim()) {
+                    alert('Пожалуйста, укажите причину отклонения.');
+                    return;
+                }
+
+                fetch(`/api/schedule/${scheduleId}/approve/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify({ approved, comment })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        showGlobalNotification('Решение отправлено', 'success');
+                        location.reload(); // Обновляем страницу
+                    } else {
+                        showGlobalNotification('Ошибка: ' + (data.error || ''), 'error');
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    showGlobalNotification('Ошибка сети', 'error');
+                });
+            });
+        }
+    }
+});
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Показ/скрытие комментария
+    const approveRadio = document.getElementById('approve');
+    const rejectRadio = document.getElementById('reject');
+    const commentGroup = document.getElementById('comment-group');
+
+    if (approveRadio && rejectRadio) {
+        [approveRadio, rejectRadio].forEach(radio => {
+            radio.addEventListener('change', function() {
+                if (this.value === 'reject') {
+                    commentGroup.classList.remove('d-none');
+                    commentGroup.querySelector('textarea').required = true;
+                } else {
+                    commentGroup.classList.add('d-none');
+                    commentGroup.querySelector('textarea').required = false;
+                }
+            });
+        });
+
+        // Отправка формы
+        const form = document.getElementById('approval-form');
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const decision = form.querySelector('input[name="decision"]:checked')?.value;
+                const comment = document.getElementById('comment')?.value || '';
+                const scheduleId = form.querySelector('input[name="schedule_id"]').value;
+
+                if (!decision) return;
+
+                const approved = decision === 'approve';
+                if (!approved && !comment.trim()) {
+                    alert('Пожалуйста, укажите причину отклонения.');
+                    return;
+                }
+
+                fetch(`/api/schedule/${scheduleId}/approve/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify({ approved, comment })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        showGlobalNotification('Решение отправлено', 'success');
+                        location.reload(); // Обновляем страницу
+                    } else {
+                        showGlobalNotification('Ошибка: ' + (data.error || ''), 'error');
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    showGlobalNotification('Ошибка сети', 'error');
+                });
+            });
+        }
+    }
+});
+</script>
 {% endblock %}

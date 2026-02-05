@@ -631,7 +631,6 @@ def schedule_detail(request, schedule_id):
     # === 4. Создание словаря: {(дата, время_начала): assignment} ===
     assignment_dict = {}
     for a in assignments:
-        # Преобразуем время начала в строку "09:00"
         time_key = a.start_time.strftime('%H:%M')
         key = (a.date, time_key)
         assignment_dict[key] = a
@@ -640,7 +639,7 @@ def schedule_detail(request, schedule_id):
     table_data = []
     for slot in all_slots:
         row = {'time_slot': slot, 'cells': []}
-        start_time_str = slot.split('–')[0]  # Например, "09:00"
+        start_time_str = slot.split('–')[0]
 
         for day in days:
             key = (day, start_time_str)
@@ -648,10 +647,23 @@ def schedule_detail(request, schedule_id):
             row['cells'].append({'assignment': assignment})
         table_data.append(row)
 
+    # === 6. Данные для утверждения (только для сотрудников) ===
+    approval_for_user = None
+    if request.user.is_authenticated and hasattr(request.user, 'profile'):
+        if request.user.profile.role == 'employee':
+            try:
+                approval_for_user = ScheduleApproval.objects.get(
+                    schedule=schedule,
+                    employee=request.user.profile
+                )
+            except ScheduleApproval.DoesNotExist:
+                approval_for_user = None
+
     context = {
         'schedule': schedule,
         'days': days,
         'table_data': table_data,
+        'approval_for_user': approval_for_user,
     }
     return render(request, 'core/schedules/view_schedule.html', context)
 
