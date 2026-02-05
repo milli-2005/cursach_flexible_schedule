@@ -124,31 +124,33 @@ document.getElementById('save-schedule-btn').addEventListener('click', function 
     const scheduleId = {{ schedule.id }};
     const assignments = [];
 
+    // Получаем список дат из контекста Django
     const days = [
         {% for d in days %}
             "{{ d|date:'Y-m-d' }}"{% if not forloop.last %},{% endif %}
         {% endfor %}
     ];
 
+    // Собираем ВСЕ смены из таблицы
     document.querySelectorAll('tbody tr').forEach(row => {
-        const timeSlot = row.querySelector('td:first-child').textContent.trim(); // ← ПОЛНОЕ ВРЕМЯ
+        const timeSlot = row.querySelector('td:first-child').textContent.trim(); // "09:00 – 09:50"
 
         row.querySelectorAll('td:not(:first-child)').forEach((cell, colIndex) => {
             const day = days[colIndex];
             const employeeSelect = cell.querySelector('.employee-select');
             const workoutSelect = cell.querySelector('.workout-select');
 
+            // Добавляем смену, даже если она не изменялась
             const employeeId = employeeSelect ? employeeSelect.value : null;
             const workoutTypeId = workoutSelect ? workoutSelect.value : null;
 
-            if (employeeId || workoutTypeId) {
-                assignments.push({
-                    date: day,
-                    time_slot: timeSlot,  // ← КЛЮЧЕВОЕ ИЗМЕНЕНИЕ
-                    employee_id: employeeId || null,
-                    workout_type_id: workoutTypeId || null
-                });
-            }
+            // Сохраняем ВСЕ записи (включая пустые — они будут пропущены на бэкенде)
+            assignments.push({
+                date: day,
+                time_slot: timeSlot,  // ← ПОЛНЫЙ ДИАПАЗОН
+                employee_id: employeeId || null,
+                workout_type_id: workoutTypeId || null
+            });
         });
     });
 

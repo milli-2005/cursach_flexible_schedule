@@ -30,53 +30,150 @@ def api_update_schedule(request, schedule_id):
         data = json.loads(request.body)
         assignments = data.get('assignments', [])
 
-        # Удаляем все текущие назначения
+        # === 1. Получаем старые смены ===
+        old_shifts = list(ShiftAssignment.objects.filter(schedule=schedule))
+        old_by_key = {}
+        old_employee_shifts = {}  # Сотрудник -> его смены
+        for s in old_shifts:
+            key = (s.employee_id, s.date, s.start_time)
+            old_by_key[key] = s
+            if s.employee_id:
+                if s.employee_id not in old_employee_shifts:
+                    old_employee_shifts[s.employee_id] = []
+                old_employee_shifts[s.employee_id].append(key)
+
+        # === 2. Удаляем старые смены ===
         ShiftAssignment.objects.filter(schedule=schedule).delete()
 
+        # === 3. Создаём новые смены ===
+        new_shifts = []
+        new_by_key = {}
+        new_employee_shifts = {}  # Сотрудник -> его смены
         for item in assignments:
             date_str = item['date']
-            time_slot = item['time_slot']  # ← Должно быть "HH:MM–HH:MM"
+            time_slot = item['time_slot']
+            # === ВАЖНО: преобразуем employee_id в int ===
             employee_id = item.get('employee_id')
+            if employee_id:
+                employee_id = int(employee_id)
             workout_type_id = item.get('workout_type_id')
+            if workout_type_id:
+                workout_type_id = int(workout_type_id)
 
             if not employee_id and not workout_type_id:
                 continue
 
-            # Парсим дату
             date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
-
-            # === ПАРСИМ ДИАПАЗОН ВРЕМЕНИ ===
             parts = time_slot.split('–')
-            if len(parts) < 2:
-                # Защита: если вдруг пришёл только HH:MM
-                start_time_str = time_slot.strip()
-                end_time_str = None
-            else:
-                start_time_str = parts[0].strip()
-                end_time_str = parts[1].strip()
+            start_time_str = parts[0].strip()
+            end_time_str = parts[1].strip() if len(parts) > 1 else None
 
             start_time = datetime.strptime(start_time_str, '%H:%M').time()
             end_time = datetime.strptime(end_time_str, '%H:%M').time() if end_time_str else None
 
-            # Если end_time не задан — ошибка (но лучше не допускать этого)
             if end_time is None:
-                # Можно подставить +50 мин, но лучше логировать
                 fake_dt = datetime.combine(datetime.min, start_time)
                 end_dt = fake_dt + timedelta(minutes=50)
                 end_time = end_dt.time()
 
-            ShiftAssignment.objects.create(
+            shift = ShiftAssignment.objects.create(
                 schedule=schedule,
                 date=date_obj,
                 start_time=start_time,
-                end_time=end_time,  # ✅ Теперь точное значение из time_slot
+                end_time=end_time,
                 employee_id=employee_id,
                 workout_type_id=workout_type_id
             )
+            new_shifts.append(shift)
+            key = (employee_id, date_obj, start_time)
+            new_by_key[key] = shift
+            if employee_id:
+                if employee_id not in new_employee_shifts:
+                    new_employee_shifts[employee_id] = []
+                new_employee_shifts[employee_id].append(key)
 
-        return JsonResponse({'success': True})
+        # === 4. Определяем, кто ИЗМЕНИЛСЯ ===
+        changed_employees = set()
+
+        # Случай 1: сотрудник был, но все его смены исчезли
+        for emp_id in old_employee_shifts:
+            if emp_id not in new_employee_shifts:
+                changed_employees.add(emp_id)
+
+        # Случай 2: сотрудник появился (новый)
+        for emp_id in new_employee_shifts:
+            if emp_id not in old_employee_shifts:
+                changed_employees.add(emp_id)
+
+        # Случай 3: сотрудник остался, но его смены изменились
+        for emp_id in old_employee_shifts:
+            if emp_id in new_employee_shifts:
+                old_keys = set(old_employee_shifts[emp_id])
+                new_keys = set(new_employee_shifts[emp_id])
+
+                # Если набор смен изменился
+                if old_keys != new_keys:
+                    changed_employees.add(emp_id)
+
+                # Или если тип тренировки изменился в оставшихся сменах
+                else:
+                    for key in old_keys:
+                        old_shift = old_by_key[key]
+                        new_shift = new_by_key[key]
+                        if old_shift.workout_type_id != new_shift.workout_type_id:
+                            changed_employees.add(emp_id)
+                            break
+
+        # === 5. Сбрасываем утверждение ТОЛЬКО для изменённых ===
+        if changed_employees:
+            ScheduleApproval.objects.filter(
+                schedule=schedule,
+                employee__in=list(changed_employees)
+            ).update(approved=None, comment='', responded_at=None)
+
+        # === 6. Удаляем approvals для сотрудников, у которых больше нет смен ===
+        emp_ids_with_shifts = {s.employee_id for s in new_shifts if s.employee_id}
+        to_delete = ScheduleApproval.objects.filter(
+            schedule=schedule
+        ).exclude(
+            employee_id__in=emp_ids_with_shifts
+        )
+        to_delete.delete()
+
+        # === 7. Добавляем approvals для новых сотрудников (которых ещё нет) ===
+        existing = set(ScheduleApproval.objects.filter(schedule=schedule).values_list('employee_id', flat=True))
+        new_approvals = []
+        for emp_id in emp_ids_with_shifts - existing:
+            if emp_id:
+                new_approvals.append(ScheduleApproval(
+                    schedule=schedule,
+                    employee_id=emp_id,
+                    approved=None
+                ))
+
+        if new_approvals:
+            ScheduleApproval.objects.bulk_create(new_approvals)
+
+        # === 8. Отправляем уведомления ТОЛЬКО измененным сотрудникам ===
+        if changed_employees:
+            changed_employees_objs = UserProfile.objects.filter(id__in=changed_employees)
+            employee_emails = [emp.user.email for emp in changed_employees_objs if emp.user.email]
+            if employee_emails:
+                try:
+                    send_mail(
+                        subject="График был изменен и требует повторного подтверждения",
+                        message=f"График '{schedule.name}' был изменен. Пожалуйста, подтвердите изменения.",
+                        from_email=settings.DEFAULT_FROM_EMAIL,
+                        recipient_list=employee_emails,
+                    )
+                except Exception as e:
+                    print(f"[EMAIL ERROR] {e}")
+
+        return JsonResponse({'success': True, 'changed_employees': list(changed_employees)})
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return JsonResponse({'success': False, 'error': str(e)}, status=400)
 
 
@@ -120,8 +217,10 @@ def api_save_schedule(request):
         )
 
         # Сохраняем назначения
+        employee_ids_with_shifts = set()  # Собираем только тех, у кого есть смены
         for assignment_data in data['assignments']:
             employee = UserProfile.objects.get(id=assignment_data['employee_id'])
+            employee_ids_with_shifts.add(employee.id)
             workout_type = None
             if assignment_data.get('workout_type_id'):
                 workout_type = WorkoutType.objects.get(id=assignment_data['workout_type_id'])
@@ -143,16 +242,17 @@ def api_save_schedule(request):
                 end_time=end_time
             )
 
-        # === Создаём записи для согласования ===
-        employees = UserProfile.objects.filter(role='employee')
-        for emp in employees:
+        # === Создаём записи для согласования ТОЛЬКО для тех, у кого есть смены ===
+        for emp_id in employee_ids_with_shifts:
+            emp = UserProfile.objects.get(id=emp_id)
             ScheduleApproval.objects.get_or_create(
                 schedule=schedule,
                 employee=emp
             )
 
-        # === Отправка email (в консоль) ===
-        employee_emails = [emp.user.email for emp in employees if emp.user.email]
+        # === Отправка email только тем, у кого есть смены ===
+        employees_with_shifts = UserProfile.objects.filter(id__in=employee_ids_with_shifts)
+        employee_emails = [emp.user.email for emp in employees_with_shifts if emp.user.email]
         if employee_emails:
             try:
                 send_mail(

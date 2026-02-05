@@ -742,7 +742,6 @@ import json
 from django.utils.html import escapejs
 
 @login_required
-@login_required
 def employee_schedule(request):
     if not hasattr(request.user, 'profile'):
         return redirect('dashboard')
@@ -812,6 +811,15 @@ def employee_schedule(request):
                 })
         weeks.append(week_days)
 
+    # === Графики на утверждение ===
+    pending_approvals = []
+    if request.user.profile.role == 'employee':
+        pending_approvals = ScheduleApproval.objects.filter(
+            employee=request.user.profile,
+            approved__isnull=True,
+            schedule__status='pending'
+        ).select_related('schedule')
+
     context = {
         'current_year': year,
         'current_month': month,
@@ -820,9 +828,9 @@ def employee_schedule(request):
         'shifts_by_date': shifts_by_date,
         'today': today,
         'shifts_json': json.dumps(shifts_json, ensure_ascii=False),
+        'pending_approvals': pending_approvals,  # ← Теперь переменная определена!
     }
 
-    # ✅ ПРАВИЛЬНЫЙ ВЫЗОВ render
     return render(request, 'core/schedules/employee_schedule.html', context)
 
 

@@ -33,6 +33,38 @@
     </div>
 </div>
 
+<!-- Графики на утверждение -->
+{% if pending_approvals %}
+<div class="alert alert-warning mb-4">
+    <h5 class="mb-3">Требуется ваше подтверждение графика</h5>
+    {% for approval in pending_approvals %}
+        <div class="card mb-3 bg-dark border-warning">
+            <div class="card-body">
+                <h6>{{ approval.schedule.name }}</h6>
+                <p class="text-muted small">
+                    {{ approval.schedule.start_date|date:"d.m.Y" }} – {{ approval.schedule.end_date|date:"d.m.Y" }}
+                </p>
+                <form class="approval-form" data-schedule-id="{{ approval.schedule.id }}">
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="radio" name="decision" value="approve" id="approve-{{ approval.schedule.id }}" required>
+                        <label class="form-check-label" for="approve-{{ approval.schedule.id }}">Утвердить</label>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="radio" name="decision" value="reject" id="reject-{{ approval.schedule.id }}" required>
+                        <label class="form-check-label" for="reject-{{ approval.schedule.id }}">Отклонить</label>
+                    </div>
+                    <div class="mb-3 d-none" id="comment-group-{{ approval.schedule.id }}">
+                        <label for="comment-{{ approval.schedule.id }}">Комментарий (обязателен при отклонении)</label>
+                        <textarea class="form-control form-control-sm" id="comment-{{ approval.schedule.id }}" rows="2" placeholder="Например: не могу работать в выходные"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-sm btn-primary">Отправить решение</button>
+                </form>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+{% endif %}
+
     <!-- КАЛЕНДАРЬ -->
     <div class="card bg-dark border-0 rounded-4 shadow">
         <div class="card-body p-3">
@@ -147,6 +179,7 @@
     </div>
 </div>
 
+
 <style>
 .bg-gradient-purple {
     background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
@@ -239,5 +272,69 @@ function toggleFullSchedule() {
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') hideShifts();
 });
+
+    // Показ/скрытие комментария
+document.querySelectorAll('input[name="decision"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        const scheduleId = this.closest('.approval-form').dataset.scheduleId;
+        const commentGroup = document.getElementById(`comment-group-${scheduleId}`);
+        if (this.value === 'reject') {
+            commentGroup.classList.remove('d-none');
+            commentGroup.querySelector('textarea').required = true;
+        } else {
+            commentGroup.classList.add('d-none');
+            commentGroup.querySelector('textarea').required = false;
+        }
+    });
+});
+
+// Отправка решения
+document.querySelectorAll('.approval-form').forEach(form => {
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const scheduleId = this.dataset.scheduleId;
+        const decision = this.querySelector('input[name="decision"]:checked')?.value;
+        const comment = this.querySelector(`#comment-${scheduleId}`)?.value || '';
+
+        if (!decision) return;
+
+        const approved = decision === 'approve';
+        if (!approved && !comment.trim()) {
+            alert('Пожалуйста, укажите причину отклонения.');
+            return;
+        }
+
+        fetch(`/api/schedule/${scheduleId}/approve/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify({ approved, comment })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showGlobalNotification('Решение отправлено', 'success');
+                this.closest('.card').remove();
+                // Если больше нет карточек — скрываем блок
+                if (!document.querySelector('.approval-form')) {
+                    document.querySelector('.alert-warning').remove();
+                }
+            } else {
+                showGlobalNotification('Ошибка: ' + (data.error || ''), 'error');
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            showGlobalNotification('Ошибка сети', 'error');
+        });
+    });
+});
+
+    console.log("✅ pending_approvals (в шаблоне):", {{ pending_approvals|length }});
+    {% for approval in pending_approvals %}
+        console.log("   → Schedule ID {{ approval.schedule.id }}: {{ approval.schedule.name }}");
+    {% endfor %}
 </script>
 {% endblock %}
