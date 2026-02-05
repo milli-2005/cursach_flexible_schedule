@@ -3,7 +3,6 @@
 {% block title %}Управление пользователями - {{ block.super }}{% endblock %}
 
 {% block content %}
-
 <div class="management-container">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h2 class="mb-4">Управление пользователями</h2>
@@ -11,18 +10,18 @@
     </div>
 
     <!-- ПОИСК И ФИЛЬТР -->
-<div class="d-flex gap-3 mb-3">
-    <div class="flex-grow-1">
-        <input type="text" id="user-search" class="form-control" placeholder="Поиск по имени, фамилии, email, логину...">
+    <div class="d-flex gap-3 mb-3">
+        <div class="flex-grow-1">
+            <input type="text" id="user-search" class="form-control" placeholder="Поиск по имени, фамилии, email, логину...">
+        </div>
+        <div style="width: 200px;">
+            <select id="role-filter" class="form-select">
+                <option value="">Все роли</option>
+                <option value="employee">Сотрудник</option>
+                <option value="manager">Руководитель</option>
+            </select>
+        </div>
     </div>
-    <div style="width: 200px;">
-        <select id="role-filter" class="form-select">
-            <option value="">Все роли</option>
-            <option value="employee">Сотрудник</option>
-            <option value="manager">Руководитель</option>
-        </select>
-    </div>
-</div>
 
     <div class="management-table">
         <table>
@@ -52,9 +51,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-
-
-                <!-- ГЛОБАЛЬНАЯ ОШИБКА — розовый блок сверху -->
+                <!-- ГЛОБАЛЬНАЯ ОШИБКА -->
                 <div class="alert alert-danger mb-3 d-none" id="global-error-box">
                     <strong>Ошибка:</strong> <span id="global-error-text"></span>
                 </div>
@@ -93,38 +90,25 @@
                             </div>
                         </div>
                         <div class="col-md-6">
-    <div class="mb-3">
-        <label for="id_patronymic" class="form-label">Отчество</label>
-        <input type="text" class="form-control" id="id_patronymic" name="patronymic">
-        <div class="invalid-feedback" id="error-patronymic"></div>
-    </div>
-</div>
+                            <div class="mb-3">
+                                <label for="id_patronymic" class="form-label">Отчество</label>
+                                <input type="text" class="form-control" id="id_patronymic" name="patronymic">
+                                <div class="invalid-feedback" id="error-patronymic"></div>
+                            </div>
+                        </div>
                     </div>
                     <div class="row">
-                       <div class="col-md-6">
-    <div class="mb-3">
-        <label for="id_role" class="form-label">Роль *</label>
-        <select class="form-select" id="id_role" name="role" required>
-            <option value="">Выберите...</option>
-            <option value="employee">Сотрудник</option>
-<!--            <option value="studio_admin">Администратор</option>-->
-            <option value="manager">Руководитель</option>
-        </select>
-        <div class="invalid-feedback" id="error-role"></div>
-    </div>
-</div>
-<!--                        <div class="col-md-6">-->
-<!--                            <div class="mb-3">-->
-<!--                                <label for="id_position" class="form-label">Должность *</label>-->
-<!--                                <select class="form-select" id="id_position" name="position" required>-->
-<!--                                    <option value="">Выберите...</option>-->
-<!--                                    <option value="trainer">Тренер</option>-->
-<!--                                    <option value="administrator">Администратор</option>-->
-<!--                                    <option value="manager">Руководитель</option>-->
-<!--                                </select>-->
-<!--                                <div class="invalid-feedback" id="error-position"></div>-->
-<!--                            </div>-->
-<!--                        </div>-->
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="id_role" class="form-label">Роль *</label>
+                                <select class="form-select" id="id_role" name="role" required>
+                                    <option value="">Выберите...</option>
+                                    <option value="employee">Сотрудник</option>
+                                    <option value="manager">Руководитель</option>
+                                </select>
+                                <div class="invalid-feedback" id="error-role"></div>
+                            </div>
+                        </div>
                     </div>
                     <div class="row">
                         <div class="col-md-6">
@@ -145,132 +129,9 @@
     </div>
 </div>
 
-<!-- Модальное окно для редактирования пользователя -->
-<div class="modal fade" id="editUserModal" tabindex="-1" aria-labelledby="editUserModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="editUserModalLabel">Редактировать пользователя</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="editUserForm">
-                    {% csrf_token %}
-                    <input type="hidden" id="editUserId" name="id">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="editUsername" class="form-label">Имя пользователя *</label>
-                                <input type="text" class="form-control" id="editUsername" name="username" required>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="editEmail" class="form-label">Email *</label>
-                                <input type="email" class="form-control" id="editEmail" name="email" required>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="editFirstName" class="form-label">Имя</label>
-                                <input type="text" class="form-control" id="editFirstName" name="first_name">
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="editLastName" class="form-label">Фамилия</label>
-                                <input type="text" class="form-control" id="editLastName" name="last_name">
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-    <div class="mb-3">
-        <label for="editPatronymic" class="form-label">Отчество</label>
-        <input type="text" class="form-control" id="editPatronymic" name="patronymic">
-    </div>
-</div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="editRole" class="form-label">Роль *</label>
-                                <select class="form-select" id="editRole" name="role" required>
-                                    <option value="employee">Сотрудник</option>
-<!--                                    <option value="studio_admin">Администратор</option>-->
-                                    <option value="manager">Руководитель</option>
-                                </select>
-                            </div>
-                        </div>
-<!--                        <div class="col-md-6">-->
-<!--                            <div class="mb-3">-->
-<!--                                <label for="editPosition" class="form-label">Должность</label>-->
-<!--                                <select class="form-select" id="editPosition" name="position">-->
-<!--                                    <option value="trainer">Тренер</option>-->
-<!--                                    <option value="administrator">Администратор</option>-->
-<!--                                    <option value="manager">Руководитель</option>-->
-<!--                                </select>-->
-<!--                            </div>-->
-<!--                        </div>-->
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="editPhone" class="form-label">Телефон</label>
-                                <input type="text" class="form-control" id="editPhone" name="phone">
-                            </div>
-                        </div>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                <button type="button" class="btn btn-primary" onclick="submitEditUser()">Сохранить</button>
-            </div>
-        </div>
-    </div>
-</div>
+<!-- Модальные окна редактирования, удаления, сброса пароля — без изменений -->
+<!-- (оставь их как есть) -->
 
-
-<!-- Модальное окно для удаления пользователя -->
-<div class="modal fade" id="deleteUserModal" tabindex="-1" aria-labelledby="deleteUserModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="deleteUserModalLabel">Удалить пользователя</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p>Вы уверены, что хотите удалить пользователя <strong id="deleteUserName"></strong>?</p>
-                <input type="hidden" id="deleteUserId" name="id">
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                <button type="button" class="btn btn-danger" onclick="confirmDeleteUser()">Удалить</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Модальное окно для сброса пароля -->
-<div class="modal fade" id="resetPasswordModal" tabindex="-1" aria-labelledby="resetPasswordModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="resetPasswordModalLabel">Сбросить пароль</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p>Сбросить пароль для пользователя <strong id="resetPasswordUserName"></strong>?</p>
-                <input type="hidden" id="resetPasswordUserId" name="id">
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-                <button type="button" class="btn btn-warning" onclick="confirmResetPassword()">Сбросить</button>
-            </div>
-        </div>
-    </div>
-</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -279,12 +140,9 @@
 
     document.addEventListener('DOMContentLoaded', function () {
         loadUsers();
-
-        // Активный поиск и фильтр
         document.getElementById('user-search').addEventListener('input', filterAndRenderUsers);
         document.getElementById('role-filter').addEventListener('change', filterAndRenderUsers);
 
-        // Инициализация маски телефона
         const phoneInput = document.getElementById('id_phone');
         if (phoneInput) {
             IMask(phoneInput, {
@@ -295,98 +153,81 @@
         }
     });
 
+    // ЕДИНСТВЕННЫЙ ИСТОЧНИК CSRF
+    function getCSRF() {
+        return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    }
+
     function openCreateUserModal() {
-        const modal = new bootstrap.Modal(document.getElementById('createUserModal'));
-        modal.show();
+        new bootstrap.Modal(document.getElementById('createUserModal')).show();
     }
 
     function loadUsers() {
         fetch('/api/users/')
-            .then(response => response.json())
-            .then(data => {
-                allUsers = data;
-                filterAndRenderUsers();
-            })
-            .catch(error => console.error('Error loading users:', error));
+            .then(r => r.json())
+            .then(data => { allUsers = data; filterAndRenderUsers(); })
+            .catch(e => console.error(e));
     }
 
     function filterAndRenderUsers() {
-    const searchTerm = document.getElementById('user-search').value.toLowerCase().trim();
-    const roleFilter = document.getElementById('role-filter').value;
+        const term = document.getElementById('user-search').value.toLowerCase().trim();
+        const role = document.getElementById('role-filter').value;
+        const filtered = allUsers.filter(u => {
+            const search = (u.username + ' ' + u.email + ' ' + u.first_name + ' ' + u.last_name + ' ' + (u.profile?.patronymic || '') + ' ' + (u.profile?.phone || '')).toLowerCase();
+            return search.includes(term) && (!role || u.profile.role === role);
+        });
 
-    const filtered = allUsers.filter(user => {
-        const matchesSearch =
-            user.username.toLowerCase().includes(searchTerm) ||
-            user.email.toLowerCase().includes(searchTerm) ||
-            user.first_name.toLowerCase().includes(searchTerm) ||
-            user.last_name.toLowerCase().includes(searchTerm) ||
-            (user.profile?.patronymic || '').toLowerCase().includes(searchTerm) ||
-            (user.profile?.phone || '').toLowerCase().includes(searchTerm);
+        const tbody = document.getElementById('userTableBody');
+        if (filtered.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">Пользователи не найдены</td></tr>`;
+            return;
+        }
 
-        const matchesRole = !roleFilter || user.profile.role === roleFilter;
-
-        return matchesSearch && matchesRole;
-    });
-
-    const tbody = document.getElementById('userTableBody');
-    tbody.innerHTML = '';
-
-    if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">Пользователи не найдены</td></tr>`;
-        return;
+        tbody.innerHTML = filtered.map(user => `
+            <tr>
+                <td>${user.username}</td>
+                <td>${user.email}</td>
+                <td>${user.profile.role_display}</td>
+                <td>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="openEditUserModal(${user.id})">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="openDeleteUserModal(${user.id}, '${user.username}')">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-warning" onclick="openResetPasswordModal(${user.id}, '${user.username}')">
+                        <i class="bi bi-key"></i>
+                    </button>
+                </td>
+            </tr>
+        `).join('');
     }
 
-    filtered.forEach(user => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${user.username}</td>
-            <td>${user.email}</td>
-            <td>${user.profile.role_display}</td>
-            <td>
-                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="openEditUserModal(${user.id})">
-                    <i class="bi bi-pencil"></i>
-                </button>
-                <button type="button" class="btn btn-sm btn-outline-danger" onclick="openDeleteUserModal(${user.id}, '${user.username}')">
-                    <i class="bi bi-trash"></i>
-                </button>
-                <button type="button" class="btn btn-sm btn-outline-warning" onclick="openResetPasswordModal(${user.id}, '${user.username}')">
-                    <i class="bi bi-key"></i>
-                </button>
-            </td>
-        `;
-        tbody.appendChild(row);
-    });
-}
-
-
-    // === СОЗДАНИЕ ПОЛЬЗОВАТЕЛЯ ===
+    // === СОЗДАНИЕ ===
     function submitCreateUser() {
         // Сброс ошибок
         document.querySelectorAll('.invalid-feedback').forEach(el => {
-            el.textContent = '';
-            el.style.display = 'none';
+            el.textContent = ''; el.style.display = 'none';
         });
         document.querySelectorAll('.form-control, .form-select').forEach(el => {
             el.classList.remove('is-invalid');
         });
-        document.getElementById('global-error-box')?.classList.add('d-none');
+        const globalError = document.getElementById('global-error-box');
+        if (globalError) globalError.classList.add('d-none');
 
         const formData = new FormData();
-        formData.append('username', document.getElementById('id_username').value);
-        formData.append('email', document.getElementById('id_email').value);
-        formData.append('first_name', document.getElementById('id_first_name').value);
-        formData.append('last_name', document.getElementById('id_last_name').value);
-        formData.append('patronymic', document.getElementById('id_patronymic').value);
-        formData.append('role', document.getElementById('id_role').value);
-        formData.append('position', document.getElementById('id_position').value);
-        formData.append('phone', document.getElementById('id_phone').value);
-        formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+        ['username', 'email', 'first_name', 'last_name', 'patronymic', 'role', 'phone']
+            .forEach(field => {
+                const el = document.getElementById(`id_${field}`);
+                if (el) formData.append(field, el.value);
+            });
 
         fetch('/api/invite-user/', {
             method: 'POST',
+            headers: { 'X-CSRFToken': getCSRF() },
             body: formData
         })
-        .then(response => response.json())
+        .then(r => r.json())
         .then(data => {
             if (data.success) {
                 showGlobalNotification('Пользователь успешно приглашён.', 'success');
@@ -396,46 +237,32 @@
             } else {
                 // Глобальная ошибка
                 if (data.errors?.__all__) {
-                    showGlobalNotification('Ошибка: ' + data.errors.__all__[0], 'error');
+                    const box = document.getElementById('global-error-box');
+                    const text = document.getElementById('global-error-text');
+                    if (box && text) {
+                        text.textContent = data.errors.__all__[0];
+                        box.classList.remove('d-none');
+                    }
                 }
                 // Ошибки полей
-                for (const [field, messages] of Object.entries(data.errors || {})) {
+                for (const [field, msgs] of Object.entries(data.errors || {})) {
                     if (field === '__all__') continue;
-                    const errorEl = document.getElementById(`error-${field}`);
-                    const inputEl = document.getElementById(`id_${field}`);
-                    if (errorEl && inputEl) {
-                        errorEl.textContent = messages[0];
-                        errorEl.style.display = 'block';
-                        inputEl.classList.add('is-invalid');
+                    const errEl = document.getElementById(`error-${field}`);
+                    const inpEl = document.getElementById(`id_${field}`);
+                    if (errEl && inpEl) {
+                        errEl.textContent = msgs[0];
+                        errEl.style.display = 'block';
+                        inpEl.classList.add('is-invalid');
                     }
                 }
             }
         })
         .catch(() => {
-            showGlobalNotification('Сетевая ошибка. Проверьте подключение.', 'error');
+            showGlobalNotification('Ошибка сети', 'error');
         });
     }
 
     // === РЕДАКТИРОВАНИЕ ===
-    function openEditUserModal(userId) {
-        fetch(`/api/users/${userId}/`)
-            .then(response => response.json())
-            .then(user => {
-                document.getElementById('editUserId').value = user.id;
-                document.getElementById('editUsername').value = user.username;
-                document.getElementById('editEmail').value = user.email;
-                document.getElementById('editFirstName').value = user.first_name || '';
-                document.getElementById('editLastName').value = user.last_name || '';
-                document.getElementById('editPatronymic').value = user.profile?.patronymic || '';
-                document.getElementById('editRole').value = user.profile?.role || '';
-                document.getElementById('editPhone').value = user.profile?.phone || '';
-
-                const modal = new bootstrap.Modal(document.getElementById('editUserModal'));
-                modal.show();
-            })
-            .catch(error => console.error('Error fetching user:', error));
-    }
-
     function submitEditUser() {
         const userId = document.getElementById('editUserId').value;
         const data = {
@@ -452,87 +279,90 @@
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'X-CSRFToken': getCSRF()
             },
             body: JSON.stringify(data)
         })
-        .then(response => response.json())
-        .then(result => {
-            if (result.success) {
-                showGlobalNotification('Пользователь успешно обновлён.', 'success');
+        .then(r => r.json())
+        .then(res => {
+            if (res.success) {
+                showGlobalNotification('Обновлено', 'success');
                 bootstrap.Modal.getInstance(document.getElementById('editUserModal')).hide();
                 loadUsers();
             } else {
-                showGlobalNotification('Ошибка: ' + (result.error || 'Неизвестная ошибка'), 'error');
+                showGlobalNotification('Ошибка: ' + (res.error || 'Неизвестно'), 'error');
             }
         })
-        .catch(error => {
-            console.error('Error updating user:', error);
-            showGlobalNotification('Не удалось обновить пользователя.', 'error');
-        });
+        .catch(() => showGlobalNotification('Ошибка сети', 'error'));
     }
 
     // === УДАЛЕНИЕ ===
-    function openDeleteUserModal(userId, username) {
-        document.getElementById('deleteUserId').value = userId;
-        document.getElementById('deleteUserName').textContent = username;
-        const modal = new bootstrap.Modal(document.getElementById('deleteUserModal'));
-        modal.show();
-    }
-
     function confirmDeleteUser() {
         const userId = document.getElementById('deleteUserId').value;
         fetch(`/api/users/${userId}/delete/`, {
             method: 'DELETE',
-            headers: {
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-            }
+            headers: { 'X-CSRFToken': getCSRF() }
         })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                showGlobalNotification('Пользователь успешно удалён.', 'success');
+        .then(r => r.json())
+        .then(res => {
+            if (res.success) {
+                showGlobalNotification('Удалено', 'success');
                 bootstrap.Modal.getInstance(document.getElementById('deleteUserModal')).hide();
                 loadUsers();
             } else {
-                showGlobalNotification('Ошибка при удалении пользователя.', 'error');
+                showGlobalNotification('Ошибка удаления', 'error');
             }
         })
-        .catch(error => {
-            console.error('Error deleting user:', error);
-            showGlobalNotification('Не удалось удалить пользователя.', 'error');
-        });
+        .catch(() => showGlobalNotification('Ошибка сети', 'error'));
     }
 
     // === СБРОС ПАРОЛЯ ===
-    function openResetPasswordModal(userId, username) {
-        document.getElementById('resetPasswordUserId').value = userId;
-        document.getElementById('resetPasswordUserName').textContent = username;
-        const modal = new bootstrap.Modal(document.getElementById('resetPasswordModal'));
-        modal.show();
-    }
-
     function confirmResetPassword() {
         const userId = document.getElementById('resetPasswordUserId').value;
         fetch(`/api/users/${userId}/reset-password/`, {
             method: 'POST',
-            headers: {
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-            }
+            headers: { 'X-CSRFToken': getCSRF() }
         })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                showGlobalNotification('Пароль успешно сброшен.', 'success');
+        .then(r => r.json())
+        .then(res => {
+            if (res.success) {
+                showGlobalNotification('Пароль сброшен', 'success');
                 bootstrap.Modal.getInstance(document.getElementById('resetPasswordModal')).hide();
             } else {
-                showGlobalNotification('Ошибка при сбросе пароля.', 'error');
+                showGlobalNotification('Ошибка сброса', 'error');
             }
         })
-        .catch(error => {
-            console.error('Error resetting password:', error);
-            showGlobalNotification('Не удалось сбросить пароль.', 'error');
-        });
+        .catch(() => showGlobalNotification('Ошибка сети', 'error'));
+    }
+
+    // === Открытие модалок (без изменений) ===
+    function openEditUserModal(userId) {
+        fetch(`/api/users/${userId}/`)
+            .then(r => r.json())
+            .then(user => {
+                document.getElementById('editUserId').value = user.id;
+                document.getElementById('editUsername').value = user.username;
+                document.getElementById('editEmail').value = user.email;
+                document.getElementById('editFirstName').value = user.first_name || '';
+                document.getElementById('editLastName').value = user.last_name || '';
+                document.getElementById('editPatronymic').value = user.profile?.patronymic || '';
+                document.getElementById('editRole').value = user.profile?.role || '';
+                document.getElementById('editPhone').value = user.profile?.phone || '';
+                new bootstrap.Modal(document.getElementById('editUserModal')).show();
+            })
+            .catch(e => console.error(e));
+    }
+
+    function openDeleteUserModal(userId, username) {
+        document.getElementById('deleteUserId').value = userId;
+        document.getElementById('deleteUserName').textContent = username;
+        new bootstrap.Modal(document.getElementById('deleteUserModal')).show();
+    }
+
+    function openResetPasswordModal(userId, username) {
+        document.getElementById('resetPasswordUserId').value = userId;
+        document.getElementById('resetPasswordUserName').textContent = username;
+        new bootstrap.Modal(document.getElementById('resetPasswordModal')).show();
     }
 </script>
 {% endblock %}

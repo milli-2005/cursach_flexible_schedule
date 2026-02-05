@@ -211,17 +211,17 @@ class ShiftAssignment(models.Model):
         end_time_str = self.end_time.strftime('%H:%M') if self.end_time else '??:??'
         return f"{self.employee.user.username} - {self.workout_type or 'Работа'} ({self.date} {self.start_time.strftime('%H:%M')}-{end_time_str})"
 
-    def get_payment_amount(self):
-        """
-        Рассчитывает сумму к выплате за это назначение.
-        """
-        if self.employee.position == 'trainer':
-            # Для тренера: ставка за занятие
-            return self.workout_type.rate_per_session if self.workout_type else 0
-        elif self.employee.position == 'administrator':
-            # Для администратора: ставка за день
-            return ADMIN_RATE_PER_DAY
-        return 0
+    # def get_payment_amount(self):
+    #     """
+    #     Рассчитывает сумму к выплате за это назначение.
+    #     """
+    #     if self.employee.position == 'trainer':
+    #         # Для тренера: ставка за занятие
+    #         return self.workout_type.rate_per_session if self.workout_type else 0
+    #     elif self.employee.position == 'administrator':
+    #         # Для администратора: ставка за день
+    #         return ADMIN_RATE_PER_DAY
+    #     return 0
 
 
     #вычисляет продолжительность смены в часах

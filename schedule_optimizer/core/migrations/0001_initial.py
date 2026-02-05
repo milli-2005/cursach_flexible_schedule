@@ -135,7 +135,7 @@ class Migration(migrations.Migration):
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('role', models.CharField(choices=[('employee', 'Сотрудник'), ('manager', 'Руководитель')], default='employee', max_length=20)),
                 ('phone', models.CharField(blank=True, max_length=20, verbose_name='Телефон')),
-                ('position', models.CharField(choices=[('trainer', 'Тренер'), ('administrator', 'Администратор')], default='trainer', max_length=20, verbose_name='Должность')),
+                # ('position', models.CharField(choices=[('trainer', 'Тренер'), ('administrator', 'Администратор')], default='trainer', max_length=20, verbose_name='Должность')),
                 ('invitation_timestamp', models.DateTimeField(blank=True, null=True, verbose_name='Время приглашения/сброса пароля')),
                 ('user', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='profile', to=settings.AUTH_USER_MODEL)),
             ],

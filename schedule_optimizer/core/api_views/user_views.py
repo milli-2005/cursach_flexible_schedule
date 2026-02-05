@@ -115,7 +115,7 @@ def api_invite_user(request):
             )
             profile = user.profile
             profile.role = form.cleaned_data['role']
-            profile.position = form.cleaned_data['position']
+            # profile.position = form.cleaned_data['position']
             profile.phone = form.cleaned_data['phone']
             profile.patronymic = form.cleaned_data['patronymic']
             profile.invitation_timestamp = timezone.now()
@@ -191,7 +191,7 @@ def api_update_user(request, user_id):
     last_name = data.get('last_name', '').strip()
     patronymic = data.get('patronymic', '').strip()
     role = data.get('role', '').strip()
-    position = data.get('position', '').strip()
+    # position = data.get('position', '').strip()
     phone = data.get('phone', '').strip()
 
     errors = {}
@@ -248,7 +248,7 @@ def api_update_user(request, user_id):
 
         # Profile
         profile.role = role
-        profile.position = position
+        # profile.position = position
         profile.phone = phone
         profile.patronymic = patronymic
         profile.save()
