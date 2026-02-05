@@ -43,7 +43,13 @@
 
 {% block modals %}
 <!-- Модальное окно для создания пользователя -->
-<div class="modal fade" id="createUserModal" tabindex="-1" aria-labelledby="createUserModalLabel" aria-hidden="true">
+<div class="modal fade"
+     id="createUserModal"
+     tabindex="-1"
+     aria-labelledby="createUserModalLabel"
+     aria-hidden="true"
+     data-bs-backdrop="static"
+     data-bs-keyboard="false">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
@@ -51,11 +57,9 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <!-- ГЛОБАЛЬНАЯ ОШИБКА -->
                 <div class="alert alert-danger mb-3 d-none" id="global-error-box">
                     <strong>Ошибка:</strong> <span id="global-error-text"></span>
                 </div>
-
                 <form id="createUserForm">
                     {% csrf_token %}
                     <div class="row">
@@ -129,9 +133,138 @@
     </div>
 </div>
 
-<!-- Модальные окна редактирования, удаления, сброса пароля — без изменений -->
-<!-- (оставь их как есть) -->
+<!-- Модальное окно для редактирования пользователя -->
+<div class="modal fade"
+     id="editUserModal"
+     tabindex="-1"
+     aria-labelledby="editUserModalLabel"
+     aria-hidden="true"
+     data-bs-backdrop="static"
+     data-bs-keyboard="false">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editUserModalLabel">Редактировать пользователя</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editUserForm">
+                    {% csrf_token %}
+                    <input type="hidden" id="editUserId" name="id">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editUsername" class="form-label">Имя пользователя *</label>
+                                <input type="text" class="form-control" id="editUsername" name="username" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editEmail" class="form-label">Email *</label>
+                                <input type="email" class="form-control" id="editEmail" name="email" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editFirstName" class="form-label">Имя</label>
+                                <input type="text" class="form-control" id="editFirstName" name="first_name">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editLastName" class="form-label">Фамилия</label>
+                                <input type="text" class="form-control" id="editLastName" name="last_name">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editPatronymic" class="form-label">Отчество</label>
+                                <input type="text" class="form-control" id="editPatronymic" name="patronymic">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editRole" class="form-label">Роль *</label>
+                                <select class="form-select" id="editRole" name="role" required>
+                                    <option value="employee">Сотрудник</option>
+                                    <option value="manager">Руководитель</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editPhone" class="form-label">Телефон</label>
+                                <input type="text" class="form-control" id="editPhone" name="phone">
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" onclick="submitEditUser()">Сохранить</button>
+            </div>
+        </div>
+    </div>
+</div>
 
+<!-- Модальное окно для удаления пользователя -->
+<div class="modal fade"
+     id="deleteUserModal"
+     tabindex="-1"
+     aria-labelledby="deleteUserModalLabel"
+     aria-hidden="true"
+     data-bs-backdrop="static"
+     data-bs-keyboard="false">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteUserModalLabel">Удалить пользователя</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Вы уверены, что хотите удалить пользователя <strong id="deleteUserName"></strong>?</p>
+                <input type="hidden" id="deleteUserId" name="id">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-danger" onclick="confirmDeleteUser()">Удалить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для сброса пароля -->
+<div class="modal fade"
+     id="resetPasswordModal"
+     tabindex="-1"
+     aria-labelledby="resetPasswordModalLabel"
+     aria-hidden="true"
+     data-bs-backdrop="static"
+     data-bs-keyboard="false">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="resetPasswordModalLabel">Сбросить пароль</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Сбросить пароль для пользователя <strong id="resetPasswordUserName"></strong>?</p>
+                <input type="hidden" id="resetPasswordUserId" name="id">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-warning" onclick="confirmResetPassword()">Сбросить</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -153,7 +286,6 @@
         }
     });
 
-    // ЕДИНСТВЕННЫЙ ИСТОЧНИК CSRF
     function getCSRF() {
         return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
     }
@@ -205,7 +337,6 @@
 
     // === СОЗДАНИЕ ===
     function submitCreateUser() {
-        // Сброс ошибок
         document.querySelectorAll('.invalid-feedback').forEach(el => {
             el.textContent = ''; el.style.display = 'none';
         });
@@ -235,7 +366,6 @@
                 document.getElementById('createUserForm').reset();
                 loadUsers();
             } else {
-                // Глобальная ошибка
                 if (data.errors?.__all__) {
                     const box = document.getElementById('global-error-box');
                     const text = document.getElementById('global-error-text');
@@ -244,7 +374,6 @@
                         box.classList.remove('d-none');
                     }
                 }
-                // Ошибки полей
                 for (const [field, msgs] of Object.entries(data.errors || {})) {
                     if (field === '__all__') continue;
                     const errEl = document.getElementById(`error-${field}`);
@@ -263,6 +392,27 @@
     }
 
     // === РЕДАКТИРОВАНИЕ ===
+    function openEditUserModal(userId) {
+        fetch(`/api/users/${userId}/`)
+            .then(r => r.json())
+            .then(user => {
+                const modal = new bootstrap.Modal(document.getElementById('editUserModal'));
+                modal.show();
+
+                setTimeout(() => {
+                    document.getElementById('editUserId').value = user.id;
+                    document.getElementById('editUsername').value = user.username;
+                    document.getElementById('editEmail').value = user.email;
+                    document.getElementById('editFirstName').value = user.first_name || '';
+                    document.getElementById('editLastName').value = user.last_name || '';
+                    document.getElementById('editPatronymic').value = user.profile?.patronymic || '';
+                    document.getElementById('editRole').value = user.profile?.role || '';
+                    document.getElementById('editPhone').value = user.profile?.phone || '';
+                }, 100);
+            })
+            .catch(e => console.error(e));
+    }
+
     function submitEditUser() {
         const userId = document.getElementById('editUserId').value;
         const data = {
@@ -297,6 +447,16 @@
     }
 
     // === УДАЛЕНИЕ ===
+    function openDeleteUserModal(userId, username) {
+        const modal = new bootstrap.Modal(document.getElementById('deleteUserModal'));
+        modal.show();
+
+        setTimeout(() => {
+            document.getElementById('deleteUserId').value = userId;
+            document.getElementById('deleteUserName').textContent = username;
+        }, 50);
+    }
+
     function confirmDeleteUser() {
         const userId = document.getElementById('deleteUserId').value;
         fetch(`/api/users/${userId}/delete/`, {
@@ -317,6 +477,16 @@
     }
 
     // === СБРОС ПАРОЛЯ ===
+    function openResetPasswordModal(userId, username) {
+        const modal = new bootstrap.Modal(document.getElementById('resetPasswordModal'));
+        modal.show();
+
+        setTimeout(() => {
+            document.getElementById('resetPasswordUserId').value = userId;
+            document.getElementById('resetPasswordUserName').textContent = username;
+        }, 50);
+    }
+
     function confirmResetPassword() {
         const userId = document.getElementById('resetPasswordUserId').value;
         fetch(`/api/users/${userId}/reset-password/`, {
@@ -333,36 +503,6 @@
             }
         })
         .catch(() => showGlobalNotification('Ошибка сети', 'error'));
-    }
-
-    // === Открытие модалок (без изменений) ===
-    function openEditUserModal(userId) {
-        fetch(`/api/users/${userId}/`)
-            .then(r => r.json())
-            .then(user => {
-                document.getElementById('editUserId').value = user.id;
-                document.getElementById('editUsername').value = user.username;
-                document.getElementById('editEmail').value = user.email;
-                document.getElementById('editFirstName').value = user.first_name || '';
-                document.getElementById('editLastName').value = user.last_name || '';
-                document.getElementById('editPatronymic').value = user.profile?.patronymic || '';
-                document.getElementById('editRole').value = user.profile?.role || '';
-                document.getElementById('editPhone').value = user.profile?.phone || '';
-                new bootstrap.Modal(document.getElementById('editUserModal')).show();
-            })
-            .catch(e => console.error(e));
-    }
-
-    function openDeleteUserModal(userId, username) {
-        document.getElementById('deleteUserId').value = userId;
-        document.getElementById('deleteUserName').textContent = username;
-        new bootstrap.Modal(document.getElementById('deleteUserModal')).show();
-    }
-
-    function openResetPasswordModal(userId, username) {
-        document.getElementById('resetPasswordUserId').value = userId;
-        document.getElementById('resetPasswordUserName').textContent = username;
-        new bootstrap.Modal(document.getElementById('resetPasswordModal')).show();
     }
 </script>
 {% endblock %}
