@@ -5,6 +5,10 @@
 
 {% block content %}
 
+<!-- Список ваших заявок -->
+<h2>Ваши заявки на обмен</h2>
+
+
 {% if selected_shift %}
     <div class="alert alert-info">
         <strong>Вы хотите обменять смену:</strong><br>
@@ -32,15 +36,14 @@
             <textarea name="reason" class="form-control" rows="3" placeholder="Например: болею, семейные обстоятельства..."></textarea>
         </div>
 
-        <button type="submit" class="btn btn-primary">Отправить заявку</button>
+        <button type="submit" class="btn btn-primary mb-10">Отправить заявку</button>
     </form>
 {% else %}
 
 {% endif %}
 
 
-<!-- Список ваших заявок -->
-<h2>Ваши заявки на обмен</h2>
+
 <p>Выберите смену для обмена на странице расписания.</p>
 {% if my_swap_requests %}
     <div class="table-responsive">

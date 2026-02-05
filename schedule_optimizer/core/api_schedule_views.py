@@ -30,29 +30,46 @@ def api_update_schedule(request, schedule_id):
         data = json.loads(request.body)
         assignments = data.get('assignments', [])
 
-        # Сначала удалим все текущие назначения для этого графика
+        # Удаляем все текущие назначения
         ShiftAssignment.objects.filter(schedule=schedule).delete()
 
         for item in assignments:
-            date_str = item['date']          # "2026-01-22"
-            time_str = item['time_slot']     # "09:00" ← ТОЛЬКО НАЧАЛО
+            date_str = item['date']
+            time_slot = item['time_slot']  # ← Должно быть "HH:MM–HH:MM"
             employee_id = item.get('employee_id')
             workout_type_id = item.get('workout_type_id')
 
             if not employee_id and not workout_type_id:
-                continue  # пропускаем пустые
+                continue
 
-            # Преобразуем дату
+            # Парсим дату
             date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
 
-            # Преобразуем время начала
-            start_time_obj = datetime.strptime(time_str, '%H:%M').time()
+            # === ПАРСИМ ДИАПАЗОН ВРЕМЕНИ ===
+            parts = time_slot.split('–')
+            if len(parts) < 2:
+                # Защита: если вдруг пришёл только HH:MM
+                start_time_str = time_slot.strip()
+                end_time_str = None
+            else:
+                start_time_str = parts[0].strip()
+                end_time_str = parts[1].strip()
 
-            # Создаём новое назначение
+            start_time = datetime.strptime(start_time_str, '%H:%M').time()
+            end_time = datetime.strptime(end_time_str, '%H:%M').time() if end_time_str else None
+
+            # Если end_time не задан — ошибка (но лучше не допускать этого)
+            if end_time is None:
+                # Можно подставить +50 мин, но лучше логировать
+                fake_dt = datetime.combine(datetime.min, start_time)
+                end_dt = fake_dt + timedelta(minutes=50)
+                end_time = end_dt.time()
+
             ShiftAssignment.objects.create(
                 schedule=schedule,
                 date=date_obj,
-                start_time=start_time_obj,
+                start_time=start_time,
+                end_time=end_time,  # ✅ Теперь точное значение из time_slot
                 employee_id=employee_id,
                 workout_type_id=workout_type_id
             )

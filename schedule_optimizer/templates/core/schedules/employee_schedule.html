@@ -3,34 +3,43 @@
 {% block title %}Мой график — {{ block.super }}{% endblock %}
 
 {% block content %}
-<div class="schedule-container">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Мой график</h2>
-        <!-- Навигация по месяцам -->
-        <div class="btn-group">
-          <!-- Предыдущий месяц -->
-{% if current_month == 1 %}
-    <a href="?year={{ current_year|add:"-1" }}&month=12" class="btn btn-outline-secondary">&laquo; Пред.</a>
-{% else %}
-    <a href="?year={{ current_year }}&month={{ current_month|add:"-1" }}" class="btn btn-outline-secondary">&laquo; Пред.</a>
-{% endif %}
+<!-- Заголовок и навигация -->
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-4 gap-3">
+    <div>
+        <h2 class="text-white">Мой график</h2>
 
-<!-- Следующий месяц -->
-{% if current_month == 12 %}
-    <a href="?year={{ current_year|add:"1" }}&month=1" class="btn btn-outline-secondary">След. &raquo;</a>
-{% else %}
-    <a href="?year={{ current_year }}&month={{ current_month|add:"1" }}" class="btn btn-outline-secondary">След. &raquo;</a>
-{% endif %}
-        </div>
     </div>
 
+    <div class="d-flex gap-2">
+        <!-- Навигация по месяцам -->
+        {% if current_month == 1 %}
+            <a href="?year={{ current_year|add:"-1" }}&month=12" class="btn btn-outline-light">&laquo; Пред.</a>
+        {% else %}
+            <a href="?year={{ current_year }}&month={{ current_month|add:"-1" }}" class="btn btn-outline-light">&laquo; Пред.</a>
+        {% endif %}
+
+        <button class="btn btn-purple text-white" disabled>{{ month_name }}</button>
+
+        {% if current_month == 12 %}
+            <a href="?year={{ current_year|add:"1" }}&month=1" class="btn btn-outline-light">След. &raquo;</a>
+        {% else %}
+            <a href="?year={{ current_year }}&month={{ current_month|add:"1" }}" class="btn btn-outline-light">След. &raquo;</a>
+        {% endif %}
+
+        <!-- Кнопка "Весь месяц" -->
+        <button class="btn btn-outline-light" onclick="toggleFullSchedule()">
+            <i class="bi bi-calendar-check"></i> Весь месяц
+        </button>
+    </div>
+</div>
+
     <!-- КАЛЕНДАРЬ -->
-    <div class="card mb-4">
+    <div class="card bg-dark border-0 rounded-4 shadow">
         <div class="card-body p-3">
             <div class="table-responsive">
-                <table class="table table-bordered text-center mb-0">
-                    <thead class="table-light">
-                        <tr>
+                <table class="table table-dark text-center mb-0">
+                    <thead>
+                        <tr class="text-muted">
                             <th>Пн</th><th>Вт</th><th>Ср</th><th>Чт</th><th>Пт</th><th>Сб</th><th>Вс</th>
                         </tr>
                     </thead>
@@ -39,20 +48,25 @@
                         <tr>
                             {% for day in week %}
                                 {% if day %}
-                                    <td style="width: 14.28%; padding: 0.5rem;">
+                                    <td class="calendar-day {% if day.has_shift %}has-shift{% endif %}"
+                                        data-date="{{ day.date|date:'Y-m-d' }}"
+                                        style="width: 14.28%; padding: 0.6rem;">
                                         <div class="position-relative">
-                                            <div class="{% if day.is_today %}text-primary fw-bold{% endif %}">
+                                            <div class="
+                                                {% if day.is_today %}text-primary fw-bold{% else %}text-light{% endif %}
+                                                {% if day.is_past %}opacity-50{% endif %}
+                                            ">
                                                 {{ day.date.day }}
                                             </div>
                                             {% if day.has_shift %}
                                                 <div class="mt-1">
-                                                    <span class="badge bg-success">✓</span>
+                                                    <span class="badge bg-success rounded-pill px-2 py-1 fs-6">✓</span>
                                                 </div>
                                             {% endif %}
                                         </div>
                                     </td>
                                 {% else %}
-                                    <td style="background-color: #f8f9fa;"></td>
+                                    <td class="bg-transparent"></td>
                                 {% endif %}
                             {% endfor %}
                         </tr>
@@ -63,45 +77,167 @@
         </div>
     </div>
 
-    <!-- СПИСОК СМЕН (только с работой) -->
-    <div class="card">
-        <div class="card-header">
-            <h5 class="mb-0">Смены в {{ month_name }}</h5>
+    <!-- ПАНЕЛЬ СМЕН -->
+    <div id="shiftsPanel" class="card bg-dark border-0 rounded-4 shadow mt-4 d-none">
+        <div class="card-header bg-gradient-purple text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0" id="shiftsDateTitle">Смены</h5>
+            <button type="button" class="btn-close btn-close-white" onclick="hideShifts()"></button>
         </div>
-        <div class="list-group list-group-flush">
-            {% for d in all_dates %}
-                {% if shifts_by_date|get_item:d %}
-                    <div class="list-group-item">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <strong>{{ d|date:"l, d F Y" }}</strong>
-                        </div>
-                        <div class="mt-2">
-                            {% for shift in shifts_by_date|get_item:d %}
-                                <div class="d-flex justify-content-between align-items-center border rounded p-2 mb-2">
-                                    <div>
-                                        <span class="badge bg-primary">{{ shift.workout_type.name|default:"Работа" }}</span>
-                                        {{ shift.start_time|time:"H:i" }} – {{ shift.end_time|time:"H:i" }}
+        <div class="card-body" id="shiftsList">
+            <!-- Сюда подгружается список -->
+        </div>
+    </div>
+
+    <!-- КНОПКА: ВСЁ РАСПИСАНИЕ -->
+    <div class="text-center mt-4">
+        <a href="{% url 'schedule_view' %}" class="btn btn-outline-light btn-sm mt-2">
+            <i class="bi bi-list"></i> Показать все графики
+        </a>
+    </div>
+
+
+
+    <!-- ПОЛНОЕ РАСПИСАНИЕ -->
+    <div id="fullSchedule" class="d-none mt-4">
+        <div class="card bg-dark border-0 rounded-4 shadow">
+            <div class="card-header bg-gradient-purple text-white">
+                <h5 class="mb-0">Все смены в {{ month_name }}</h5>
+            </div>
+            <div class="list-group list-group-flush">
+                {% for d in shifts_by_date.keys %}
+                    {% if shifts_by_date|get_item:d %}
+                        <div class="list-group-item bg-dark border-bottom border-secondary">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <strong class="text-light">{{ d|date:"l, d F Y" }}</strong>
+                            </div>
+                            <div class="mt-2">
+                                {% for shift in shifts_by_date|get_item:d %}
+                                    <div class="d-flex justify-content-between align-items-center bg-gray-900 rounded p-2 mb-2">
+                                        <div>
+                                            <span class="badge bg-primary">{{ shift.workout_type.name|default:"Работа" }}</span>
+                                           <span class="text-light-gray">
+    {{ shift.start_time|time:"H:i" }}
+    {% if shift.end_time %}
+        – {{ shift.end_time|time:"H:i" }}
+    {% else %}
+        – ??
+    {% endif %}
+</span>
+                                        </div>
+                                        {% if shift.date >= today %}
+                                            <a href="{% url 'shift_swaps' %}?shift_id={{ shift.id }}"
+                                               class="btn btn-sm btn-outline-info">
+                                                Обменять
+                                            </a>
+                                        {% else %}
+                                            <span class="text-light-gray small">Прошедшая</span>
+                                        {% endif %}
                                     </div>
-                                    <a href="{% url 'shift_swaps' %}?shift_id={{ shift.id }}"
-                                       class="btn btn-sm btn-outline-info">
-                                        Обменять
-                                    </a>
-                                </div>
-                            {% endfor %}
+                                {% endfor %}
+                            </div>
                         </div>
+                    {% endif %}
+                {% empty %}
+                    <div class="list-group-item text-center text-muted">
+                        Нет запланированных смен
                     </div>
-                {% endif %}
-            {% empty %}
-                <div class="list-group-item text-center text-muted">
-                    Нет запланированных смен в этом месяце
-                </div>
-            {% endfor %}
+                {% endfor %}
+            </div>
         </div>
     </div>
 </div>
 
 <style>
-.schedule-container .card { border-radius: 12px; }
-.schedule-container .badge { font-size: 0.85em; }
+.bg-gradient-purple {
+    background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+}
+.btn-purple {
+    background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+    border: none;
+}
+.calendar-day.has-shift {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+.calendar-day.has-shift:hover {
+    background-color: rgba(106, 17, 203, 0.1);
+}
+.card {
+    border-radius: 16px !important;
+}
+.table-dark th, .table-dark td {
+    border-color: rgba(255,255,255,0.1) !important;
+}
+    .text-light-gray {
+    color: #a1a1aa !important;
+}
+.text-gray-500 {
+    color: #71717a !important;
+}
 </style>
+
+<!-- ДАННЫЕ ДЛЯ JS -->
+<script>
+const shiftsData = {{ shifts_json|safe }};
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Клик по дню
+    document.querySelectorAll('.calendar-day.has-shift').forEach(day => {
+        day.addEventListener('click', function() {
+            const dateStr = this.getAttribute('data-date');
+            showShifts(dateStr);
+        });
+    });
+
+    // Закрытие панели
+    document.querySelector('#shiftsPanel .btn-close').addEventListener('click', hideShifts);
+});
+
+function showShifts(dateStr) {
+    const shifts = shiftsData[dateStr] || [];
+    let html = '';
+
+    if (shifts.length === 0) {
+        html = '<p class="text-muted">Нет смен</p>';
+    } else {
+        shifts.forEach(shift => {
+            const btn = shift.is_past
+                ? '<span class="text-light-gray small">Прошедшая</span>'
+                : `<a href="/shift-swaps/?shift_id=${shift.id}" class="btn btn-sm btn-outline-info">Обменять</a>`;
+
+            html += `
+                <div class="d-flex justify-content-between align-items-center bg-gray-900 rounded p-2 mb-2">
+                    <div>
+                        <span class="badge bg-primary">${shift.workout}</span>
+                        ${shift.start} – ${shift.end}
+                    </div>
+                    ${btn}
+                </div>
+            `;
+        });
+    }
+
+    const dateObj = new Date(dateStr);
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    document.getElementById('shiftsDateTitle').textContent = 'Смены: ' + dateObj.toLocaleDateString('ru-RU', options);
+    document.getElementById('shiftsList').innerHTML = html;
+    document.getElementById('shiftsPanel').classList.remove('d-none');
+}
+
+function hideShifts() {
+    document.getElementById('shiftsPanel').classList.add('d-none');
+}
+
+function toggleFullSchedule() {
+    const full = document.getElementById('fullSchedule');
+    full.classList.toggle('d-none');
+}
+
+// Закрытие по Esc
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') hideShifts();
+});
+</script>
 {% endblock %}

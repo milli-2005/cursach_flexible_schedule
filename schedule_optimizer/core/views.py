@@ -555,7 +555,7 @@ def schedule_view(request):
         return redirect('dashboard')
 
     # Параметры
-    page_size = int(request.GET.get('page_size', 3))
+    page_size = int(request.GET.get('page_size', 6))
     sort_by = request.GET.get('sort', '-start_date')  # по умолчанию — новые сверху
 
     # Валидация поля сортировки
@@ -738,7 +738,10 @@ def delete_schedule_view(request, schedule_id):
 """ === ГРАФИК В ЛИЧНОМ КАБИНЕТЕ У ТРЕНЕРОВ === """
 from datetime import date, timedelta
 import calendar
+import json
+from django.utils.html import escapejs
 
+@login_required
 @login_required
 def employee_schedule(request):
     if not hasattr(request.user, 'profile'):
@@ -751,7 +754,6 @@ def employee_schedule(request):
     except (TypeError, ValueError):
         year, month = today.year, today.month
 
-    # Исправляем некорректные значения месяца
     if month < 1:
         year -= 1
         month = 12
@@ -759,18 +761,14 @@ def employee_schedule(request):
         year += 1
         month = 1
 
-    # Теперь можно безопасно создавать дату
     first_day = date(year, month, 1)
     if month == 12:
         last_day = date(year + 1, 1, 1) - timedelta(days=1)
     else:
         last_day = date(year, month + 1, 1) - timedelta(days=1)
 
-
-    # Все дни месяца
     all_dates = [first_day + timedelta(days=i) for i in range((last_day - first_day).days + 1)]
 
-    # Смены сотрудника в этом месяце
     assignments = ShiftAssignment.objects.filter(
         employee__user=request.user,
         date__gte=first_day,
@@ -783,7 +781,20 @@ def employee_schedule(request):
     for shift in assignments:
         shifts_by_date[shift.date].append(shift)
 
-    # Для календаря: недели
+    # Подготовка JSON для JS
+    shifts_json = {}
+    for d, shifts in shifts_by_date.items():
+        shifts_json[d.isoformat()] = [
+            {
+                'id': shift.id,
+                'workout': escapejs(shift.workout_type.name if shift.workout_type else 'Работа'),
+                'start': shift.start_time.strftime('%H:%M') if shift.start_time else '',
+                'end': shift.end_time.strftime('%H:%M') if shift.end_time else '',
+                'is_past': shift.date < today,
+            }
+            for shift in shifts
+        ]
+
     cal = calendar.monthcalendar(year, month)
     weeks = []
     for week in cal:
@@ -796,7 +807,8 @@ def employee_schedule(request):
                 week_days.append({
                     'date': d,
                     'has_shift': len(shifts_by_date.get(d, [])) > 0,
-                    'is_today': d == date.today()
+                    'is_today': d == today,
+                    'is_past': d < today,
                 })
         weeks.append(week_days)
 
@@ -806,9 +818,11 @@ def employee_schedule(request):
         'month_name': first_day.strftime('%B %Y'),
         'weeks': weeks,
         'shifts_by_date': shifts_by_date,
-        'all_dates': all_dates,
-        'today': date.today(),
+        'today': today,
+        'shifts_json': json.dumps(shifts_json, ensure_ascii=False),
     }
+
+    # ✅ ПРАВИЛЬНЫЙ ВЫЗОВ render
     return render(request, 'core/schedules/employee_schedule.html', context)
 
 

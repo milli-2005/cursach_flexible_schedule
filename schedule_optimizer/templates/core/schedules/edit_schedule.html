@@ -131,8 +131,7 @@ document.getElementById('save-schedule-btn').addEventListener('click', function 
     ];
 
     document.querySelectorAll('tbody tr').forEach(row => {
-        const fullTimeText = row.querySelector('td:first-child').textContent.trim();
-        const startTime = fullTimeText.split('–')[0].trim();
+        const timeSlot = row.querySelector('td:first-child').textContent.trim(); // ← ПОЛНОЕ ВРЕМЯ
 
         row.querySelectorAll('td:not(:first-child)').forEach((cell, colIndex) => {
             const day = days[colIndex];
@@ -145,7 +144,7 @@ document.getElementById('save-schedule-btn').addEventListener('click', function 
             if (employeeId || workoutTypeId) {
                 assignments.push({
                     date: day,
-                    time_slot: startTime,
+                    time_slot: timeSlot,  // ← КЛЮЧЕВОЕ ИЗМЕНЕНИЕ
                     employee_id: employeeId || null,
                     workout_type_id: workoutTypeId || null
                 });
