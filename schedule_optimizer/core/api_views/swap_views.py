@@ -4,7 +4,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.utils import timezone
-from ..models import ShiftAssignment, Employee, ShiftSwapRequest
+from ..models import ShiftAssignment, Employee, ShiftSwapRequest, SwapShift
 import json
 
 def is_admin(user):
@@ -61,43 +61,59 @@ def api_employees_for_swap(request):
 def api_create_swap_request(request):
     try:
         data = json.loads(request.body)
-        shift_id = data.get('shift_id')
-        to_employee_id = data.get('to_employee_id')  # ← это ID сотрудника (Employee.id)
+        shift_ids_raw = data.get('shift_ids')
+        to_employee_id = data.get('to_employee_id')
         reason = data.get('reason', '').strip()
 
-        if not shift_id or not to_employee_id:
-            return JsonResponse({'success': False, 'error': 'Не указаны смена или получатель'})
+        if not shift_ids_raw or not to_employee_id:
+            return JsonResponse({'success': False, 'error': 'Не указаны смены или получатель'})
 
-        # === Проверка: смена принадлежит текущему пользователю ===
-        # ShiftAssignment.employee ссылается на UserProfile
-        shift = ShiftAssignment.objects.get(
-            id=shift_id,
-            employee=request.user.profile  # ← правильно: UserProfile
+        # Поддерживаем и строку, и список
+        if isinstance(shift_ids_raw, str):
+            try:
+                shift_ids = json.loads(shift_ids_raw)
+            except (ValueError, TypeError):
+                return JsonResponse({'success': False, 'error': 'Неверный формат shift_ids'})
+        elif isinstance(shift_ids_raw, list):
+            shift_ids = shift_ids_raw
+        else:
+            return JsonResponse({'success': False, 'error': 'shift_ids должен быть списком или JSON-строкой'})
+
+        if not isinstance(shift_ids, list):
+            return JsonResponse({'success': False, 'error': 'shift_ids должен быть списком'})
+
+        # Проверяем, что все смены принадлежат текущему пользователю
+        shifts = ShiftAssignment.objects.filter(
+            id__in=shift_ids,
+            employee=request.user.profile
         )
+        if len(shifts) != len(shift_ids):
+            return JsonResponse({'success': False, 'error': 'Некоторые смены не найдены или не принадлежат вам'})
 
-        # === Получаем получателя как Employee по ID ===
         to_employee = Employee.objects.get(id=to_employee_id)
-
-        # === Создаём заявку ===
         from_employee = Employee.objects.get(user_profile=request.user.profile)
 
-        ShiftSwapRequest.objects.create(
+        # Создаём заявку
+        swap_request = ShiftSwapRequest.objects.create(
             from_employee=from_employee,
             to_employee=to_employee,
-            shift_assignment=shift,
             reason=reason,
             status='pending'
         )
 
+        # Добавляем смены
+        for shift in shifts:
+            SwapShift.objects.create(
+                swap_request=swap_request,
+                shift_assignment=shift
+            )
+
         return JsonResponse({'success': True, 'message': 'Заявка на обмен отправлена'})
 
-    except ShiftAssignment.DoesNotExist:
-        return JsonResponse({'success': False, 'error': 'Смена не найдена или не принадлежит вам'})
     except Employee.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Получатель не найден'})
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
-
 
 
 @login_required
@@ -128,25 +144,18 @@ def api_approve_swap_request(request, swap_id):
     try:
         swap = ShiftSwapRequest.objects.select_related(
             'from_employee__user_profile',
-            'to_employee__user_profile',
-            'shift_assignment'
-        ).get(id=swap_id)
+            'to_employee__user_profile'
+        ).prefetch_related('shifts__shift_assignment').get(id=swap_id)
 
         # 1. Меняем статус
         swap.status = 'approved_by_manager'
         swap.save()
 
-        # 2. Меняем смену в графике
-        shift = swap.shift_assignment
-
-        # Сохраняем старые данные (на случай отката)
-        original_employee = shift.employee
-
-        # Меняем владельца смены
-        shift.employee = swap.to_employee.user_profile
-        shift.save()
-
-        # Опционально: можно создать запись в лог или отправить уведомление
+        # 2. Меняем владельца для всех смен в заявке
+        for swap_shift in swap.shifts.all():
+            shift = swap_shift.shift_assignment
+            shift.employee = swap.to_employee.user_profile
+            shift.save()
 
         return JsonResponse({'success': True})
 

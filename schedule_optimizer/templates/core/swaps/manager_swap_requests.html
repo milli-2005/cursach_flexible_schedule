@@ -25,9 +25,13 @@
                     <td>{{ req.from_employee.user_profile.user.get_full_name }}</td>
                     <td>{{ req.to_employee.user_profile.user.get_full_name }}</td>
                     <td>
-                        {{ req.shift_assignment.date }}<br>
-                        {{ req.shift_assignment.start_time }}–{{ req.shift_assignment.end_time }}
-                    </td>
+  {% for s in req.shifts.all %}
+    {{ s.shift_assignment.date }}<br>
+    {{ s.shift_assignment.start_time }}–{{ s.shift_assignment.end_time }}<br>
+  {% empty %}
+    —
+  {% endfor %}
+</td>
                     <td>{{ req.reason|truncatewords:10 }}</td>
                     <td>
                         {% if req.status == 'pending' %}

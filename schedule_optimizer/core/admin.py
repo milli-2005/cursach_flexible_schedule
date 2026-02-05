@@ -41,10 +41,29 @@ class TimeOffRequestAdmin(admin.ModelAdmin):
     list_display = ('employee', 'request_type', 'start_date', 'end_date', 'status')
     list_filter = ('status', 'request_type', 'start_date')
 
+# core/admin.py
+
+from django.contrib import admin
+from .models import ShiftSwapRequest, SwapShift
+
+class SwapShiftInline(admin.TabularInline):
+    model = SwapShift
+    extra = 0
+    readonly_fields = ('shift_assignment',)
+    can_delete = False
+
 @admin.register(ShiftSwapRequest)
 class ShiftSwapRequestAdmin(admin.ModelAdmin):
-    list_display = ('from_employee', 'to_employee', 'shift_assignment', 'status', 'created_at')
+    list_display = ('from_employee', 'to_employee', 'get_shifts', 'status', 'created_at')
     list_filter = ('status', 'created_at')
+    inlines = [SwapShiftInline]
+
+    def get_shifts(self, obj):
+        return ", ".join([
+            f"{s.shift_assignment.date} {s.shift_assignment.start_time}"
+            for s in obj.shifts.all()
+        ])
+    get_shifts.short_description = "Смены"
 
 @admin.register(OptimizationRule)
 class OptimizationRuleAdmin(admin.ModelAdmin):

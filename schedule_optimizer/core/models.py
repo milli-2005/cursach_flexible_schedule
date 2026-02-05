@@ -272,15 +272,12 @@ class TimeOffRequest(models.Model):
 
 
 
-
-
 class ShiftSwapRequest(models.Model):
     """
     Заявка на обмен сменами между сотрудниками.
     """
     from_employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='swap_requests_sent')
     to_employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='swap_requests_received')
-    shift_assignment = models.ForeignKey(ShiftAssignment, on_delete=models.CASCADE, verbose_name="Смена для обмена")
     reason = models.TextField(verbose_name="Причина обмена")
 
     STATUS_CHOICES = [
@@ -294,12 +291,26 @@ class ShiftSwapRequest(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата создания")
 
     class Meta:
-        verbose_name = "Заявка на обмен сменой"
+        verbose_name = "Заявка на обмен сменами"
         verbose_name_plural = "Заявки на обмен сменами"
 
     def __str__(self):
         return f"Обмен: {self.from_employee} -> {self.to_employee}"
 
+
+class SwapShift(models.Model):
+    """
+    Смена, участвующая в обмене.
+    """
+    swap_request = models.ForeignKey(ShiftSwapRequest, on_delete=models.CASCADE, related_name='shifts')
+    shift_assignment = models.ForeignKey(ShiftAssignment, on_delete=models.CASCADE, verbose_name="Смена для обмена")
+
+    class Meta:
+        verbose_name = "Смена в обмене"
+        verbose_name_plural = "Смены в обмене"
+
+    def __str__(self):
+        return f"{self.shift_assignment} in {self.swap_request}"
 
 
 

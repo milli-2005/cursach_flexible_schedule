@@ -414,64 +414,66 @@ def timeoff_requests(request):
     return render(request, 'core/timeoff_requests.html', context)
 
 
-from .models import ShiftSwapRequest
+
 @login_required
 def shift_swaps(request):
-    if not hasattr(request.user, 'profile'):
-        messages.error(request, "Профиль пользователя не найден.")
+    if request.user.profile.role != 'employee':
         return redirect('dashboard')
 
-    user_role = request.user.profile.role
+    shift_ids_str = request.GET.get('shift_ids')
+    selected_shifts = []
 
-    # Если руководитель — показываем страницу утверждения
-    if user_role == 'manager':
-        swap_requests = ShiftSwapRequest.objects.select_related(
-            'from_employee__user_profile__user',
-            'to_employee__user_profile__user',
-            'shift_assignment__workout_type'
-        ).order_by('-created_at')
-        context = {'swap_requests': swap_requests}
-        return render(request, 'core/swaps/manager_swap_requests.html', context)
-
-    # Иначе — обычный сотрудник
-    shift_id = request.GET.get('shift_id')
-    selected_shift = None
-    if shift_id:
+    if shift_ids_str:
         try:
-            selected_shift = ShiftAssignment.objects.get(
-                id=shift_id,
-                employee__user=request.user
+            shift_ids = [int(x) for x in shift_ids_str.split(',')]
+            selected_shifts = ShiftAssignment.objects.filter(
+                id__in=shift_ids,
+                employee=request.user.profile
             )
-        except ShiftAssignment.DoesNotExist:
-            messages.warning(request, "Смена не найдена или не принадлежит вам.")
+        except ValueError:
+            pass
 
-    available_employees = []
-    if hasattr(request.user, 'profile'):
-        available_employees = Employee.objects.select_related('user_profile__user').exclude(
-            user_profile__user=request.user
-        ).values('id', 'user_profile__user__last_name', 'user_profile__user__first_name', 'user_profile__patronymic')
-        available_employees = [
-            {
-                'id': emp['id'],
-                'name': f"{emp['user_profile__user__last_name']} {emp['user_profile__user__first_name']} {emp['user_profile__patronymic'] or ''}".strip()
-            }
-            for emp in available_employees
-        ]
-
-    my_swap_requests = ShiftSwapRequest.objects.filter(
-        from_employee__user_profile__user=request.user
+    # Всегда загружаем список своих заявок
+    my_requests = ShiftSwapRequest.objects.filter(
+        from_employee__user_profile=request.user.profile
     ).select_related(
-        'to_employee__user_profile__user',
-        'shift_assignment__workout_type'
-    ).order_by('-created_at')
+        'to_employee__user_profile__user'
+    ).prefetch_related('shifts__shift_assignment').order_by('-created_at')
 
     context = {
-        'selected_shift': selected_shift,
-        'available_employees': available_employees,
-        'my_swap_requests': my_swap_requests,
+        'selected_shifts': selected_shifts,
+        'available_employees': [],
+        'my_requests': my_requests,
     }
+
+    # Если есть выбранные смены — формируем available_employees
+    if selected_shifts:
+        available_employees = []
+        for emp in Employee.objects.select_related('user_profile__user').exclude(user_profile__user=request.user):
+            user = emp.user_profile.user
+            full_name = f"{user.last_name} {user.first_name}".strip() or user.username
+            available_employees.append({'id': emp.id, 'name': full_name})
+        context['available_employees'] = available_employees
+        context['shift_ids_json'] = json.dumps([s.id for s in selected_shifts])
+
     return render(request, 'core/swaps/shift_swaps.html', context)
 
+
+@login_required
+@user_passes_test(lambda u: u.profile.role in ['manager', 'studio_admin'])
+def manager_swap_requests(request):
+    """Страница для менеджера: просмотр и одобрение всех заявок"""
+    swap_requests = ShiftSwapRequest.objects.select_related(
+    'from_employee__user_profile__user',
+    'to_employee__user_profile__user'
+).prefetch_related(
+    'shifts__shift_assignment'
+).order_by('-created_at')
+
+    context = {
+        'swap_requests': swap_requests,
+    }
+    return render(request, 'core/swaps/manager_swap_requests.html', context)
 
 
 

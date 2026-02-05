@@ -2,8 +2,8 @@
 {
   "model": "auth.user",
   "fields": {
-    "password": "pbkdf2_sha256$1200000$0a6fuNWe3vHMZ7uUjJbj76$FOC6yiU3BsqFowj5KbxdrE/BBmVHDLO4zT0VdHuCsNE=",
-    "last_login": "2026-02-05T09:44:38.935Z",
+    "password": "pbkdf2_sha256$1000000$wP1UMsaN2fN0prUoLq2EDG$u+RtQGRowdm0fhWTXdAWQmz2kX8TQMQNkS7p/Qd7jIM=",
+    "last_login": "2026-02-05T22:39:52.391Z",
     "is_superuser": true,
     "username": "manager",
     "first_name": "Мария",
@@ -19,8 +19,8 @@
 {
   "model": "auth.user",
   "fields": {
-    "password": "pbkdf2_sha256$1200000$OQpYMoYZxbKmbDaXb4WI8j$Kfh/NaE2tSuLOo/6QmH62lAE6Y39mYiFrXblgdwps+g=",
-    "last_login": "2026-02-05T09:50:14.232Z",
+    "password": "pbkdf2_sha256$1000000$jAIaiLFIrL3EEvSLBstRZO$glnQU8V4cfAN7qRYk6LONStyXgUPOlbO4rvESSNInqQ=",
+    "last_login": "2026-02-05T22:39:28.064Z",
     "is_superuser": false,
     "username": "milena",
     "first_name": "Милена",
@@ -36,8 +36,8 @@
 {
   "model": "auth.user",
   "fields": {
-    "password": "pbkdf2_sha256$1200000$n867vsgnysDWv6mznqQ3Ao$VzJ3ZGZZjQ8kVijSK5RCxd3w0Y5oKmcO8SB5kghwmfg=",
-    "last_login": "2026-02-05T08:08:19.337Z",
+    "password": "pbkdf2_sha256$1000000$J5dDYN1IErYcyGQ4uIqJje$/I1KJC+Xih9t3DgtdWXk9zOmlLZYw1F0X+l0pQt6AKA=",
+    "last_login": "2026-02-05T22:37:15.938Z",
     "is_superuser": false,
     "username": "sofa",
     "first_name": "Софья",
@@ -2314,7 +2314,7 @@
   "pk": 315,
   "fields": {
     "schedule": 13,
-    "employee": 3,
+    "employee": 2,
     "workout_type": 1,
     "date": "2026-02-09",
     "start_time": "16:00:00",
@@ -2356,7 +2356,7 @@
   "pk": 318,
   "fields": {
     "schedule": 13,
-    "employee": 3,
+    "employee": 2,
     "workout_type": 1,
     "date": "2026-02-09",
     "start_time": "17:00:00",
@@ -2517,6 +2517,60 @@
     "end_time": "20:50:00",
     "status": "scheduled",
     "actual_hours": null
+  }
+},
+{
+  "model": "core.shiftswaprequest",
+  "pk": 9,
+  "fields": {
+    "from_employee": 2,
+    "to_employee": 5,
+    "reason": "заболела",
+    "status": "rejected",
+    "created_at": "2026-02-05T22:29:37.329Z"
+  }
+},
+{
+  "model": "core.shiftswaprequest",
+  "pk": 10,
+  "fields": {
+    "from_employee": 3,
+    "to_employee": 2,
+    "reason": "не смогу работать",
+    "status": "approved_by_manager",
+    "created_at": "2026-02-05T22:37:40.464Z"
+  }
+},
+{
+  "model": "core.swapshift",
+  "pk": 11,
+  "fields": {
+    "swap_request": 9,
+    "shift_assignment": 305
+  }
+},
+{
+  "model": "core.swapshift",
+  "pk": 12,
+  "fields": {
+    "swap_request": 9,
+    "shift_assignment": 307
+  }
+},
+{
+  "model": "core.swapshift",
+  "pk": 13,
+  "fields": {
+    "swap_request": 10,
+    "shift_assignment": 315
+  }
+},
+{
+  "model": "core.swapshift",
+  "pk": 14,
+  "fields": {
+    "swap_request": 10,
+    "shift_assignment": 318
   }
 },
 {

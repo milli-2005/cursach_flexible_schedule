@@ -85,6 +85,7 @@ path('remind/availability/', views.send_availability_reminder_manual, name='send
     path('api/create-swap-request/', api_create_swap_request, name='api_create_swap_request'),
 
     # Для руководителя
+    path('manager-swaps/', views.manager_swap_requests, name='manager_swap_requests'),
     path('api/swap-request/<int:swap_id>/approve/', api_approve_swap_request, name='api_approve_swap_request'),
     path('api/swap-request/<int:swap_id>/reject/', api_reject_swap_request, name='api_reject_swap_request'),
 

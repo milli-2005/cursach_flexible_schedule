@@ -9,20 +9,23 @@
 <h2>Ваши заявки на обмен</h2>
 
 
-{% if selected_shift %}
-    <div class="alert alert-info">
-        <strong>Вы хотите обменять смену:</strong><br>
-        {{ selected_shift.date }} | {{ selected_shift.start_time }}–{{ selected_shift.end_time }} |
-        {{ selected_shift.workout_type.name|default:"Работа" }}
+<!-- Форма создания (показывается, если выбраны смены) -->
+{% if selected_shifts %}
+    <div class="alert alert-info mb-4">
+        <strong>Вы хотите обменять {{ selected_shifts|length }} смен(ы):</strong>
+        <ul>
+        {% for shift in selected_shifts %}
+            <li>{{ shift.date }} | {{ shift.start_time }}–{{ shift.end_time }} | {{ shift.workout_type.name|default:"Работа" }}</li>
+        {% endfor %}
+        </ul>
     </div>
 
-    <!-- Форма для выбора сотрудника и причины -->
-    <form id="swapForm">
+    <form id="swapForm" class="mb-5">
         {% csrf_token %}
-        <input type="hidden" name="shift_id" value="{{ selected_shift.id }}">
+        <input type="hidden" name="shift_ids" value="{{ shift_ids_json }}">
 
         <div class="mb-3">
-            <label class="form-label">Выберите сотрудника для обмена</label>
+            <label>Выберите сотрудника для обмена</label>
             <select name="to_employee_id" class="form-select" required>
                 <option value="">-- Выберите --</option>
                 {% for emp in available_employees %}
@@ -32,20 +35,16 @@
         </div>
 
         <div class="mb-3">
-            <label class="form-label">Причина</label>
+            <label>Причина</label>
             <textarea name="reason" class="form-control" rows="3" placeholder="Например: болею, семейные обстоятельства..."></textarea>
         </div>
 
-        <button type="submit" class="btn btn-primary" style="margin-bottom: 50px;">Отправить заявку</button>
+        <button type="submit" class="btn btn-primary">Отправить заявку</button>
     </form>
-{% else %}
-
 {% endif %}
 
-
-
-<p>Выберите смену для обмена на странице расписания.</p>
-{% if my_swap_requests %}
+<!-- Список всех заявок (показывается всегда) -->
+{% if my_requests %}
     <div class="table-responsive">
         <table class="table table-striped">
             <thead>
@@ -58,11 +57,13 @@
                 </tr>
             </thead>
             <tbody>
-                {% for req in my_swap_requests %}
+                {% for req in my_requests %}
                 <tr>
                     <td>
-                        {{ req.shift_assignment.date }}<br>
-                        {{ req.shift_assignment.start_time }}–{{ req.shift_assignment.end_time }}
+                        {% for s in req.shifts.all %}
+                            {{ s.shift_assignment.date }}<br>
+                            {{ s.shift_assignment.start_time }}–{{ s.shift_assignment.end_time }}<br>
+                        {% endfor %}
                     </td>
                     <td>{{ req.to_employee.user_profile.user.get_full_name }}</td>
                     <td>{{ req.reason|truncatewords:10 }}</td>

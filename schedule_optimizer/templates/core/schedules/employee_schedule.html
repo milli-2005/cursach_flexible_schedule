@@ -222,18 +222,31 @@ function showShifts(dateStr) {
         shifts.forEach(shift => {
             const btn = shift.is_past
                 ? '<span class="text-light-gray small">Прошедшая</span>'
-                : `<a href="/shift-swaps/?shift_id=${shift.id}" class="btn btn-sm btn-outline-info">Обменять</a>`;
-
+                : `
+                    <div class="form-check mb-1">
+                        <input class="form-check-input swap-checkbox" type="checkbox" 
+                               value="${shift.id}" id="swap-${shift.id}">
+                        <label class="form-check-label" for="swap-${shift.id}">Обменять</label>
+                    </div>
+                `;
             html += `
                 <div class="d-flex justify-content-between align-items-center bg-gray-900 rounded p-2 mb-2">
                     <div>
                         <span class="badge bg-primary">${shift.workout}</span>
                         ${shift.start} – ${shift.end}
                     </div>
-                    ${btn}
+                    <div>${btn}</div>
                 </div>
             `;
         });
+        // Кнопка отправки
+        if (!shifts.some(s => s.is_past)) {
+            html += `
+                <button class="btn btn-sm btn-outline-info mt-2" onclick="openSwapForm()">
+    Отправить заявку на обмен
+</button>
+            `;
+        }
     }
 
     const dateObj = new Date(dateStr);
@@ -242,6 +255,34 @@ function showShifts(dateStr) {
     document.getElementById('shiftsList').innerHTML = html;
     document.getElementById('shiftsPanel').classList.remove('d-none');
 }
+
+function openSwapForm() {
+    const selectedCheckboxes = document.querySelectorAll('.swap-checkbox:checked');
+    if (selectedCheckboxes.length === 0) {
+        alert('Выберите хотя бы одну смену для обмена');
+        return;
+    }
+
+    const shiftIds = Array.from(selectedCheckboxes).map(cb => cb.value);
+    const url = `/shift-swaps/?shift_ids=${shiftIds.join(',')}`;
+    window.location.href = url;
+}
+
+
+// function openSwapForm(dateStr) {
+//     const selectedShifts = document.querySelectorAll(`.swap-checkbox:checked`);
+//     if (selectedShifts.length === 0) {
+//         alert('Выберите хотя бы одну смену для обмена');
+//         return;
+//     }
+
+//     // Сохраняем выбранные ID в sessionStorage
+//     const shiftIds = Array.from(selectedShifts).map(cb => cb.value);
+//     sessionStorage.setItem('swap_shift_ids', JSON.stringify(shiftIds));
+
+//     // Переход на страницу обмена
+//     window.location.href = '/shift-swaps/';
+// }
 
 function hideShifts() {
     document.getElementById('shiftsPanel').classList.add('d-none');
