@@ -506,8 +506,9 @@ def create_schedule_view(request):
 
     # Генерация слотов
     start_hour, end_hour = 9, 21
-    slots = []
-    current_time = start_hour * 60
+    slots = []  # Временные слоты
+    current_time = start_hour * 60  # Даты недели
+
     while current_time + 50 <= end_hour * 60:
         start_str = f"{current_time // 60:02d}:{current_time % 60:02d}"
         current_time += 50
@@ -523,7 +524,7 @@ def create_schedule_view(request):
     # Строки для JS и шаблона
     date_strings = [d.strftime('%Y-%m-%d') for d in current_days]
 
-    # Загрузка доступности
+    # Загрузка доступности, подготовка данных для быстрой проверки в JS
     availabilities = Availability.objects.filter(
         employee__in=employees,
         date__in=current_days
@@ -670,8 +671,9 @@ def schedule_detail(request, schedule_id):
     return render(request, 'core/schedules/view_schedule.html', context)
 
 
+
+
 from collections import defaultdict
-import json
 
 @login_required
 def edit_schedule_view(request, schedule_id):
@@ -725,6 +727,7 @@ def edit_schedule_view(request, schedule_id):
         'slots': slots,
         'days': days,
         'date_strings': date_strings,  # ← для JS
+         'date_strings_json': json.dumps([d.strftime('%Y-%m-%d') for d in days]),
         'employees': employees,
         'workout_types': workout_types,
         'assignment_dict': dict(assignment_dict),

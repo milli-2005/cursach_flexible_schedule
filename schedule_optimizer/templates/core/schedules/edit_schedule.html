@@ -7,7 +7,7 @@
 {% block content %}
 <div class="management-container">
     <h2>Редактирование графика "{{ schedule.name }}"</h2>
-    <p class="text-muted">Период: {{ schedule.start_date }} — {{ schedule.end_date }}</p>
+    <p class="text-grey-100">Период: {{ schedule.start_date }} — {{ schedule.end_date }}</p>
     <div class="mb-3">
     <button id="auto-fill-btn" class="btn btn-outline-light">Заполнить автоматически</button>
 </div>
@@ -67,11 +67,15 @@
 <script>
 // Данные о доступности
 const AVAILABILITY_SET = new Set({{ availability_set_json|safe }});
+const dateStrings = {{ date_strings_json|safe }};
 
 document.getElementById('auto-fill-btn').addEventListener('click', function () {
     const rows = document.querySelectorAll('tbody tr');
     const employees = Array.from(document.querySelectorAll('.employee-select option[value]'))
         .map(opt => ({ id: opt.value, name: opt.textContent }));
+
+    // Получаем список дат из контекста (важно!)
+    const dateStrings = {{ date_strings_json|safe }};
 
     let empIndex = 0;
 
@@ -83,14 +87,14 @@ document.getElementById('auto-fill-btn').addEventListener('click', function () {
         const startTime = timeText.split('–')[0].trim();
 
         row.querySelectorAll('td:not(:first-child)').forEach((cell, idx) => {
-            const day = "{{ date_strings|join:'|' }}".split('|')[idx];
+            const day = dateStrings[idx];
             const employeeSelect = cell.querySelector('.employee-select');
             const workoutSelect = cell.querySelector('.workout-select');
 
             // Пропускаем, если уже заполнено
             if (employeeSelect.value) return;
 
-            // Ищем первого доступного
+            // Ищем первого доступного сотрудника
             let assigned = false;
             for (let i = 0; i < employees.length; i++) {
                 const emp = employees[(empIndex + i) % employees.length];
@@ -98,9 +102,15 @@ document.getElementById('auto-fill-btn').addEventListener('click', function () {
 
                 if (AVAILABILITY_SET.has(key)) {
                     employeeSelect.value = emp.id;
+
+                    // ✅ СЛУЧАЙНЫЙ ТИП ТРЕНИРОВКИ — вот ключевая строка:
                     if (workoutSelect.options.length > 1) {
-                        workoutSelect.value = workoutSelect.options[1].value;
+                        const randomIndex = Math.floor(Math.random() * (workoutSelect.options.length - 1)) + 1;
+                        workoutSelect.value = workoutSelect.options[randomIndex].value;
+                    } else {
+                        workoutSelect.value = '';
                     }
+
                     empIndex = (empIndex + i + 1) % employees.length;
                     assigned = true;
                     break;
@@ -114,7 +124,7 @@ document.getElementById('auto-fill-btn').addEventListener('click', function () {
         });
     });
 
-    showGlobalNotification('График заполнен с учётом доступности сотрудников.');
+    showGlobalNotification('График заполнен с учётом доступности и разными тренировками.');
 });
 </script>
 

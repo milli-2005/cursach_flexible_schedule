@@ -115,6 +115,35 @@ LOGIN_REDIRECT_URL = 'dashboard'
 LOGOUT_REDIRECT_URL = 'index'
 LOGIN_URL = 'login'
 
+# === ЛОГИРОВАНИЕ (ставим ДО любых сторонних импортов) ===
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        'core': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+    },
+}
 
 # Настройки email для разработки
 EMAIL_HOST = 'smtp.gmail.com'    #адрес почтового сервера - gmail, yandex, mail
@@ -144,3 +173,6 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': 600.0,  # Каждые 10 минут (600 секунд)
     },
 }
+
+# В самом конце settings.py
+print("✅ LOGGING загружен")

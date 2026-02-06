@@ -7,6 +7,11 @@ from django.utils import timezone
 from ..models import ShiftAssignment, Employee, ShiftSwapRequest, SwapShift
 import json
 
+import logging
+
+logger = logging.getLogger(__name__)
+
+
 def is_admin(user):
     if not hasattr(user, 'profile'):
         return False
@@ -141,27 +146,44 @@ def manager_swap_requests(request):
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_approve_swap_request(request, swap_id):
+    print("🔥 ФУНКЦИЯ ВЫЗВАНА")
     try:
         swap = ShiftSwapRequest.objects.select_related(
             'from_employee__user_profile',
             'to_employee__user_profile'
         ).prefetch_related('shifts__shift_assignment').get(id=swap_id)
 
-        # 1. Меняем статус
+        manager = request.user
+        from_user = swap.from_employee.user_profile.user
+        to_user = swap.to_employee.user_profile.user
+
+        logger.info(f"Менеджер {manager.username} утверждает заявку #{swap.id}: "
+                    f"{from_user.username} → {to_user.username}")
+
+        # Меняем статус
         swap.status = 'approved_by_manager'
         swap.save()
 
-        # 2. Меняем владельца для всех смен в заявке
+        # Меняем владельца для всех смен
+        updated_shifts = []
         for swap_shift in swap.shifts.all():
             shift = swap_shift.shift_assignment
+            old_owner = shift.employee.user.username if shift.employee else 'None'
             shift.employee = swap.to_employee.user_profile
             shift.save()
+            updated_shifts.append(f"{shift.date} {shift.start_time}")
+
+        logger.info(f"Обновлены смены в заявке #{swap.id}: {', '.join(updated_shifts)}")
 
         return JsonResponse({'success': True})
 
     except ShiftSwapRequest.DoesNotExist:
+        error_msg = f"Заявка #{swap_id} не найдена при попытке утверждения"
+        logger.error(error_msg)
         return JsonResponse({'success': False, 'error': 'Заявка не найдена'})
     except Exception as e:
+        error_msg = f"Ошибка при утверждении заявки #{swap_id}: {str(e)}"
+        logger.error(error_msg)
         return JsonResponse({'success': False, 'error': str(e)})
 
 
@@ -174,8 +196,25 @@ def api_approve_swap_request(request, swap_id):
 def api_reject_swap_request(request, swap_id):
     try:
         swap = ShiftSwapRequest.objects.get(id=swap_id)
+        manager = request.user
+        from_user = swap.from_employee.user_profile.user
+        to_user = swap.to_employee.user_profile.user
+
+        logger.info(f"Менеджер {manager.username} отклоняет заявку #{swap.id}: "
+                    f"{from_user.username} → {to_user.username}")
+
         swap.status = 'rejected'
         swap.save()
+
+        logger.info(f"Заявка #{swap.id} отклонена")
+
         return JsonResponse({'success': True})
+
     except ShiftSwapRequest.DoesNotExist:
+        error_msg = f"Заявка #{swap_id} не найдена при попытке отклонения"
+        logger.error(error_msg)
         return JsonResponse({'success': False, 'error': 'Заявка не найдена'})
+    except Exception as e:
+        error_msg = f"Ошибка при отклонении заявки #{swap_id}: {str(e)}"
+        logger.error(error_msg)
+        return JsonResponse({'success': False, 'error': str(e)})

@@ -52,7 +52,6 @@ def api_update_schedule(request, schedule_id):
         for item in assignments:
             date_str = item['date']
             time_slot = item['time_slot']
-            # === ВАЖНО: преобразуем employee_id в int ===
             employee_id = item.get('employee_id')
             if employee_id:
                 employee_id = int(employee_id)
