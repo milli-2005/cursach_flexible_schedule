@@ -8,6 +8,7 @@ from django import forms
 from django.contrib.auth.models import User
 from .models import UserProfile
 import re
+from .models import Employee, WorkoutType
 
 class UserInvitationForm(forms.ModelForm):
     username = forms.CharField(max_length=150, label="Имя пользователя")
@@ -115,3 +116,26 @@ class CustomSetPasswordForm(SetPasswordForm):
         super().__init__(*args, **kwargs)
         for field_name in ['new_password1', 'new_password2']:
             self.fields[field_name].widget.attrs.update({'class': 'form-control'})
+
+
+class EmployeeWorkoutTypesForm(forms.ModelForm):
+    class Meta:
+        model = Employee
+        fields = ['workout_types']
+        widgets = {
+            'workout_types': forms.CheckboxSelectMultiple,
+        }
+        labels = {
+            'workout_types': 'Выберите направления, которые вы ведёте:',
+        }
+
+from django import forms
+from .models import WorkoutType
+
+class WorkoutTypesForm(forms.Form):
+    workout_types = forms.ModelMultipleChoiceField(
+        queryset=WorkoutType.objects.all(),
+        widget=forms.CheckboxSelectMultiple,
+        label="Выберите направления, которые вы ведёте:",
+        required=False
+    )

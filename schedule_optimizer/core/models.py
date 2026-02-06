@@ -120,6 +120,17 @@ class Employee(models.Model):
     preferred_shifts = models.TextField(blank=True, verbose_name="Предпочитаемые смены")
     unavailable_days = models.TextField(blank=True, verbose_name="Невозможные дни")
 
+    # направления:
+    workout_types = models.ManyToManyField(
+        'WorkoutType',
+        blank=True,
+        verbose_name="Направления, которые ведёт"
+    )
+
+    def __str__(self):
+        return f"{self.user_profile.user.get_full_name()}"
+
+
     class Meta:
         verbose_name = "Сотрудник"
         verbose_name_plural = "Сотрудники"
@@ -128,7 +139,6 @@ class Employee(models.Model):
         return f"{self.user_profile.user.get_full_name() or self.user_profile.user.username}"
 
 
-# В конец файла core/models.py
 
 @receiver(post_save, sender=UserProfile)
 def create_employee_for_user_profile(sender, instance, created, **kwargs):

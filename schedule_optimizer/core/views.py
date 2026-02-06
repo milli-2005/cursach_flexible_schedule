@@ -295,7 +295,7 @@ def dashboard(request):
         return redirect('index')
 
 
-
+from .forms import WorkoutTypesForm
 @login_required
 def profile_view(request):
     """
@@ -303,11 +303,27 @@ def profile_view(request):
     """
     user = request.user
     profile = user.profile # Предполагается, что профиль всегда существует
+    # Получаем или создаём Employee
+    employee, created = Employee.objects.get_or_create(user_profile=profile)
+
+    if request.method == 'POST':
+        if 'save_workout_types' in request.POST:
+            form = WorkoutTypesForm(request.POST)
+            if form.is_valid():
+                employee.workout_types.set(form.cleaned_data['workout_types'])
+                messages.success(request, 'Направления обновлены!')
+                return redirect('profile_view')
+        else:
+            # Обработка других форм (например, профиль)
+            pass
+    else:
+        form = WorkoutTypesForm(initial={'workout_types': employee.workout_types.all()})
+
     context = {
-        'user': user,
-        'profile': profile,
+        'employee': employee,
+        'workout_types_form': form,
     }
-    return render(request, 'core/profile/view.html', context)
+    return render(request, 'core/profile/profile.html', context)
 
 
 # core/views.py
