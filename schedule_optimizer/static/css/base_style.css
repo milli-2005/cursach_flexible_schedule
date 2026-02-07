@@ -1068,3 +1068,54 @@ textarea {
     box-shadow: 0 0 0 0.2rem rgba(155, 89, 182, 0.25) !important;
 }
 
+/* === УЛУЧШЕНИЕ ЧИТАЕМОСТИ НА ТЁМНОМ ФОНЕ === */
+.profile-section h3,
+.profile-section label,
+.profile-section .text-muted {
+    color: #e5e7eb; /* светлый серый, но контрастный */
+}
+
+/* Текст внутри карточки профиля */
+.profile-card {
+    color: #f3f4f6;
+}
+
+/* Кнопка "Выбрать направления" */
+.btn-outline-purple {
+    color: #8A6BBE;
+    border-color: #8A6BBE;
+}
+.btn-outline-purple:hover {
+    background-color: rgba(138, 107, 190, 0.1);
+    color: #fff;
+}
+
+/* Модальное окно — фон и текст */
+.modal-content {
+    background: #1f1f2e;
+    color: #e5e7eb;
+}
+.modal-header {
+    background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+    color: white;
+}
+.modal-body .form-check-label {
+    color: #f3f4f6;
+}
+.modal-footer .btn-secondary {
+    color: #f3f4f6;
+    background: #374151;
+    border: none;
+}
+.modal-footer .btn-purple {
+    background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+    border: none;
+    color: white;
+}
+
+/* Бейджи направлений */
+.badge.bg-purple {
+    background: #6a11cb;
+    color: white;
+    font-weight: 500;
+}

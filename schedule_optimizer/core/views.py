@@ -295,35 +295,36 @@ def dashboard(request):
         return redirect('index')
 
 
+
+
 from .forms import WorkoutTypesForm
+
+
 @login_required
 def profile_view(request):
-    """
-    Просмотр профиля пользователя.
-    """
     user = request.user
-    profile = user.profile # Предполагается, что профиль всегда существует
-    # Получаем или создаём Employee
+    profile = user.profile
     employee, created = Employee.objects.get_or_create(user_profile=profile)
 
-    if request.method == 'POST':
-        if 'save_workout_types' in request.POST:
-            form = WorkoutTypesForm(request.POST)
-            if form.is_valid():
-                employee.workout_types.set(form.cleaned_data['workout_types'])
-                messages.success(request, 'Направления обновлены!')
-                return redirect('profile_view')
-        else:
-            # Обработка других форм (например, профиль)
-            pass
-    else:
-        form = WorkoutTypesForm(initial={'workout_types': employee.workout_types.all()})
+    # Всегда создаём форму для модалки
+    workout_types_form = WorkoutTypesForm(
+        initial={'workout_types': employee.workout_types.all()}
+    )
+
+    if request.method == 'POST' and 'save_workout_types' in request.POST:
+        selected_ids = request.POST.getlist('workout_types')
+        selected_ids = [int(x) for x in selected_ids if x.isdigit()]
+        employee.workout_types.set(selected_ids)
+        return JsonResponse({'success': True, 'message': 'Направления обновлены!'})
 
     context = {
+        'user': user,
+        'profile': profile,
         'employee': employee,
-        'workout_types_form': form,
+        'workout_types_form': workout_types_form,
     }
     return render(request, 'core/profile/profile.html', context)
+
 
 
 # core/views.py
