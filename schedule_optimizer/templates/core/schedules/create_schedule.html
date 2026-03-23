@@ -1,4 +1,3 @@
-<!-- templates/core/schedules/create_schedule.html -->
 {% extends "core/base.html" %}
 {% load dict_extras %}
 
@@ -30,13 +29,11 @@
             {% for day_str in date_strings %}
                 <td data-day="{{ day_str }}" data-time="{{ slot.0 }}">
                     <select class="form-select form-select-sm mb-1 employee-select">
-    <option value="">Выберите...</option>
-    {% for emp in employees %}
-        <option value="{{ emp.id }}">
-            {{ emp.user.username }}
-        </option>
-    {% endfor %}
-</select>
+                        <option value="">Выберите...</option>
+                        {% for emp in employees %}
+                            <option value="{{ emp.id }}">{{ emp.user.username }}</option>
+                        {% endfor %}
+                    </select>
                     <select class="form-select form-select-sm workout-select">
                         <option value="">Занятие</option>
                         {% for wt in workout_types %}
@@ -56,110 +53,101 @@
 
 {% block extra_js %}
 <script>
-// Загружаем данные о доступности: ["1,2026-01-27,09:00", "2,2026-01-27,10:00", ...]
-const AVAILABILITY_SET = new Set({{ availability_set_json|safe }}); //Это позволяет быстро проверять, доступен ли сотрудник в конкретное время
+// === Глобальные данные ===
+const AVAILABILITY_SET = new Set({{ availability_set_json|safe }});
+const EMPLOYEES_WITH_WORKOUTS = {{ employees_with_workouts_json|safe }};
+const WORKOUT_TYPES = {{ workout_types_json|safe }};
 
-//обработчик события на кнопку "Заполнить автоматически"
+const EMPLOYEE_WORKOUT_MAP = {};
+EMPLOYEES_WITH_WORKOUTS.forEach(emp => {
+    EMPLOYEE_WORKOUT_MAP[emp.id] = emp.workout_types.map(wt => wt.id);
+});
+
+// === Функция обновления выпадающего списка занятий ===
+function updateWorkoutSelect(workoutSelect, allowedIds) {
+    workoutSelect.innerHTML = '<option value="">Занятие</option>';
+    WORKOUT_TYPES.forEach(wt => {
+        if (!allowedIds || allowedIds.includes(wt.id)) {
+            const option = document.createElement('option');
+            option.value = wt.id;
+            option.textContent = wt.name;
+            workoutSelect.appendChild(option);
+        }
+    });
+}
+
+// === Инициализация при загрузке страницы ===
+document.addEventListener('DOMContentLoaded', function () {
+    // Инициализируем все списки занятий
+    document.querySelectorAll('.workout-select').forEach(select => {
+        updateWorkoutSelect(select, null); // все занятия
+    });
+
+    // Обработчик изменения тренера
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('employee-select')) {
+            const cell = e.target.closest('td');
+            const workoutSelect = cell.querySelector('.workout-select');
+            const empId = e.target.value;
+
+            if (empId && EMPLOYEE_WORKOUT_MAP[empId]) {
+                updateWorkoutSelect(workoutSelect, EMPLOYEE_WORKOUT_MAP[empId]);
+            } else {
+                updateWorkoutSelect(workoutSelect, null);
+            }
+        }
+    });
+});
+
+// === Автозаполнение ===
 document.getElementById('auto-fill-btn').addEventListener('click', function () {
-
-    // ШАГ 1: ПОДГОТОВКА ДАННЫХ
-    // Получаем все строки таблицы расписания (каждая строка = временной слот)
     const rows = document.querySelectorAll('#schedule-table tbody tr');
 
-    // Собираем список всех сотрудников из выпадающих списков
-    // Создаем массив объектов: [{ id: "1", name: "Иван" }, { id: "2", name: "Мария" }, ...]
-    const employees = Array.from(document.querySelectorAll('.employee-select option[value]'))
-        .map(opt => ({ id: opt.value, name: opt.textContent }));
-
-    // Индекс для циклического распределения сотрудников
-    // Начинаем с первого сотрудника (индекс 0)
-    // Это обеспечивает равномерное распределение нагрузки между сотрудниками
-    let empIndex = 0;
-
-
-    // ШАГ 2: ПРОХОД ПО СТРОКАМ ТАБЛИЦЫ (ВРЕМЕННЫЕ СЛОТЫ)
     rows.forEach(row => {
-       // Получаем первую ячейку строки (ячейка с временем, например "09:00 – 09:50")
         const timeCell = row.querySelector('td:first-child');
-
-        // Если ячейки времени нет (маловероятно), пропускаем эту строку
         if (!timeCell) return;
+        const startTime = timeCell.textContent.trim().split('–')[0].trim();
 
-        // Извлекаем текст времени и удаляем лишние пробелы
-        // Пример: "09:00 – 09:50"
-        const timeText = timeCell.textContent.trim();
-
-        // Извлекаем время начала из строки "09:00 – 09:50"
-        // 1. Разбиваем строку по символу "–" → ["09:00 ", " 09:50"]
-        // 2. Берем первый элемент → "09:00 "
-        // 3. Удаляем пробелы → "09:00"
-        const startTime = timeText.split('–')[0].trim();
-
-
-        // ШАГ 3: ПРОХОД ПО ЯЧЕЙКАМ СТРОКИ (ДНИ НЕДЕЛИ)
-        // Проходим по всем ячейкам строки, кроме первой (первая - это время)
-        // Каждая ячейка = день недели (пн, вт, ср...)
         row.querySelectorAll('td:not(:first-child)').forEach((cell, idx) => {
-
-            // Получаем дату из атрибута data-day ячейки
-            // Пример: "2026-01-27"
             const day = cell.dataset.day;
-
-            // Находим выпадающий список для выбора сотрудника в текущей ячейке
             const employeeSelect = cell.querySelector('.employee-select');
-
-            // Находим выпадающий список для выбора типа тренировки в текущей ячейке
             const workoutSelect = cell.querySelector('.workout-select');
 
+            if (employeeSelect.value) return; // уже заполнено
 
-            // ШАГ 4: ПРОВЕРКА, ЗАПОЛНЕНА ЛИ ЯЧЕЙКА
-            // Пропускаем, если в ячейке уже выбран сотрудник (поле не пустое),
-            if (employeeSelect.value) return;
-
-
-            // ШАГ 5: ПОИСК ДОСТУПНОГО СОТРУДНИКА
-
-           // Флаг, показывающий, найден ли доступный сотрудник для этой ячейки
             let assigned = false;
+            const employees = Array.from(document.querySelectorAll('.employee-select option[value]'))
+                .map(opt => ({ id: opt.value, name: opt.textContent }));
 
-            // Цикл по всем сотрудникам для поиска первого доступного
             for (let i = 0; i < employees.length; i++) {
-                const emp = employees[(empIndex + i) % employees.length];
+                const emp = employees[i];
                 const key = `${emp.id},${day},${startTime}`;
 
-
-                 // ШАГ 6: Проверяем, есть ли этот ключ в множестве доступности
                 if (AVAILABILITY_SET.has(key)) {
                     employeeSelect.value = emp.id;
 
+                    const allowedIds = EMPLOYEE_WORKOUT_MAP[emp.id] || [];
+                    if (allowedIds.length > 0) {
+                        const randomWtId = allowedIds[Math.floor(Math.random() * allowedIds.length)];
+                        workoutSelect.value = randomWtId;
+                    }
 
-
-                    // ШАГ 8: ВЫБОР СЛУЧАЙНОГО ТИПА ТРЕНИРОВКИ
-if (workoutSelect.options.length > 1) {
-    const randomIndex = Math.floor(Math.random() * (workoutSelect.options.length - 1)) + 1;
-    workoutSelect.value = workoutSelect.options[randomIndex].value;
-}
-                    empIndex = (empIndex + i + 1) % employees.length;
                     assigned = true;
                     break;
                 }
             }
 
-            // Если после проверки всех сотрудников никто не подошел (assigned = false)
             if (!assigned) {
-                // Очищаем оба выпадающих списка в ячейке
                 employeeSelect.value = '';
                 workoutSelect.value = '';
             }
         });
     });
 
-    showGlobalNotification('График заполнен с учётом доступности сотрудников.');
+    showGlobalNotification('График заполнен с учётом доступности и направлений тренеров.');
 });
-</script>
 
-<script>
-// === СОХРАНЕНИЕ ===
+// === Сохранение ===
 document.getElementById('save-schedule-btn').addEventListener('click', function () {
     const scheduleName = prompt("Введите название графика:", "График на неделю");
     if (!scheduleName) return;

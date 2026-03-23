@@ -297,38 +297,20 @@ def dashboard(request):
 
 
 
-from .forms import WorkoutTypesForm
-
-
 @login_required
 def profile_view(request):
     user = request.user
     profile = user.profile
     employee, created = Employee.objects.get_or_create(user_profile=profile)
 
-    # Всегда создаём форму для модалки
-    workout_types_form = WorkoutTypesForm(
-        initial={'workout_types': employee.workout_types.all()}
-    )
-
-    if request.method == 'POST' and 'save_workout_types' in request.POST:
-        selected_ids = request.POST.getlist('workout_types')
-        selected_ids = [int(x) for x in selected_ids if x.isdigit()]
-        employee.workout_types.set(selected_ids)
-        return JsonResponse({'success': True, 'message': 'Направления обновлены!'})
-
     context = {
         'user': user,
         'profile': profile,
         'employee': employee,
-        'workout_types_form': workout_types_form,
     }
     return render(request, 'core/profile/profile.html', context)
 
 
-
-# core/views.py
-# from .forms import UserProfileEditForm
 
 @login_required
 def profile_edit(request):
@@ -552,15 +534,31 @@ def create_schedule_view(request):
     for a in availabilities:
         key = f"{a.employee.id},{a.date.strftime('%Y-%m-%d')},{a.start_time.strftime('%H:%M')}"
         availability_set.add(key)
+        
+     # Получаем всех сотрудников с их направлениями
+    employees_with_workouts = []
+    for emp in Employee.objects.select_related('user_profile__user').prefetch_related('workout_types'):
+        if emp.user_profile.user.is_active:
+            workouts = list(emp.workout_types.values('id', 'name'))
+            employees_with_workouts.append({
+                'id': emp.user_profile.id,
+                'username': emp.user_profile.user.username,
+                'workout_types': workouts
+            })
 
     context = {
         'employees': employees,
         'workout_types': workout_types,
         'slots': slots,
-         'days': current_days,
+        'days': current_days,
         'date_strings': date_strings,
         'availability_set_json': json.dumps(list(availability_set)),
+        'employees_with_workouts_json': json.dumps(employees_with_workouts),
+        'workout_types_json': json.dumps([
+            {'id': wt.id, 'name': wt.name} for wt in WorkoutType.objects.all()
+        ]),
     }
+    
     return render(request, 'core/schedules/create_schedule.html', context)
 
 

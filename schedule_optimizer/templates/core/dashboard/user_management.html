@@ -101,6 +101,7 @@
                             </div>
                         </div>
                     </div>
+                    
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
@@ -123,6 +124,16 @@
                             </div>
                         </div>
                     </div>
+                    <div class="row">
+    <div class="col-md-12">
+        <div class="mb-3">
+            <label class="form-label">Направления, которые будет вести</label>
+            <div class="d-flex flex-wrap gap-3" id="workoutTypesCreate">
+                <!-- Сюда подгрузятся направления -->
+            </div>
+        </div>
+    </div>
+</div>
                 </form>
             </div>
             <div class="modal-footer">
@@ -204,6 +215,16 @@
                             </div>
                         </div>
                     </div>
+                    <div class="row">
+    <div class="col-md-12">
+        <div class="mb-3">
+            <label class="form-label">Направления, которые ведёт</label>
+            <div class="d-flex flex-wrap gap-3" id="workoutTypesEdit">
+                <!-- Сюда подгрузятся направления -->
+            </div>
+        </div>
+    </div>
+</div>
                 </form>
             </div>
             <div class="modal-footer">
@@ -271,6 +292,10 @@
 <script>
     let allUsers = [];
 
+    document.getElementById('createUserModal').addEventListener('show.bs.modal', function () {
+    loadWorkoutTypes('workoutTypesCreate');
+});
+
     document.addEventListener('DOMContentLoaded', function () {
         loadUsers();
         document.getElementById('user-search').addEventListener('input', filterAndRenderUsers);
@@ -335,6 +360,27 @@
         `).join('');
     }
 
+
+    // === ЗАГРУЗКА НАПРАВЛЕНИЙ ПРИ ОТКРЫТИИ МОДАЛОК ===
+function loadWorkoutTypes(containerId) {
+    fetch('/api/workout-types/')
+        .then(r => r.json())
+        .then(types => {
+            const container = document.getElementById(containerId);
+            container.innerHTML = types.map(wt => `
+                <div class="form-check">
+    <input class="form-check-input" type="checkbox"
+           name="workout_types" value="{{ wt.id }}"
+           id="edit_wt_{{ wt.id }}">
+    <label class="form-check-label" for="edit_wt_{{ wt.id }}">
+        {{ wt.name }}
+    </label>
+</div>
+            `).join('');
+        });
+}
+
+
     // === СОЗДАНИЕ ===
     function submitCreateUser() {
         document.querySelectorAll('.invalid-feedback').forEach(el => {
@@ -346,26 +392,34 @@
         const globalError = document.getElementById('global-error-box');
         if (globalError) globalError.classList.add('d-none');
 
-        const formData = new FormData();
-        ['username', 'email', 'first_name', 'last_name', 'patronymic', 'role', 'phone']
-            .forEach(field => {
-                const el = document.getElementById(`id_${field}`);
-                if (el) formData.append(field, el.value);
-            });
+        const data = {};
+    ['username', 'email', 'first_name', 'last_name', 'patronymic', 'role', 'phone']
+        .forEach(field => {
+            const el = document.getElementById(`id_${field}`);
+            if (el) data[field] = el.value;
+        });
 
-        fetch('/api/invite-user/', {
-            method: 'POST',
-            headers: { 'X-CSRFToken': getCSRF() },
-            body: formData
-        })
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                showGlobalNotification('Пользователь успешно приглашён.', 'success');
-                bootstrap.Modal.getInstance(document.getElementById('createUserModal')).hide();
-                document.getElementById('createUserForm').reset();
-                loadUsers();
-            } else {
+    // Получаем выбранные направления
+    const workoutTypes = Array.from(document.querySelectorAll('#workoutTypesCreate input[type="checkbox"]:checked'))
+        .map(cb => parseInt(cb.value));
+    data.workout_types = workoutTypes;
+
+    fetch('/api/invite-user/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRF()
+        },
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.success) {
+            showGlobalNotification('Пользователь успешно приглашён.', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('createUserModal')).hide();
+            document.getElementById('createUserForm').reset();
+            loadUsers();
+        } else {
                 if (data.errors?.__all__) {
                     const box = document.getElementById('global-error-box');
                     const text = document.getElementById('global-error-text');
@@ -392,59 +446,105 @@
     }
 
     // === РЕДАКТИРОВАНИЕ ===
-    function openEditUserModal(userId) {
-        fetch(`/api/users/${userId}/`)
-            .then(r => r.json())
-            .then(user => {
-                const modal = new bootstrap.Modal(document.getElementById('editUserModal'));
-                modal.show();
+function openEditUserModal(userId) {
+    fetch(`/api/users/${userId}/`)
+        .then(r => r.json())
+        .then(user => {
+            const modal = new bootstrap.Modal(document.getElementById('editUserModal'));
+            modal.show();
 
-                setTimeout(() => {
-                    document.getElementById('editUserId').value = user.id;
-                    document.getElementById('editUsername').value = user.username;
-                    document.getElementById('editEmail').value = user.email;
-                    document.getElementById('editFirstName').value = user.first_name || '';
-                    document.getElementById('editLastName').value = user.last_name || '';
-                    document.getElementById('editPatronymic').value = user.profile?.patronymic || '';
-                    document.getElementById('editRole').value = user.profile?.role || '';
-                    document.getElementById('editPhone').value = user.profile?.phone || '';
-                }, 100);
-            })
-            .catch(e => console.error(e));
-    }
+            // Заполняем основные поля
+            setTimeout(() => {
+                document.getElementById('editUserId').value = user.id;
+                document.getElementById('editUsername').value = user.username;
+                document.getElementById('editEmail').value = user.email;
+                document.getElementById('editFirstName').value = user.first_name || '';
+                document.getElementById('editLastName').value = user.last_name || '';
+                document.getElementById('editPatronymic').value = user.profile?.patronymic || '';
+                document.getElementById('editRole').value = user.profile?.role || '';
+                document.getElementById('editPhone').value = user.profile?.phone || '';
+            }, 100);
+
+            // Сначала загружаем список всех типов занятий
+            return fetch('/api/workout-types/')
+                .then(r => r.json())
+                .then(types => {
+                    const container = document.getElementById('workoutTypesEdit');
+                    if (!container) return;
+
+                    // Очищаем и создаём чекбоксы
+                    container.innerHTML = '';
+                    types.forEach(wt => {
+                        const div = document.createElement('div');
+                        div.className = 'form-check';
+                        div.innerHTML = `
+                            <input class="form-check-input" type="checkbox"
+                                   name="workout_types" value="${wt.id}"
+                                   id="edit_wt_${wt.id}">
+                            <label class="form-check-label" for="edit_wt_${wt.id}">
+                                ${wt.name}
+                            </label>
+                        `;
+                        container.appendChild(div);
+                    });
+
+                    // Теперь загружаем выбранные ID и ставим галочки
+                    return fetch(`/api/employee-workout-types/${userId}/`);
+                })
+                .then(r => r.json())
+                .then(selectedIds => {
+                    selectedIds.forEach(id => {
+                        const checkbox = document.getElementById(`edit_wt_${id}`);
+                        if (checkbox) {
+                            checkbox.checked = true;
+                        }
+                    });
+                });
+        })
+        .catch(e => console.error('Ошибка:', e));
+}
 
     function submitEditUser() {
-        const userId = document.getElementById('editUserId').value;
-        const data = {
-            username: document.getElementById('editUsername').value,
-            email: document.getElementById('editEmail').value,
-            first_name: document.getElementById('editFirstName').value,
-            last_name: document.getElementById('editLastName').value,
-            patronymic: document.getElementById('editPatronymic').value,
-            role: document.getElementById('editRole').value,
-            phone: document.getElementById('editPhone').value
-        };
+    const userId = document.getElementById('editUserId').value;
+    const data = {
+        username: document.getElementById('editUsername').value,
+        email: document.getElementById('editEmail').value,
+        first_name: document.getElementById('editFirstName').value,
+        last_name: document.getElementById('editLastName').value,
+        patronymic: document.getElementById('editPatronymic').value,
+        role: document.getElementById('editRole').value,
+        phone: document.getElementById('editPhone').value
+    };
 
-        fetch(`/api/users/${userId}/update/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCSRF()
-            },
-            body: JSON.stringify(data)
-        })
-        .then(r => r.json())
-        .then(res => {
-            if (res.success) {
-                showGlobalNotification('Обновлено', 'success');
-                bootstrap.Modal.getInstance(document.getElementById('editUserModal')).hide();
-                loadUsers();
-            } else {
-                showGlobalNotification('Ошибка: ' + (res.error || 'Неизвестно'), 'error');
-            }
-        })
-        .catch(() => showGlobalNotification('Ошибка сети', 'error'));
-    }
+    // ✅ Собираем выбранные направления
+    const workoutTypeIds = Array.from(
+        document.querySelectorAll('#workoutTypesEdit input[type="checkbox"]:checked')
+    ).map(cb => parseInt(cb.value));
+    data.workout_types = workoutTypeIds; // ← КРИТИЧЕСКИ ВАЖНО!
+
+    fetch(`/api/users/${userId}/update/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrf-token]').getAttribute('content')
+        },
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(res => {
+        if (res.success) {
+            showGlobalNotification('Сохранено', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('editUserModal')).hide();
+            loadUsers(); // Обновляем таблицу
+        } else {
+            showGlobalNotification('Ошибка: ' + (res.error || JSON.stringify(res.errors)), 'error');
+        }
+    })
+    .catch(err => {
+        console.error('Ошибка сохранения:', err);
+        showGlobalNotification('Сеть недоступна', 'error');
+    });
+}
 
     // === УДАЛЕНИЕ ===
     function openDeleteUserModal(userId, username) {

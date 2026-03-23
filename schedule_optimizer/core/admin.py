@@ -26,10 +26,13 @@ class ShiftAssignmentAdmin(admin.ModelAdmin):
 class EmployeeAdmin(admin.ModelAdmin):
     list_display = ('user_profile', 'max_hours_per_week', 'min_hours_per_week', 'hourly_rate')
     list_filter = ('max_hours_per_week', 'min_hours_per_week')
+    filter_horizontal = ('workout_types',)
 
 @admin.register(WorkoutType) # Новая модель
 class WorkoutTypeAdmin(admin.ModelAdmin):
     list_display = ('name', 'description')
+
+
 
 @admin.register(Schedule)
 class ScheduleAdmin(admin.ModelAdmin):
@@ -92,3 +95,5 @@ from .models import Availability
 class AvailabilityAdmin(admin.ModelAdmin):
     list_display = ['employee', 'date', 'start_time', 'end_time', 'updated_at']
     list_filter = ['employee', 'date']
+    
+    

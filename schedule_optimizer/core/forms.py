@@ -3,24 +3,19 @@ from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import UserCreationForm, SetPasswordForm
 from .models import UserProfile
-
-from django import forms
-from django.contrib.auth.models import User
-from .models import UserProfile
 import re
 from .models import Employee, WorkoutType
+
+
 
 class UserInvitationForm(forms.ModelForm):
     username = forms.CharField(max_length=150, label="Имя пользователя")
     email = forms.EmailField(label="Email")
     first_name = forms.CharField(max_length=150, label="Имя")
-    last_name = forms.CharField(max_length=150, label="Фамилия", required=False)  # ← НЕОБЯЗАТЕЛЬНО
-    patronymic = forms.CharField(
-        max_length=150,
-        required=False,
-        label="Отчество"
-    )
+    last_name = forms.CharField(max_length=150, label="Фамилия", required=False)
+    patronymic = forms.CharField(max_length=150, required=False, label="Отчество")
     phone = forms.CharField(max_length=20, label="Телефон")
+    role = forms.ChoiceField(choices=UserProfile.ROLE_CHOICES, label="Роль")
 
     class Meta:
         model = UserProfile
@@ -59,7 +54,7 @@ class UserInvitationForm(forms.ModelForm):
         name = self.cleaned_data['last_name'].strip()
         if name and not re.match(r'^[а-яА-ЯёЁ\s]+$', name):
             raise forms.ValidationError("Фамилия должна содержать только русские буквы.")
-        return name  # может быть пустой строкой
+        return name
 
     def clean_phone(self):
         phone = self.cleaned_data['phone'].strip()
@@ -77,13 +72,6 @@ class UserInvitationForm(forms.ModelForm):
         if not role:
             raise forms.ValidationError("Роль обязательна.")
         return role
-
-    # def clean_position(self):
-    #     position = self.cleaned_data['position']
-    #     if not position:
-    #         raise forms.ValidationError("Должность обязательна.")
-    #     return position
-
 
 
 # class UserProfileEditForm(forms.ModelForm):
@@ -118,24 +106,17 @@ class CustomSetPasswordForm(SetPasswordForm):
             self.fields[field_name].widget.attrs.update({'class': 'form-control'})
 
 
-class EmployeeWorkoutTypesForm(forms.ModelForm):
-    class Meta:
-        model = Employee
-        fields = ['workout_types']
-        widgets = {
-            'workout_types': forms.CheckboxSelectMultiple,
-        }
-        labels = {
-            'workout_types': 'Выберите направления, которые вы ведёте:',
-        }
-
 from django import forms
-from .models import WorkoutType
+from .models import Employee, WorkoutType
 
-class WorkoutTypesForm(forms.Form):
+class EmployeeAdminForm(forms.ModelForm):
     workout_types = forms.ModelMultipleChoiceField(
         queryset=WorkoutType.objects.all(),
         widget=forms.CheckboxSelectMultiple,
-        label="Выберите направления, которые вы ведёте:",
+        label="Направления, которые ведёт",
         required=False
     )
+
+    class Meta:
+        model = Employee
+        fields = ['workout_types']

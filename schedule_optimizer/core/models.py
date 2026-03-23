@@ -193,6 +193,8 @@ class ShiftAssignment(models.Model):
         blank=True,
         verbose_name="Тип занятия"
     )
+    
+    
 
     # Временные рамки
     date = models.DateField(verbose_name="Дата")

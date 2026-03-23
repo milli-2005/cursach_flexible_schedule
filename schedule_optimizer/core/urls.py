@@ -3,15 +3,16 @@ from django.urls import path
 from django.contrib.auth import views as auth_views
 from . import views
 from . import api_views
-from . import api_workout_views
+from .api_views.api_workout_views import (
+    api_get_workout_types,
+    api_create_workout_type,
+    api_update_workout_type,
+    api_delete_workout_type
+)
 from . import api_schedule_views
 from .api_views.user_views import (
-    api_get_users,
-    api_get_user_detail,
-    api_invite_user,
-    api_update_user,
-    api_delete_user,
-    api_reset_user_password
+    api_get_users, api_invite_user, api_get_user_detail,
+    api_update_user, api_delete_user, api_reset_user_password
 )
 from .api_views.swap_views import (
     api_my_shifts_for_swap,
@@ -20,6 +21,8 @@ from .api_views.swap_views import (
 api_approve_swap_request,
 api_reject_swap_request
 )
+
+from .api_views.api_workout_views import api_get_employee_workout_types
 
 urlpatterns = [
     # Основные страницы
@@ -50,10 +53,11 @@ path('reports/export/tabel/', views.export_operational_excel, name='export_opera
 
     # API для управления типами занятий
     path('workout-types/', views.workout_types, name='workout_types'),
-    path('api/workout-types/', api_workout_views.api_get_workout_types, name='api_get_workout_types'),
-    path('api/workout-types/create/', api_workout_views.api_create_workout_type, name='api_create_workout_type'),
-    path('api/workout-types/<int:workout_type_id>/update/', api_workout_views.api_update_workout_type, name='api_update_workout_type'),
-    path('api/workout-types/<int:workout_type_id>/delete/', api_workout_views.api_delete_workout_type, name='api_delete_workout_type'),
+    path('api/workout-types/', api_get_workout_types, name='api_get_workout_types'),
+path('api/workout-types/create/', api_create_workout_type, name='api_create_workout_type'),
+path('api/workout-types/<int:workout_type_id>/update/', api_update_workout_type, name='api_update_workout_type'),
+path('api/workout-types/<int:workout_type_id>/delete/', api_delete_workout_type, name='api_delete_workout_type'),
+path('api/employee-workout-types/<int:user_id>/', api_get_employee_workout_types, name='api_get_employee_workout_types'),
 
 
     # Графики и планирование

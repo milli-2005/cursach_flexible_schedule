@@ -15,6 +15,9 @@ from core.forms import UserInvitationForm
 import json
 import secrets
 import string
+from django.views.decorators.http import require_http_methods
+from core.models import WorkoutType
+
 
 logger = logging.getLogger(__name__)
 
@@ -79,35 +82,55 @@ def api_get_users(request):
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_invite_user(request):
-    form = UserInvitationForm(request.POST)
-    if form.is_valid():
-        try:
-            raw_password = generate_random_password()
-            user = User.objects.create_user(
-                username=form.cleaned_data['username'],
-                email=form.cleaned_data['email'],
-                password=raw_password,
-                first_name=form.cleaned_data['first_name'],
-                last_name=form.cleaned_data['last_name'],
-            )
-            profile = user.profile
-            profile.role = form.cleaned_data['role']
-            profile.phone = form.cleaned_data['phone']
-            profile.patronymic = form.cleaned_data['patronymic']
-            profile.invitation_timestamp = timezone.now()
-            profile.save()
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'errors': {'__all__': ['Неверный JSON']}}, status=400)
 
-            # Автоматически создаём Employee
-            Employee.objects.get_or_create(user_profile=user.profile)
+    form_data = {
+        'username': data.get('username'),
+        'email': data.get('email'),
+        'first_name': data.get('first_name'),
+        'last_name': data.get('last_name'),
+        'patronymic': data.get('patronymic', ''),
+        'role': data.get('role'),
+        'phone': data.get('phone'),
+    }
 
-            send_user_invitation(user, raw_password)
-
-            return JsonResponse({'success': True})
-        except Exception as e:
-            logger.error(f"Ошибка создания пользователя: {e}")
-            return JsonResponse({'success': False, 'errors': {'__all__': [f'Ошибка создания: {str(e)}']}})
-    else:
+    form = UserInvitationForm(form_data)
+    if not form.is_valid():
         return JsonResponse({'success': False, 'errors': form.errors})
+
+    try:
+        raw_password = generate_random_password()
+        user = User.objects.create_user(
+            username=form.cleaned_data['username'],
+            email=form.cleaned_data['email'],
+            password=raw_password,
+            first_name=form.cleaned_data['first_name'],
+            last_name=form.cleaned_data['last_name'],
+        )
+        profile = user.profile
+        profile.role = form.cleaned_data['role']
+        profile.phone = form.cleaned_data['phone']
+        profile.patronymic = form.cleaned_data['patronymic']
+        profile.save()
+
+        # Создаём Employee и назначаем направления
+        employee, created = Employee.objects.get_or_create(user_profile=profile)
+        workout_type_ids = data.get('workout_types', [])
+        if isinstance(workout_type_ids, list):
+            workout_types = WorkoutType.objects.filter(id__in=workout_type_ids)
+            employee.workout_types.set(workout_types)
+
+        send_user_invitation(user, raw_password)
+        return JsonResponse({'success': True})
+    except Exception as e:
+        logger.error(f"Ошибка создания пользователя: {e}")
+        return JsonResponse({'success': False, 'errors': {'__all__': [f'Ошибка: {str(e)}']}})
+    
+
+
 
 @login_required
 @user_passes_test(is_admin)
@@ -166,7 +189,7 @@ def api_update_user(request, user_id):
     if errors:
         return JsonResponse({'success': False, 'errors': errors})
 
-    # Сохранение
+    # Сохранение основных данных
     try:
         user.username = data['username']
         user.email = data['email']
@@ -178,6 +201,14 @@ def api_update_user(request, user_id):
         profile.phone = data['phone']
         profile.patronymic = data['patronymic']
         profile.save()
+
+        # ✅ СОХРАНЕНИЕ НАПРАВЛЕНИЙ
+        employee, created = Employee.objects.get_or_create(user_profile=profile)
+        workout_type_ids = data.get('workout_types', [])
+        if isinstance(workout_type_ids, list):
+            workout_types = WorkoutType.objects.filter(id__in=workout_type_ids)
+            employee.workout_types.set(workout_types)
+        # Если workout_types не передано — оставляем как есть (не удаляем!)
 
         return JsonResponse({'success': True})
     except Exception as e:
