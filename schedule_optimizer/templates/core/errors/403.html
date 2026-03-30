@@ -1,0 +1,10 @@
+{% extends "core/base.html" %}
+
+{% block title %}Доступ запрещен - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="management-container">
+    <h2>Доступ запрещен (403)</h2>
+    <p>{{ error_message }}</p>
+</div>
+{% endblock %}

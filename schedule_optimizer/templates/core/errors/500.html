@@ -1,0 +1,10 @@
+{% extends "core/base.html" %}
+
+{% block title %}Ошибка сервера - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="management-container">
+    <h2>Ошибка сервера (500)</h2>
+    <p>{{ error_message }}</p>
+</div>
+{% endblock %}

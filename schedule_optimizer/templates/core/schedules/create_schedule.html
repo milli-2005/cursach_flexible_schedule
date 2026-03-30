@@ -3,16 +3,39 @@
 
 {% block title %}Создание графика - {{ block.super }}{% endblock %}
 
+{% block extra_css %}
+<style>
+.schedule-note { color: #b5b5b5; margin-bottom: 1rem; }
+#schedule-table { margin-bottom: 0; width: 100%; table-layout: fixed; }
+#schedule-table th, #schedule-table td { vertical-align: top; }
+.shift-cell { cursor: pointer; }
+.cell-view { min-height: 38px; }
+.cell-view .trainer-name {
+    display: inline-block; font-weight: 700; color: #fff; padding: 0.12rem 0.45rem;
+    border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.25);
+    max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    line-height: 1.2; margin-bottom: 0.25rem;
+}
+.cell-view .workout-name { display: block; color: #d0d0d0; font-size: 0.82rem; }
+.cell-controls { display: none; margin-top: 0.45rem; }
+.shift-cell.is-editing .cell-controls, .shift-cell:hover .cell-controls { display: block; }
+.cell-controls .form-select { font-size: 0.8rem; margin-bottom: 0.35rem; }
+.cell-controls .form-select:last-child { margin-bottom: 0; }
+.save-wrap { margin-top: 1rem; }
+.shift-cell.assigned {
+    box-shadow: inset 0 0 0 9999px var(--trainer-tint, rgba(179, 157, 219, 0.08));
+    border-color: var(--trainer-border, rgba(179, 157, 219, 0.45));
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="management-container">
     {% csrf_token %}
     <h2>Создание недельного графика</h2>
+    <p class="schedule-note">График автоматически заполнен. Нажмите на ячейку, чтобы изменить тренера и направление.</p>
 
-    <div class="mb-3">
-        <button id="auto-fill-btn" class="btn btn-outline-light">Заполнить автоматически</button>
-    </div>
-
-    <div class="table-responsive">
+    <div>
         <table class="table table-bordered table-dark" id="schedule-table">
             <thead>
                 <tr>
@@ -23,49 +46,74 @@
                 </tr>
             </thead>
             <tbody>
-    {% for slot in slots %}
-        <tr>
-            <td>{{ slot.0 }} – {{ slot.1 }}</td>
-            {% for day_str in date_strings %}
-                <td data-day="{{ day_str }}" data-time="{{ slot.0 }}">
-                    <select class="form-select form-select-sm mb-1 employee-select">
-                        <option value="">Выберите...</option>
-                        {% for emp in employees %}
-                            <option value="{{ emp.id }}">{{ emp.user.username }}</option>
-                        {% endfor %}
-                    </select>
-                    <select class="form-select form-select-sm workout-select">
-                        <option value="">Занятие</option>
-                        {% for wt in workout_types %}
-                            <option value="{{ wt.id }}">{{ wt.name }}</option>
-                        {% endfor %}
-                    </select>
-                </td>
-            {% endfor %}
-        </tr>
-    {% endfor %}
-</tbody>
+                {% for slot in slots %}
+                <tr>
+                    <td>{{ slot.0 }} - {{ slot.1 }}</td>
+                    {% for day_str in date_strings %}
+                        <td class="shift-cell" data-day="{{ day_str }}" data-time="{{ slot.0 }}">
+                            <div class="cell-view">
+                                <span class="trainer-name">-</span>
+                                <span class="workout-name">-</span>
+                            </div>
+                            <div class="cell-controls">
+                                <select class="form-select form-select-sm employee-select">
+                                    <option value="">Выберите...</option>
+                                    {% for emp in employees %}
+                                        <option value="{{ emp.id }}">{{ emp.user.username }}</option>
+                                    {% endfor %}
+                                </select>
+                                <select class="form-select form-select-sm workout-select">
+                                    <option value="">Направление</option>
+                                    {% for wt in workout_types %}
+                                        <option value="{{ wt.id }}">{{ wt.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
         </table>
     </div>
-    <button id="save-schedule-btn" class="btn btn-primary">Сохранить график</button>
+
+    <div class="save-wrap">
+        <button id="save-schedule-btn" type="button" class="btn btn-primary">Сохранить график</button>
+    </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-// === Глобальные данные ===
 const AVAILABILITY_SET = new Set({{ availability_set_json|safe }});
 const EMPLOYEES_WITH_WORKOUTS = {{ employees_with_workouts_json|safe }};
 const WORKOUT_TYPES = {{ workout_types_json|safe }};
+const DATE_STRINGS = {{ date_strings|safe }};
 
 const EMPLOYEE_WORKOUT_MAP = {};
 EMPLOYEES_WITH_WORKOUTS.forEach(emp => {
     EMPLOYEE_WORKOUT_MAP[emp.id] = emp.workout_types.map(wt => wt.id);
 });
 
-// === Функция обновления выпадающего списка занятий ===
+const TRAINER_COLORS = [
+    { bg: '#4f6fbf', border: '#6f8fdd', tint: 'rgba(79, 111, 191, 0.16)' },
+    { bg: '#6e57a5', border: '#8b73c7', tint: 'rgba(110, 87, 165, 0.16)' },
+    { bg: '#3f8f7f', border: '#5ea996', tint: 'rgba(63, 143, 127, 0.16)' },
+    { bg: '#b57648', border: '#d28e5a', tint: 'rgba(181, 118, 72, 0.16)' },
+    { bg: '#9b5f86', border: '#b97aa3', tint: 'rgba(155, 95, 134, 0.16)' },
+    { bg: '#3b7fa5', border: '#5a9bc4', tint: 'rgba(59, 127, 165, 0.16)' },
+    { bg: '#7e8745', border: '#9ca560', tint: 'rgba(126, 135, 69, 0.16)' },
+    { bg: '#7c5a47', border: '#9c7964', tint: 'rgba(124, 90, 71, 0.16)' }
+];
+
+function colorForTrainer(employeeId) {
+    const n = parseInt(employeeId, 10);
+    if (!n) return null;
+    return TRAINER_COLORS[Math.abs(n) % TRAINER_COLORS.length];
+}
+
 function updateWorkoutSelect(workoutSelect, allowedIds) {
-    workoutSelect.innerHTML = '<option value="">Занятие</option>';
+    workoutSelect.innerHTML = '<option value="">Направление</option>';
     WORKOUT_TYPES.forEach(wt => {
         if (!allowedIds || allowedIds.includes(wt.id)) {
             const option = document.createElement('option');
@@ -76,62 +124,60 @@ function updateWorkoutSelect(workoutSelect, allowedIds) {
     });
 }
 
-// === Инициализация при загрузке страницы ===
-document.addEventListener('DOMContentLoaded', function () {
-    // Инициализируем все списки занятий
-    document.querySelectorAll('.workout-select').forEach(select => {
-        updateWorkoutSelect(select, null); // все занятия
-    });
+function updateCellView(cell) {
+    const employeeSelect = cell.querySelector('.employee-select');
+    const workoutSelect = cell.querySelector('.workout-select');
+    const trainerName = cell.querySelector('.trainer-name');
+    const workoutName = cell.querySelector('.workout-name');
 
-    // Обработчик изменения тренера
-    document.addEventListener('change', function(e) {
-        if (e.target.classList.contains('employee-select')) {
-            const cell = e.target.closest('td');
-            const workoutSelect = cell.querySelector('.workout-select');
-            const empId = e.target.value;
+    trainerName.textContent = employeeSelect.value ? employeeSelect.options[employeeSelect.selectedIndex].text : '-';
+    workoutName.textContent = workoutSelect.value ? workoutSelect.options[workoutSelect.selectedIndex].text : '-';
 
-            if (empId && EMPLOYEE_WORKOUT_MAP[empId]) {
-                updateWorkoutSelect(workoutSelect, EMPLOYEE_WORKOUT_MAP[empId]);
-            } else {
-                updateWorkoutSelect(workoutSelect, null);
-            }
-        }
-    });
-});
+    const palette = colorForTrainer(employeeSelect.value);
+    if (palette) {
+        trainerName.style.backgroundColor = palette.bg;
+        trainerName.style.borderColor = palette.border;
+        cell.style.setProperty('--trainer-tint', palette.tint);
+        cell.style.setProperty('--trainer-border', palette.border);
+        cell.classList.add('assigned');
+    } else {
+        trainerName.style.backgroundColor = 'transparent';
+        trainerName.style.borderColor = 'rgba(255, 255, 255, 0.25)';
+        cell.classList.remove('assigned');
+    }
+}
 
-// === Автозаполнение ===
-document.getElementById('auto-fill-btn').addEventListener('click', function () {
+function autoFillSchedule() {
     const rows = document.querySelectorAll('#schedule-table tbody tr');
+    const employees = Array.from(document.querySelectorAll('.employee-select option[value]'))
+        .map(opt => ({ id: opt.value, name: opt.textContent }));
 
     rows.forEach(row => {
-        const timeCell = row.querySelector('td:first-child');
-        if (!timeCell) return;
-        const startTime = timeCell.textContent.trim().split('–')[0].trim();
-
-        row.querySelectorAll('td:not(:first-child)').forEach((cell, idx) => {
+        row.querySelectorAll('.shift-cell').forEach(cell => {
             const day = cell.dataset.day;
+            const startTime = cell.dataset.time;
             const employeeSelect = cell.querySelector('.employee-select');
             const workoutSelect = cell.querySelector('.workout-select');
 
-            if (employeeSelect.value) return; // уже заполнено
+            if (employeeSelect.value) {
+                updateCellView(cell);
+                return;
+            }
 
             let assigned = false;
-            const employees = Array.from(document.querySelectorAll('.employee-select option[value]'))
-                .map(opt => ({ id: opt.value, name: opt.textContent }));
-
             for (let i = 0; i < employees.length; i++) {
                 const emp = employees[i];
                 const key = `${emp.id},${day},${startTime}`;
-
                 if (AVAILABILITY_SET.has(key)) {
                     employeeSelect.value = emp.id;
-
                     const allowedIds = EMPLOYEE_WORKOUT_MAP[emp.id] || [];
                     if (allowedIds.length > 0) {
-                        const randomWtId = allowedIds[Math.floor(Math.random() * allowedIds.length)];
-                        workoutSelect.value = randomWtId;
+                        updateWorkoutSelect(workoutSelect, allowedIds);
+                        workoutSelect.value = allowedIds[Math.floor(Math.random() * allowedIds.length)];
+                    } else {
+                        updateWorkoutSelect(workoutSelect, null);
+                        workoutSelect.value = '';
                     }
-
                     assigned = true;
                     break;
                 }
@@ -141,62 +187,114 @@ document.getElementById('auto-fill-btn').addEventListener('click', function () {
                 employeeSelect.value = '';
                 workoutSelect.value = '';
             }
+            updateCellView(cell);
         });
     });
+}
 
-    showGlobalNotification('График заполнен с учётом доступности и направлений тренеров.');
+function formatDateRangeForName(dateStrings) {
+    if (!Array.isArray(dateStrings) || dateStrings.length === 0) return 'График на неделю';
+    const months = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+    const parseIso = (iso) => {
+        const p = String(iso).split('-').map(Number);
+        if (p.length !== 3 || p.some(Number.isNaN)) return null;
+        return { y: p[0], m: p[1], d: p[2] };
+    };
+    const start = parseIso(dateStrings[0]);
+    const end = parseIso(dateStrings[dateStrings.length - 1]);
+    if (!start || !end) return 'График на неделю';
+    if (start.m === end.m && start.y === end.y) return `График на ${start.d}-${end.d} ${months[start.m - 1]}`;
+    return `График на ${start.d} ${months[start.m - 1]} - ${end.d} ${months[end.m - 1]}`;
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.workout-select').forEach(select => updateWorkoutSelect(select, null));
+    document.querySelectorAll('.shift-cell').forEach(cell => {
+        cell.addEventListener('click', function() { this.classList.toggle('is-editing'); });
+    });
+
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('employee-select')) {
+            const cell = e.target.closest('.shift-cell');
+            const workoutSelect = cell.querySelector('.workout-select');
+            const empId = e.target.value;
+            if (empId && EMPLOYEE_WORKOUT_MAP[empId]) updateWorkoutSelect(workoutSelect, EMPLOYEE_WORKOUT_MAP[empId]);
+            else updateWorkoutSelect(workoutSelect, null);
+            workoutSelect.value = '';
+            updateCellView(cell);
+        }
+        if (e.target.classList.contains('workout-select')) updateCellView(e.target.closest('.shift-cell'));
+    });
+
+    autoFillSchedule();
+    document.querySelectorAll('.shift-cell').forEach(updateCellView);
 });
 
-// === Сохранение ===
-document.getElementById('save-schedule-btn').addEventListener('click', function () {
-    const scheduleName = prompt("Введите название графика:", "График на неделю");
-    if (!scheduleName) return;
+document.getElementById('save-schedule-btn').addEventListener('click', function (event) {
+    event.preventDefault();
+    const defaultName = formatDateRangeForName(DATE_STRINGS);
+    const enteredName = prompt('Введите название графика:', defaultName);
+    if (enteredName === null) return;
+    const scheduleName = enteredName.trim() || defaultName;
 
     const assignments = [];
-    const rows = document.querySelectorAll('#schedule-table tbody tr');
-    const dateStrings = {{ date_strings|safe }};
-
-    rows.forEach(row => {
+    document.querySelectorAll('#schedule-table tbody tr').forEach(row => {
         const timeSlot = row.querySelector('td:first-child').textContent.trim();
-        row.querySelectorAll('td:not(:first-child)').forEach((cell, idx) => {
+        row.querySelectorAll('.shift-cell').forEach((cell, idx) => {
             const employeeSelect = cell.querySelector('.employee-select');
             const workoutSelect = cell.querySelector('.workout-select');
             if (employeeSelect.value) {
                 assignments.push({
                     employee_id: parseInt(employeeSelect.value),
                     workout_type_id: workoutSelect.value ? parseInt(workoutSelect.value) : null,
-                    date: dateStrings[idx],
+                    date: DATE_STRINGS[idx],
                     time_slot: timeSlot
                 });
             }
         });
     });
 
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ||
+        document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+
     fetch('/api/schedule/save/', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': document.querySelector('[name=csrf-token]').content
-        },
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
         body: JSON.stringify({
             name: scheduleName,
-            start_date: dateStrings[0],
-            end_date: dateStrings[dateStrings.length - 1],
-            assignments: assignments
+            start_date: DATE_STRINGS[0],
+            end_date: DATE_STRINGS[DATE_STRINGS.length - 1],
+            assignments
         })
     })
-    .then(r => r.json())
-    .then(data => {
-        if (data.success) {
-            showGlobalNotification('График успешно сохранён!');
-            window.location.href = '/schedules/';
-        } else {
-            showGlobalNotification('Ошибка: ' + (data.error || 'Неизвестная ошибка'));
+    .then(async (response) => {
+        let data = {};
+        try {
+            data = await response.json();
+        } catch (e) {
+            data = {};
         }
+
+        const hasSavedSchedule = Number.isInteger(data.schedule_id) || (typeof data.schedule_id === 'number');
+        if (!response.ok && !hasSavedSchedule) {
+            const errorText = data.error || data.message || 'Не удалось сохранить график.';
+            throw new Error(errorText);
+        }
+        if (data.success === false && !hasSavedSchedule) {
+            const errorText = data.error || data.message || 'Не удалось сохранить график.';
+            throw new Error(errorText);
+        }
+
+        // Жесткий переход на список графиков после успешного сохранения.
+        window.location.replace('/schedules/');
     })
-    .catch(e => {
-        console.error(e);
-        showGlobalNotification('Ошибка сети');
+    .catch((error) => {
+        const text = error?.message || 'Ошибка сети';
+        try {
+            showGlobalNotification('Ошибка: ' + text);
+        } catch (e) {
+            alert('Ошибка: ' + text);
+        }
     });
 });
 </script>

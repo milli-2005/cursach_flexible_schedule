@@ -1,4 +1,3 @@
-<!-- templates/core/schedules/schedule_list.html -->
 {% extends "core/base.html" %}
 
 {% block title %}Управление графиками - {{ block.super }}{% endblock %}
@@ -6,7 +5,6 @@
 {% block content %}
 <div class="management-container">
 
-    <!-- ЗАГОЛОВОК И КНОПКИ -->
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h2>Управление графиками</h2>
         {% if user.profile.role == 'manager' %}
@@ -20,38 +18,33 @@
                 <a href="{% url 'create_schedule' %}" class="btn btn-primary">
                     <i class="bi bi-plus-circle"></i> Создать график
                 </a>
-<!--                <a href="{% url 'create_schedule' %}" class="nav-link text-white">-->
-<!--                <i class="bi bi-plus-circle"></i> Создать график-->
-<!--            </a>-->
             </div>
         {% endif %}
     </div>
 
-
-
-    <!-- ТАБЛИЦА -->
     <div class="management-table">
         <table class="table table-dark table-striped">
             <thead>
-    <tr>
-        <th>Название</th>
-        <th>
-            <a href="?sort={% if current_sort == 'start_date' %}-start_date{% else %}start_date{% endif %}{% for key, value in request.GET.items %}{% if key != 'sort' and key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}"
-               class="text-decoration-none d-flex align-items-center gap-1">
-                Дата начала
-                {% if current_sort == 'start_date' %}
-                    <i class="bi bi-sort-up"></i>
-                {% else %}
-                    <i class="bi bi-sort-down"></i>
-                {% endif %}
-            </a>
-        </th>
-        <th>Дата окончания</th>
-        <th>Статус</th>
-        <th>Согласование</th>
-        <th>Создатель</th>
-    </tr>
-</thead>
+                <tr>
+                    <th>Название</th>
+                    <th>
+                        <a href="?sort={% if current_sort == 'start_date' %}-start_date{% else %}start_date{% endif %}{% for key, value in request.GET.items %}{% if key != 'sort' and key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}"
+                           class="text-decoration-none d-flex align-items-center gap-1">
+                            Дата начала
+                            {% if current_sort == 'start_date' %}
+                                <i class="bi bi-sort-up"></i>
+                            {% else %}
+                                <i class="bi bi-sort-down"></i>
+                            {% endif %}
+                        </a>
+                    </th>
+                    <th>Дата окончания</th>
+                    <th>Статус</th>
+                    <th>Согласование</th>
+                    <th>Создатель</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
             <tbody>
                 {% for item in schedules_with_stats %}
                     {% with s=item.schedule %}
@@ -64,53 +57,66 @@
                             {% if s.status == 'pending' %}
                                 Просмотрено: {{ item.responded_count }} / {{ item.total_employees }}
                                 {% if item.rejected_count > 0 %}
-                                    <br> <span class="text-danger">Отказ: {{ item.rejected_count }}</span>
+                                    <br><span class="text-danger">Отказов: {{ item.rejected_count }}</span>
                                 {% endif %}
                             {% else %}
                                 <em>—</em>
                             {% endif %}
                         </td>
                         <td>{{ s.created_by.username }}</td>
+                        <td>
+                            {% if user.profile.role == 'manager' %}
+                                <form method="post"
+                                      action="{% url 'delete_schedule' s.id %}"
+                                      style="display:inline;"
+                                      data-confirm-message="Удалить график «{{ s.name }}»?"
+                                      data-confirm-details="{% if s.status == 'pending' %}По этому графику уже есть ответы сотрудников: {{ item.responded_count }} из {{ item.total_employees }}. При удалении пропадут все назначения и история согласования.{% else %}При удалении графика исчезнут все назначения, связанные записи и история изменений по нему.{% endif %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Удалить график">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            {% else %}
+                                <em>—</em>
+                            {% endif %}
+                        </td>
                     </tr>
                     {% endwith %}
                 {% empty %}
                     <tr>
-                        <td colspan="6" class="text-center">Графики не найдены.</td>
+                        <td colspan="7" class="text-center">Графики не найдены.</td>
                     </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
 
-    <!-- ПАГИНАЦИЯ — минималистичная -->
-{% if page_obj.has_other_pages %}
-<div class="d-flex justify-content-center align-items-center mt-4 gap-3">
-    {% if page_obj.has_previous %}
-        <a href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}"
-           class="btn btn-outline-light btn-sm">
-            <i class="bi bi-arrow-left"></i>
-        </a>
-    {% else %}
-        <span class="btn btn-light btn-sm disabled">
-            <i class="bi bi-arrow-left"></i>
-        </span>
-    {% endif %}
+    {% if page_obj.has_other_pages %}
+    <div class="d-flex justify-content-center align-items-center mt-4 gap-3">
+        {% if page_obj.has_previous %}
+            <a href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}"
+               class="btn btn-outline-light btn-sm">
+                <i class="bi bi-arrow-left"></i>
+            </a>
+        {% else %}
+            <span class="btn btn-light btn-sm disabled">
+                <i class="bi bi-arrow-left"></i>
+            </span>
+        {% endif %}
 
-    <span class="text-white">
-        Стр. {{ page_obj.number }} из {{ page_obj.paginator.num_pages }}
-    </span>
+        <span class="text-white">Стр. {{ page_obj.number }} из {{ page_obj.paginator.num_pages }}</span>
 
-    {% if page_obj.has_next %}
-        <a href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}"
-           class="btn btn-outline-light btn-sm">
-            <i class="bi bi-arrow-right"></i>
-        </a>
-    {% else %}
-        <span class="btn btn-light btn-sm disabled">
-            <i class="bi bi-arrow-right"></i>
-        </span>
+        {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}"
+               class="btn btn-outline-light btn-sm">
+                <i class="bi bi-arrow-right"></i>
+            </a>
+        {% else %}
+            <span class="btn btn-light btn-sm disabled">
+                <i class="bi bi-arrow-right"></i>
+            </span>
+        {% endif %}
+    </div>
     {% endif %}
-</div>
-{% endif %}
 </div>
 {% endblock %}

@@ -6,6 +6,7 @@ from django.views.decorators.http import require_http_methods
 from django.utils import timezone
 from ..models import ShiftAssignment, Employee, ShiftSwapRequest, SwapShift
 import json
+from ..error_utils import humanize_exception
 
 import logging
 
@@ -118,7 +119,7 @@ def api_create_swap_request(request):
     except Employee.DoesNotExist:
         return JsonResponse({'success': False, 'error': 'Получатель не найден'})
     except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)})
+        return JsonResponse({'success': False, 'error': humanize_exception(e)})
 
 
 @login_required
@@ -184,7 +185,7 @@ def api_approve_swap_request(request, swap_id):
     except Exception as e:
         error_msg = f"Ошибка при утверждении заявки #{swap_id}: {str(e)}"
         logger.error(error_msg)
-        return JsonResponse({'success': False, 'error': str(e)})
+        return JsonResponse({'success': False, 'error': humanize_exception(e)})
 
 
 
@@ -217,4 +218,4 @@ def api_reject_swap_request(request, swap_id):
     except Exception as e:
         error_msg = f"Ошибка при отклонении заявки #{swap_id}: {str(e)}"
         logger.error(error_msg)
-        return JsonResponse({'success': False, 'error': str(e)})
+        return JsonResponse({'success': False, 'error': humanize_exception(e)})

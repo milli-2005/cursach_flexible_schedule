@@ -12,6 +12,7 @@ from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from django.conf import settings
 from django.http import JsonResponse
+from .error_utils import humanize_exception
 from .models import *
 from .forms import UserInvitationForm
 from django.contrib.auth.models import User
@@ -138,14 +139,14 @@ def invite_user(request):
                     messages.warning(
                         request,
                         f'Пользователь {user.username} создан, но email не отправлен. '
-                        f'Ошибка: {str(e)}. Пароль пользователя: {raw_password}'
+                        f'Ошибка: {humanize_exception(e)}. Пароль пользователя: {raw_password}'
                     )
-                    logger.error(f'Ошибка отправки email для пользователя {user.username}: {str(e)}')
+                    logger.error(f'Ошибка отправки email для пользователя {user.username}: {humanize_exception(e)}')
 
                 return redirect('user_management') # Перенаправляем после успешного создания
             except Exception as e:
-                messages.error(request, f'Ошибка при создании пользователя: {str(e)}')
-                logger.error(f'Ошибка создания пользователя: {str(e)}')
+                messages.error(request, f'Ошибка при создании пользователя: {humanize_exception(e)}')
+                logger.error(f'Ошибка создания пользователя: {humanize_exception(e)}')
     else:
         form = UserInvitationForm()
 
@@ -192,7 +193,7 @@ def reset_user_password(request, user_id):
                 messages.warning(
                     request,
                     f'Пароль сброшен, но email не отправлен. '
-                    f'Ошибка: {str(e)}. Новый пароль: {raw_password}'
+                    f'Ошибка: {humanize_exception(e)}. Новый пароль: {raw_password}'
                 )
             return redirect('user_management')
 
@@ -680,6 +681,9 @@ def schedule_detail(request, schedule_id):
     context = {
         'schedule': schedule,
         'days': days,
+        'date_strings': [d.strftime('%Y-%m-%d') for d in days],
+        'employees': UserProfile.objects.filter(role='employee').select_related('user'),
+        'workout_types': WorkoutType.objects.all(),
         'table_data': table_data,
         'approval_for_user': approval_for_user,
     }

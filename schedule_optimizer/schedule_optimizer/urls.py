@@ -4,6 +4,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from core import views as core_views
 from core import api_views
+from core import error_handlers
 
 urlpatterns = [
     path('', include('core.urls')),
@@ -19,4 +20,9 @@ urlpatterns = [
 if settings.DEBUG:
     # "Сервер Django, начни отдавать файлы из MEDIA_ROOT по адресу MEDIA_URL!"
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+handler400 = error_handlers.handler400
+handler403 = error_handlers.handler403
+handler404 = error_handlers.handler404
+handler500 = error_handlers.handler500
 

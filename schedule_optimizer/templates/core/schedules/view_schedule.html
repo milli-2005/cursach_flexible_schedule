@@ -3,22 +3,55 @@
 
 {% block title %}График {{ schedule.name }} - {{ block.super }}{% endblock %}
 
+{% block extra_css %}
+<style>
+.trainer-pill {
+    display: inline-block;
+    padding: 0.12rem 0.45rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    color: #fff;
+    font-weight: 700;
+    margin-bottom: 0.2rem;
+}
+
+.assigned-cell {
+    box-shadow: inset 0 0 0 9999px var(--trainer-tint, rgba(179, 157, 219, 0.08));
+    border-color: var(--trainer-border, rgba(179, 157, 219, 0.45));
+}
+
+.schedule-cell {
+    vertical-align: top;
+}
+
+.cell-preview {
+    min-height: 38px;
+    margin-bottom: 0.35rem;
+}
+
+.cell-controls {
+    display: none;
+}
+
+.schedule-cell:hover .cell-controls,
+.schedule-cell.is-editing .cell-controls {
+    display: block;
+}
+
+.save-wrap {
+    margin-top: 1rem;
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="management-container">
     <h2>График "{{ schedule.name }}"</h2>
     <p><strong>Период:</strong> {{ schedule.start_date|date:"d E Y" }} — {{ schedule.end_date|date:"d E Y" }}</p>
     <p><strong>Статус:</strong> {{ schedule.get_status_display }}</p>
 
-
-    {% if user.profile.role == 'manager' %}
-    <a href="{% url 'edit_schedule' schedule.id %}" class="btn btn-primary mb-3">Редактировать</a>
-    <button type="button" class="btn btn-danger mb-3" data-bs-toggle="modal" data-bs-target="#deleteScheduleModal">
-        Удалить график
-    </button>
-{% endif %}
-
-    <div class="table-responsive">
-        <table class="table table-bordered table-dark">
+    <div>
+        <table class="table table-bordered table-dark" id="view-schedule-table">
             <thead>
                 <tr>
                     <th>Время</th>
@@ -32,12 +65,38 @@
                 <tr>
                     <td>{{ row.time_slot }}</td>
                     {% for cell in row.cells %}
-                    <td>
-                        {% if cell.assignment %}
-                            <strong>{{ cell.assignment.employee.user.username }}</strong><br>
-                            <small>{{ cell.assignment.workout_type.name|default:"Работа" }}</small>
+                    <td class="schedule-cell">
+                        {% if user.profile.role == 'manager' or user.profile.role == 'studio_admin' %}
+                            <div class="cell-preview">
+                                {% if cell.assignment and cell.assignment.employee %}
+                                    <span class="trainer-pill" data-employee-id="{{ cell.assignment.employee.id }}">{{ cell.assignment.employee.user.username }}</span><br>
+                                    <small class="workout-preview">{{ cell.assignment.workout_type.name|default:"Работа" }}</small>
+                                {% else %}
+                                    <span class="trainer-pill">—</span><br>
+                                    <small class="workout-preview">—</small>
+                                {% endif %}
+                            </div>
+                            <div class="cell-controls">
+                                <select class="form-select form-select-sm mb-1 employee-select">
+                                    <option value="">Выберите...</option>
+                                    {% for emp in employees %}
+                                        <option value="{{ emp.id }}" {% if cell.assignment and cell.assignment.employee and cell.assignment.employee.id == emp.id %}selected{% endif %}>{{ emp.user.username }}</option>
+                                    {% endfor %}
+                                </select>
+                                <select class="form-select form-select-sm workout-select">
+                                    <option value="">Занятие</option>
+                                    {% for wt in workout_types %}
+                                        <option value="{{ wt.id }}" {% if cell.assignment and cell.assignment.workout_type and cell.assignment.workout_type.id == wt.id %}selected{% endif %}>{{ wt.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
                         {% else %}
-                            <em>—</em>
+                            {% if cell.assignment %}
+                                <span class="trainer-pill" data-employee-id="{{ cell.assignment.employee.id }}">{{ cell.assignment.employee.user.username }}</span><br>
+                                <small>{{ cell.assignment.workout_type.name|default:"Работа" }}</small>
+                            {% else %}
+                                <em>—</em>
+                            {% endif %}
                         {% endif %}
                     </td>
                     {% endfor %}
@@ -46,31 +105,14 @@
             </tbody>
         </table>
     </div>
+
+    {% if user.profile.role == 'manager' or user.profile.role == 'studio_admin' %}
+        <div class="save-wrap">
+            <button id="save-schedule-btn" class="btn btn-primary">Сохранить изменения</button>
+        </div>
+    {% endif %}
 </div>
 
-<!-- Модальное окно подтверждения удаления -->
-<div class="modal fade" id="deleteScheduleModal" tabindex="-1" aria-labelledby="deleteScheduleModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="deleteScheduleModalLabel">Подтверждение удаления</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
-      </div>
-      <div class="modal-body">
-        Вы уверены, что хотите удалить график <strong>"{{ schedule.name }}"</strong>? Это действие нельзя отменить.
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-        <form method="post" action="{% url 'delete_schedule' schedule.id %}" style="display:inline;">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-danger">Удалить</button>
-        </form>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- === ЗАМЕЧАНИЯ СОТРУДНИКОВ === -->
 {% if schedule.status == 'pending' and user.profile.role == 'manager' %}
     <div class="mt-4">
         <h4>Замечания сотрудников:</h4>
@@ -92,7 +134,6 @@
     </div>
 {% endif %}
 
-<!-- УТВЕРЖДЕНИЕ ГРАФИКА (только для сотрудников) -->
 {% if request.user.profile.role == 'employee' and schedule.status == 'pending' %}
     {% with approval=approval_for_user %}
         {% if approval and approval.approved is None %}
@@ -132,72 +173,135 @@
 {% endif %}
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Показ/скрытие комментария
-    const approveRadio = document.getElementById('approve');
-    const rejectRadio = document.getElementById('reject');
-    const commentGroup = document.getElementById('comment-group');
+const TRAINER_COLORS = [
+    { bg: '#4f6fbf', border: '#6f8fdd', tint: 'rgba(79, 111, 191, 0.16)' },
+    { bg: '#6e57a5', border: '#8b73c7', tint: 'rgba(110, 87, 165, 0.16)' },
+    { bg: '#3f8f7f', border: '#5ea996', tint: 'rgba(63, 143, 127, 0.16)' },
+    { bg: '#b57648', border: '#d28e5a', tint: 'rgba(181, 118, 72, 0.16)' },
+    { bg: '#9b5f86', border: '#b97aa3', tint: 'rgba(155, 95, 134, 0.16)' },
+    { bg: '#3b7fa5', border: '#5a9bc4', tint: 'rgba(59, 127, 165, 0.16)' },
+    { bg: '#7e8745', border: '#9ca560', tint: 'rgba(126, 135, 69, 0.16)' },
+    { bg: '#7c5a47', border: '#9c7964', tint: 'rgba(124, 90, 71, 0.16)' }
+];
 
-    if (approveRadio && rejectRadio) {
-        [approveRadio, rejectRadio].forEach(radio => {
-            radio.addEventListener('change', function() {
-                if (this.value === 'reject') {
-                    commentGroup.classList.remove('d-none');
-                    commentGroup.querySelector('textarea').required = true;
-                } else {
-                    commentGroup.classList.add('d-none');
-                    commentGroup.querySelector('textarea').required = false;
-                }
+const CAN_EDIT = {% if user.profile.role == 'manager' or user.profile.role == 'studio_admin' %}true{% else %}false{% endif %};
+const DATE_STRINGS = {{ date_strings|safe }};
+const SCHEDULE_ID = {{ schedule.id }};
+
+function colorForTrainer(employeeId) {
+    const n = parseInt(employeeId, 10);
+    if (!n) return null;
+    return TRAINER_COLORS[Math.abs(n) % TRAINER_COLORS.length];
+}
+
+function colorizeTrainerPill(pill) {
+    const palette = colorForTrainer(pill.dataset.employeeId);
+    const cell = pill.closest('td');
+
+    if (!palette) {
+        pill.style.backgroundColor = 'transparent';
+        pill.style.borderColor = 'rgba(255, 255, 255, 0.25)';
+        if (cell) cell.classList.remove('assigned-cell');
+        return;
+    }
+
+    pill.style.backgroundColor = palette.bg;
+    pill.style.borderColor = palette.border;
+    if (cell) {
+        cell.classList.add('assigned-cell');
+        cell.style.setProperty('--trainer-tint', palette.tint);
+        cell.style.setProperty('--trainer-border', palette.border);
+    }
+}
+
+function updateCellPreview(cell) {
+    const employeeSelect = cell.querySelector('.employee-select');
+    const workoutSelect = cell.querySelector('.workout-select');
+    let trainerPill = cell.querySelector('.trainer-pill');
+    let workoutPreview = cell.querySelector('.workout-preview');
+
+    if (!trainerPill) {
+        const preview = cell.querySelector('.cell-preview');
+        preview.innerHTML = '<span class="trainer-pill">—</span><br><small class="workout-preview">—</small>';
+        trainerPill = cell.querySelector('.trainer-pill');
+        workoutPreview = cell.querySelector('.workout-preview');
+    }
+
+    if (employeeSelect && employeeSelect.value) {
+        trainerPill.textContent = employeeSelect.options[employeeSelect.selectedIndex].text;
+        trainerPill.dataset.employeeId = employeeSelect.value;
+    } else {
+        trainerPill.textContent = '—';
+        trainerPill.removeAttribute('data-employee-id');
+    }
+
+    if (workoutSelect && workoutSelect.value) {
+        workoutPreview.textContent = workoutSelect.options[workoutSelect.selectedIndex].text;
+    } else {
+        workoutPreview.textContent = '—';
+    }
+
+    colorizeTrainerPill(trainerPill);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.trainer-pill').forEach(colorizeTrainerPill);
+
+    if (CAN_EDIT) {
+        document.querySelectorAll('.schedule-cell').forEach(cell => {
+            cell.addEventListener('click', function() {
+                this.classList.toggle('is-editing');
             });
+            updateCellPreview(cell);
         });
 
-        // Отправка формы
-        const form = document.getElementById('approval-form');
-        if (form) {
-            form.addEventListener('submit', function(e) {
-                e.preventDefault();
-                const decision = form.querySelector('input[name="decision"]:checked')?.value;
-                const comment = document.getElementById('comment')?.value || '';
-                const scheduleId = form.querySelector('input[name="schedule_id"]').value;
+        document.addEventListener('change', function(e) {
+            if (e.target.classList.contains('employee-select') || e.target.classList.contains('workout-select')) {
+                const cell = e.target.closest('.schedule-cell');
+                updateCellPreview(cell);
+            }
+        });
 
-                if (!decision) return;
+        const saveButton = document.getElementById('save-schedule-btn');
+        if (saveButton) {
+            saveButton.addEventListener('click', function () {
+                const assignments = [];
+                document.querySelectorAll('#view-schedule-table tbody tr').forEach(row => {
+                    const timeSlot = row.querySelector('td:first-child').textContent.trim();
+                    row.querySelectorAll('.schedule-cell').forEach((cell, colIndex) => {
+                        const employeeSelect = cell.querySelector('.employee-select');
+                        const workoutSelect = cell.querySelector('.workout-select');
+                        assignments.push({
+                            date: DATE_STRINGS[colIndex],
+                            time_slot: timeSlot,
+                            employee_id: employeeSelect && employeeSelect.value ? employeeSelect.value : null,
+                            workout_type_id: workoutSelect && workoutSelect.value ? workoutSelect.value : null
+                        });
+                    });
+                });
 
-                const approved = decision === 'approve';
-                if (!approved && !comment.trim()) {
-                    alert('Пожалуйста, укажите причину отклонения.');
-                    return;
-                }
-
-                fetch(`/api/schedule/${scheduleId}/approve/`, {
-                    method: 'POST',
+                fetch(`/api/schedule/${SCHEDULE_ID}/update/`, {
+                    method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
                     },
-                    body: JSON.stringify({ approved, comment })
+                    body: JSON.stringify({ assignments })
                 })
                 .then(r => r.json())
                 .then(data => {
                     if (data.success) {
-                        showGlobalNotification('Решение отправлено', 'success');
-                        location.reload(); // Обновляем страницу
+                        showGlobalNotification('График успешно сохранён!');
+                        location.reload();
                     } else {
-                        showGlobalNotification('Ошибка: ' + (data.error || ''), 'error');
+                        showGlobalNotification('Ошибка: ' + (data.error || 'Неизвестная ошибка'));
                     }
                 })
-                .catch(err => {
-                    console.error(err);
-                    showGlobalNotification('Ошибка сети', 'error');
-                });
+                .catch(() => showGlobalNotification('Ошибка сети'));
             });
         }
     }
-});
-</script>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Показ/скрытие комментария
     const approveRadio = document.getElementById('approve');
     const rejectRadio = document.getElementById('reject');
     const commentGroup = document.getElementById('comment-group');
@@ -215,7 +319,6 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
 
-        // Отправка формы
         const form = document.getElementById('approval-form');
         if (form) {
             form.addEventListener('submit', function(e) {
@@ -244,7 +347,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 .then(data => {
                     if (data.success) {
                         showGlobalNotification('Решение отправлено', 'success');
-                        location.reload(); // Обновляем страницу
+                        location.reload();
                     } else {
                         showGlobalNotification('Ошибка: ' + (data.error || ''), 'error');
                     }

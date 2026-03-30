@@ -5,6 +5,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 import json
 from .models import WorkoutType
+from .error_utils import humanize_exception
 
 def is_manager(user):
     """Проверяет, является ли пользователь руководителем."""
@@ -53,7 +54,7 @@ def api_create_workout_type(request):
         })
 
     except Exception as e:
-        return JsonResponse({'success': False, 'errors': {'__all__': [str(e)]}})
+        return JsonResponse({'success': False, 'errors': {'__all__': [humanize_exception(e)]}})
 
 @login_required
 @user_passes_test(is_manager)
@@ -86,7 +87,7 @@ def api_update_workout_type(request, workout_type_id):
     except WorkoutType.DoesNotExist:
         return JsonResponse({'success': False, 'errors': {'__all__': ['Тип занятия не найден.']}})
     except Exception as e:
-        return JsonResponse({'success': False, 'errors': {'__all__': [str(e)]}})
+        return JsonResponse({'success': False, 'errors': {'__all__': [humanize_exception(e)]}})
 
 @login_required
 @user_passes_test(is_manager)

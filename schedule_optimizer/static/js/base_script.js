@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Дополнительный код для других страниц можно добавить здесь
+    setupGlobalDeleteConfirmation();
 });
 
 
@@ -31,7 +31,7 @@ function showGlobalNotification(text, type = 'info') {
     const textEl = document.getElementById('persistent-notification-text');
 
     if (!container || !textEl) {
-        console.warn('⚠️ persistent-notification не найден.');
+        console.warn('persistent-notification не найден.');
         return;
     }
 
@@ -50,7 +50,7 @@ function showGlobalNotification(text, type = 'info') {
     }
 
     // Показываем
-    container.style.display = 'block'; // ← главное!
+    container.style.display = 'block';
 }
 
 function hidePersistentNotification() {
@@ -60,4 +60,45 @@ function hidePersistentNotification() {
     }
 }
 
-console.log("✅ base_script.js загружен");
+function setupGlobalDeleteConfirmation() {
+    const modalEl = document.getElementById('globalDeleteConfirmModal');
+    const textEl = document.getElementById('globalDeleteConfirmText');
+    const detailsEl = document.getElementById('globalDeleteConfirmDetails');
+    const okBtn = document.getElementById('globalDeleteConfirmOk');
+
+    if (!modalEl || !textEl || !okBtn || typeof bootstrap === 'undefined') {
+        return;
+    }
+
+    const modal = new bootstrap.Modal(modalEl);
+    let pendingForm = null;
+
+    // Все формы удаления автоматически получат красивое подтверждение.
+    document.querySelectorAll('form[action*="/delete/"]').forEach((form) => {
+        form.addEventListener('submit', function (event) {
+            if (form.dataset.confirmedDelete === '1') return;
+            event.preventDefault();
+
+            pendingForm = form;
+            textEl.textContent = form.dataset.confirmMessage || 'Вы точно хотите удалить этот элемент?';
+            if (detailsEl) {
+                detailsEl.textContent = form.dataset.confirmDetails ||
+                    'После удаления исчезнут связанные записи, история согласования и другие привязанные данные.';
+            }
+            modal.show();
+        });
+    });
+
+    okBtn.addEventListener('click', function () {
+        if (!pendingForm) return;
+        pendingForm.dataset.confirmedDelete = '1';
+        modal.hide();
+        pendingForm.submit();
+    });
+
+    modalEl.addEventListener('hidden.bs.modal', function () {
+        pendingForm = null;
+    });
+}
+
+console.log('base_script.js загружен');
