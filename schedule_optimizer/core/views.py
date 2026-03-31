@@ -501,7 +501,14 @@ def workout_types(request):
 """ === РАСПИСАНИЕ === """
 @login_required
 def create_schedule_view(request):
-    employees = UserProfile.objects.filter(role='employee')
+    employee_models_with_workouts = Employee.objects.select_related('user_profile__user').prefetch_related('workout_types').filter(
+        user_profile__role='employee',
+        user_profile__user__is_active=True,
+        workout_types__isnull=False,
+    ).distinct()
+    employees = UserProfile.objects.filter(
+        id__in=employee_models_with_workouts.values_list('user_profile_id', flat=True)
+    ).select_related('user')
     workout_types = WorkoutType.objects.all()
 
     # Генерация слотов
@@ -527,7 +534,8 @@ def create_schedule_view(request):
     # Загрузка доступности, подготовка данных для быстрой проверки в JS
     availabilities = Availability.objects.filter(
         employee__in=employees,
-        date__in=current_days
+        date__in=current_days,
+        is_available=True,
     )
 
     # Создаём SET для быстрой проверки в JS: "emp_id,date,time"
@@ -538,14 +546,20 @@ def create_schedule_view(request):
         
      # Получаем всех сотрудников с их направлениями
     employees_with_workouts = []
-    for emp in Employee.objects.select_related('user_profile__user').prefetch_related('workout_types'):
-        if emp.user_profile.user.is_active:
-            workouts = list(emp.workout_types.values('id', 'name'))
-            employees_with_workouts.append({
-                'id': emp.user_profile.id,
-                'username': emp.user_profile.user.username,
-                'workout_types': workouts
-            })
+    for emp in employee_models_with_workouts:
+        workouts = list(emp.workout_types.values('id', 'name'))
+        employees_with_workouts.append({
+            'id': emp.user_profile.id,
+            'username': emp.user_profile.user.username,
+            'workout_types': workouts
+        })
+
+    missing_workout_profiles = UserProfile.objects.filter(
+        role='employee',
+        user__is_active=True,
+    ).exclude(
+        id__in=employees.values_list('id', flat=True)
+    ).select_related('user')
 
     context = {
         'employees': employees,
@@ -558,6 +572,9 @@ def create_schedule_view(request):
         'workout_types_json': json.dumps([
             {'id': wt.id, 'name': wt.name} for wt in WorkoutType.objects.all()
         ]),
+        'missing_workout_employees': [
+            p.user.get_full_name().strip() or p.user.username for p in missing_workout_profiles
+        ],
     }
     
     return render(request, 'core/schedules/create_schedule.html', context)
@@ -663,7 +680,7 @@ def schedule_detail(request, schedule_id):
         for day in days:
             key = (day, start_time_str)
             assignment = assignment_dict.get(key)
-            row['cells'].append({'assignment': assignment})
+            row['cells'].append({'assignment': assignment, 'date': day})
         table_data.append(row)
 
     # === 6. Данные для утверждения (только для сотрудников) ===
@@ -678,12 +695,43 @@ def schedule_detail(request, schedule_id):
             except ScheduleApproval.DoesNotExist:
                 approval_for_user = None
 
+    employee_models_with_workouts = Employee.objects.select_related('user_profile__user').prefetch_related('workout_types').filter(
+        user_profile__role='employee',
+        user_profile__user__is_active=True,
+        workout_types__isnull=False,
+    ).distinct()
+    employees_with_workouts = []
+    for emp in employee_models_with_workouts:
+        workouts = list(emp.workout_types.values('id', 'name'))
+        employees_with_workouts.append({
+            'id': emp.user_profile.id,
+            'username': emp.user_profile.user.username,
+            'workout_types': workouts,
+        })
+
+    availabilities = Availability.objects.filter(
+        employee_id__in=employee_models_with_workouts.values_list('user_profile_id', flat=True),
+        date__in=days,
+        is_available=True,
+    )
+    availability_set = set()
+    for a in availabilities:
+        key = f"{a.employee.id},{a.date.strftime('%Y-%m-%d')},{a.start_time.strftime('%H:%M')}"
+        availability_set.add(key)
+
     context = {
         'schedule': schedule,
         'days': days,
         'date_strings': [d.strftime('%Y-%m-%d') for d in days],
-        'employees': UserProfile.objects.filter(role='employee').select_related('user'),
+        'employees': UserProfile.objects.filter(
+            id__in=employee_models_with_workouts.values_list('user_profile_id', flat=True)
+        ).select_related('user'),
         'workout_types': WorkoutType.objects.all(),
+        'employees_with_workouts_json': json.dumps(employees_with_workouts),
+        'workout_types_json': json.dumps([
+            {'id': wt.id, 'name': wt.name} for wt in WorkoutType.objects.all()
+        ]),
+        'availability_set_json': json.dumps(list(availability_set)),
         'table_data': table_data,
         'approval_for_user': approval_for_user,
     }
@@ -721,7 +769,14 @@ def edit_schedule_view(request, schedule_id):
 
     date_strings = [d.strftime('%Y-%m-%d') for d in days]
 
-    employees = UserProfile.objects.filter(role='employee')
+    employee_models_with_workouts = Employee.objects.select_related('user_profile__user').prefetch_related('workout_types').filter(
+        user_profile__role='employee',
+        user_profile__user__is_active=True,
+        workout_types__isnull=False,
+    ).distinct()
+    employees = UserProfile.objects.filter(
+        id__in=employee_models_with_workouts.values_list('user_profile_id', flat=True)
+    ).select_related('user')
     workout_types = WorkoutType.objects.all()
 
     # Текущие назначения
@@ -734,7 +789,8 @@ def edit_schedule_view(request, schedule_id):
     # === ЗАГРУЗКА ДОСТУПНОСТИ ДЛЯ АВТОЗАПОЛНЕНИЯ ===
     availabilities = Availability.objects.filter(
         employee__in=employees,
-        date__in=days
+        date__in=days,
+        is_available=True,
     )
     availability_set = set()
     for a in availabilities:

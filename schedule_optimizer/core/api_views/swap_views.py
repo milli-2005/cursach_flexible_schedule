@@ -147,12 +147,14 @@ def manager_swap_requests(request):
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_approve_swap_request(request, swap_id):
-    print("🔥 ФУНКЦИЯ ВЫЗВАНА")
     try:
         swap = ShiftSwapRequest.objects.select_related(
             'from_employee__user_profile',
             'to_employee__user_profile'
-        ).prefetch_related('shifts__shift_assignment').get(id=swap_id)
+        ).prefetch_related(
+            'to_employee__workout_types',
+            'shifts__shift_assignment__workout_type',
+        ).get(id=swap_id)
 
         manager = request.user
         from_user = swap.from_employee.user_profile.user
@@ -160,6 +162,34 @@ def api_approve_swap_request(request, swap_id):
 
         logger.info(f"Менеджер {manager.username} утверждает заявку #{swap.id}: "
                     f"{from_user.username} → {to_user.username}")
+
+        # Нельзя утверждать обмен, если у получателя не выбраны направления.
+        to_employee_workout_ids = set(swap.to_employee.workout_types.values_list('id', flat=True))
+        if not to_employee_workout_ids:
+            return JsonResponse({
+                'success': False,
+                'error': (
+                    f'Нельзя утвердить обмен: у сотрудника "{to_user.username}" не выбраны направления. '
+                    'Сначала назначьте направления в профиле сотрудника.'
+                ),
+            })
+
+        missing_workouts = []
+        for swap_shift in swap.shifts.all():
+            shift = swap_shift.shift_assignment
+            workout = shift.workout_type
+            if workout and workout.id not in to_employee_workout_ids:
+                missing_workouts.append(workout.name)
+
+        if missing_workouts:
+            unique_names = sorted(set(missing_workouts))
+            return JsonResponse({
+                'success': False,
+                'error': (
+                    f'Нельзя утвердить обмен: у сотрудника "{to_user.username}" нет нужных направлений '
+                    f'для этих занятий ({", ".join(unique_names)}).'
+                ),
+            })
 
         # Меняем статус
         swap.status = 'approved_by_manager'

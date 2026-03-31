@@ -23,6 +23,18 @@
         </div>
     </div>
 
+    <div id="missing-workouts-alert" class="alert alert-warning d-none" role="alert">
+        <div class="d-flex justify-content-between align-items-start gap-3">
+            <div>
+                <div class="fw-semibold mb-1">Есть сотрудники без выбранных направлений</div>
+                <div class="small" id="missing-workouts-alert-text"></div>
+            </div>
+            <button type="button" class="btn btn-sm btn-warning" onclick="focusEmployeesWithoutWorkouts()">
+                <i class="bi bi-journal-check"></i> Выбрать направления
+            </button>
+        </div>
+    </div>
+
     <div class="management-table">
         <table>
             <thead>
@@ -333,6 +345,7 @@
             const search = (u.username + ' ' + u.email + ' ' + u.first_name + ' ' + u.last_name + ' ' + (u.profile?.patronymic || '') + ' ' + (u.profile?.phone || '')).toLowerCase();
             return search.includes(term) && (!role || u.profile.role === role);
         });
+        renderMissingWorkoutsWarning(allUsers);
 
         const tbody = document.getElementById('userTableBody');
         if (filtered.length === 0) {
@@ -342,13 +355,28 @@
 
         tbody.innerHTML = filtered.map(user => `
             <tr>
-                <td>${user.username}</td>
+                <td>
+                    ${user.username}
+                    ${user.profile.role === 'employee' && !user.profile.has_workout_types
+                        ? '<div><span class="badge text-bg-warning mt-1">Нет направлений</span></div>'
+                        : ''}
+                </td>
                 <td>${user.email}</td>
-                <td>${user.profile.role_display}</td>
+                <td>
+                    ${user.profile.role_display}
+                    ${user.profile.role === 'employee' && !user.profile.has_workout_types
+                        ? '<div class="small text-warning mt-1">Не попадет в график, пока не заданы направления</div>'
+                        : ''}
+                </td>
                 <td>
                     <button type="button" class="btn btn-sm btn-outline-secondary" onclick="openEditUserModal(${user.id})">
                         <i class="bi bi-pencil"></i>
                     </button>
+                    ${user.profile.role === 'employee' && !user.profile.has_workout_types
+                        ? `<button type="button" class="btn btn-sm btn-warning" title="Выбрать направления" onclick="openEditUserModal(${user.id})">
+                            <i class="bi bi-journal-check"></i>
+                           </button>`
+                        : ''}
                     <button type="button" class="btn btn-sm btn-outline-danger" onclick="openDeleteUserModal(${user.id}, '${user.username}')">
                         <i class="bi bi-trash"></i>
                     </button>
@@ -358,6 +386,33 @@
                 </td>
             </tr>
         `).join('');
+    }
+
+    function renderMissingWorkoutsWarning(users) {
+        const alertEl = document.getElementById('missing-workouts-alert');
+        const textEl = document.getElementById('missing-workouts-alert-text');
+        if (!alertEl || !textEl) return;
+
+        const missing = (users || []).filter(u => u.profile?.role === 'employee' && !u.profile?.has_workout_types);
+        if (missing.length === 0) {
+            alertEl.classList.add('d-none');
+            return;
+        }
+
+        const names = missing.map(u => u.username);
+        const preview = names.slice(0, 5).join(', ');
+        const tail = names.length > 5 ? ` и ещё ${names.length - 5}` : '';
+        textEl.textContent = `Нужно выбрать направления для: ${preview}${tail}.`;
+        alertEl.classList.remove('d-none');
+    }
+
+    function focusEmployeesWithoutWorkouts() {
+        const search = document.getElementById('user-search');
+        const roleFilter = document.getElementById('role-filter');
+        if (roleFilter) roleFilter.value = 'employee';
+        if (search) search.value = '';
+        filterAndRenderUsers();
+        document.getElementById('userTableBody')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
 

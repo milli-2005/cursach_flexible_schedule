@@ -5,7 +5,7 @@
 
 {% block extra_css %}
 <style>
-.schedule-note { color: #b5b5b5; margin-bottom: 1rem; }
+.schedule-note { color: #f0e9ff; margin-bottom: 0.65rem; }
 #schedule-table { margin-bottom: 0; width: 100%; table-layout: fixed; }
 #schedule-table th, #schedule-table td { vertical-align: top; }
 .shift-cell { cursor: pointer; }
@@ -18,13 +18,85 @@
 }
 .cell-view .workout-name { display: block; color: #d0d0d0; font-size: 0.82rem; }
 .cell-controls { display: none; margin-top: 0.45rem; }
-.shift-cell.is-editing .cell-controls, .shift-cell:hover .cell-controls { display: block; }
+.shift-cell.is-editing .cell-controls { display: block; }
 .cell-controls .form-select { font-size: 0.8rem; margin-bottom: 0.35rem; }
 .cell-controls .form-select:last-child { margin-bottom: 0; }
+.substitute-row { display: flex; align-items: center; justify-content: space-between; gap: 0.45rem; }
+.suggest-substitute-btn {
+    border-color: rgba(111, 66, 193, 0.55);
+    color: #d6c2ff;
+    background: transparent;
+    font-size: 0.73rem;
+    line-height: 1.1;
+    padding: 0.2rem 0.45rem;
+}
+.suggest-substitute-btn:hover, .suggest-substitute-btn:focus {
+    border-color: #b18cff;
+    color: #f1e9ff;
+    background: rgba(111, 66, 193, 0.2);
+}
+.substitute-hint {
+    display: block;
+    margin-top: 0.35rem;
+    color: #c9b3ff;
+    font-size: 0.73rem;
+    line-height: 1.25;
+}
 .save-wrap { margin-top: 1rem; }
 .shift-cell.assigned {
     box-shadow: inset 0 0 0 9999px var(--trainer-tint, rgba(179, 157, 219, 0.08));
     border-color: var(--trainer-border, rgba(179, 157, 219, 0.45));
+}
+
+.schedule-top-panel {
+    margin-bottom: 1.2rem;
+    padding: 1.1rem 1.15rem;
+    border-radius: 16px;
+    border: 1px solid rgba(146, 111, 220, 0.75);
+    background:
+        radial-gradient(1200px 200px at -5% -40%, rgba(173, 130, 255, 0.2), transparent 60%),
+        linear-gradient(135deg, rgba(111, 66, 193, 0.34) 0%, rgba(111, 66, 193, 0.08) 100%);
+    box-shadow: 0 10px 30px rgba(111, 66, 193, 0.18);
+}
+
+.schedule-title {
+    margin-bottom: 0.5rem;
+    font-weight: 700;
+}
+
+.schedule-table-wrap {
+    margin-top: 0.35rem;
+}
+
+.schedule-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem 0.7rem;
+    margin: 0;
+    color: #f3eeff;
+}
+
+.meta-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.65rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.08);
+    font-size: 0.92rem;
+}
+
+.meta-chip strong {
+    color: #fff;
+    font-weight: 700;
+}
+
+.schedule-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-top: 0.95rem;
 }
 </style>
 {% endblock %}
@@ -32,10 +104,33 @@
 {% block content %}
 <div class="management-container">
     {% csrf_token %}
-    <h2>Создание недельного графика</h2>
-    <p class="schedule-note">График автоматически заполнен. Нажмите на ячейку, чтобы изменить тренера и направление.</p>
+    <div class="schedule-top-panel">
+        <h2 class="schedule-title">Создание недельного графика</h2>
+        <p class="schedule-note">График автоматически заполнен. Нажмите на ячейку, чтобы изменить тренера и направление.</p>
+        <p class="schedule-meta">
+            <span class="meta-chip"><strong>Период</strong> {{ days.0|date:"d E Y" }} — {{ days|last|date:"d E Y" }}</span>
+            <span class="meta-chip"><strong>Статус</strong> Черновик до сохранения</span>
+        </p>
+        <div class="schedule-actions">
+            <button id="save-schedule-btn" type="button" class="btn btn-primary">Сохранить график</button>
+        </div>
+        {% if missing_workout_employees %}
+        <div class="alert alert-warning d-flex justify-content-between align-items-start gap-3 mb-0" role="alert">
+            <div>
+                <div class="fw-semibold mb-1">У части сотрудников не выбраны направления</div>
+                <div class="small">
+                    Эти сотрудники не будут участвовать в автозаполнении и не появятся в графике:
+                    {{ missing_workout_employees|join:", " }}.
+                </div>
+            </div>
+            <a href="{% url 'user_management' %}" class="btn btn-sm btn-warning">
+                <i class="bi bi-journal-check"></i> Выбрать направления
+            </a>
+        </div>
+        {% endif %}
+    </div>
 
-    <div>
+    <div class="schedule-table-wrap">
         <table class="table table-bordered table-dark" id="schedule-table">
             <thead>
                 <tr>
@@ -68,6 +163,12 @@
                                         <option value="{{ wt.id }}">{{ wt.name }}</option>
                                     {% endfor %}
                                 </select>
+                                <div class="substitute-row">
+                                    <button type="button" class="btn btn-sm suggest-substitute-btn" title="Подобрать замену автоматически">
+                                        <i class="bi bi-magic"></i> Подмена
+                                    </button>
+                                </div>
+                                <small class="substitute-hint d-none"></small>
                             </div>
                         </td>
                     {% endfor %}
@@ -75,10 +176,6 @@
                 {% endfor %}
             </tbody>
         </table>
-    </div>
-
-    <div class="save-wrap">
-        <button id="save-schedule-btn" type="button" class="btn btn-primary">Сохранить график</button>
     </div>
 </div>
 {% endblock %}
@@ -89,6 +186,7 @@ const AVAILABILITY_SET = new Set({{ availability_set_json|safe }});
 const EMPLOYEES_WITH_WORKOUTS = {{ employees_with_workouts_json|safe }};
 const WORKOUT_TYPES = {{ workout_types_json|safe }};
 const DATE_STRINGS = {{ date_strings|safe }};
+const SUBSTITUTE_API_URL = '/api/schedule/substitute-candidates/';
 
 const EMPLOYEE_WORKOUT_MAP = {};
 EMPLOYEES_WITH_WORKOUTS.forEach(emp => {
@@ -112,6 +210,11 @@ function colorForTrainer(employeeId) {
     return TRAINER_COLORS[Math.abs(n) % TRAINER_COLORS.length];
 }
 
+function getCsrfToken() {
+    return document.querySelector('meta[name="csrf-token"]')?.content ||
+        document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+}
+
 function updateWorkoutSelect(workoutSelect, allowedIds) {
     workoutSelect.innerHTML = '<option value="">Направление</option>';
     WORKOUT_TYPES.forEach(wt => {
@@ -122,6 +225,88 @@ function updateWorkoutSelect(workoutSelect, allowedIds) {
             workoutSelect.appendChild(option);
         }
     });
+}
+
+function showSubstituteHint(cell, text = '', isError = false) {
+    const hint = cell.querySelector('.substitute-hint');
+    if (!hint) return;
+    hint.textContent = text;
+    hint.classList.toggle('d-none', !text);
+    hint.style.color = isError ? '#ff9bb2' : '#c9b3ff';
+}
+
+async function suggestSubstituteForCell(cell) {
+    const employeeSelect = cell.querySelector('.employee-select');
+    const workoutSelect = cell.querySelector('.workout-select');
+    const button = cell.querySelector('.suggest-substitute-btn');
+    if (!employeeSelect || !workoutSelect || !button) return;
+
+    const previousButtonHtml = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+
+    try {
+        const previousWorkoutValue = workoutSelect.value;
+        const response = await fetch(SUBSTITUTE_API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({
+                date: cell.dataset.day,
+                time_slot: cell.dataset.time,
+                workout_type_id: workoutSelect.value ? parseInt(workoutSelect.value, 10) : null,
+                exclude_employee_id: employeeSelect.value ? parseInt(employeeSelect.value, 10) : null,
+                limit: 5
+            })
+        });
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || data.success === false) {
+            throw new Error(data.error || 'Не удалось подобрать замену.');
+        }
+
+        if (!Array.isArray(data.candidates) || data.candidates.length === 0) {
+            showSubstituteHint(cell, 'Подходящий подменный тренер не найден.', true);
+            showGlobalNotification('Подходящая замена не найдена.', 'error');
+            return;
+        }
+
+        const best = data.candidates[0];
+        const nextEmployeeId = String(best.employee_id);
+        employeeSelect.value = nextEmployeeId;
+
+        const allowedIds = EMPLOYEE_WORKOUT_MAP[nextEmployeeId] || [];
+        updateWorkoutSelect(workoutSelect, allowedIds.length ? allowedIds : null);
+
+        const previousWorkoutId = previousWorkoutValue ? parseInt(previousWorkoutValue, 10) : null;
+        let nextWorkoutId = null;
+        if (previousWorkoutId && allowedIds.includes(previousWorkoutId)) {
+            nextWorkoutId = previousWorkoutId;
+        } else if (best.suggested_workout_type_id) {
+            nextWorkoutId = parseInt(best.suggested_workout_type_id, 10);
+        }
+
+        if (nextWorkoutId) {
+            const hasOption = Array.from(workoutSelect.options).some(opt => parseInt(opt.value || '0', 10) === nextWorkoutId);
+            workoutSelect.value = hasOption ? String(nextWorkoutId) : '';
+        } else {
+            workoutSelect.value = '';
+        }
+
+        updateCellView(cell);
+        const reason = Array.isArray(best.reasons) && best.reasons.length ? best.reasons[0] : '';
+        showSubstituteHint(cell, reason ? `Подобран: ${best.display_name} (${reason})` : `Подобран: ${best.display_name}`);
+        showGlobalNotification(`Подобрана замена: ${best.display_name}`, 'success');
+    } catch (error) {
+        const message = error?.message || 'Ошибка сети при подборе замены.';
+        showSubstituteHint(cell, message, true);
+        showGlobalNotification(message, 'error');
+    } finally {
+        button.disabled = false;
+        button.innerHTML = previousButtonHtml;
+    }
 }
 
 function updateCellView(cell) {
@@ -210,7 +395,10 @@ function formatDateRangeForName(dateStrings) {
 document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.workout-select').forEach(select => updateWorkoutSelect(select, null));
     document.querySelectorAll('.shift-cell').forEach(cell => {
-        cell.addEventListener('click', function() { this.classList.toggle('is-editing'); });
+        cell.addEventListener('click', function(event) {
+            if (event.target.closest('select, button')) return;
+            this.classList.toggle('is-editing');
+        });
     });
 
     document.addEventListener('change', function(e) {
@@ -221,9 +409,24 @@ document.addEventListener('DOMContentLoaded', function () {
             if (empId && EMPLOYEE_WORKOUT_MAP[empId]) updateWorkoutSelect(workoutSelect, EMPLOYEE_WORKOUT_MAP[empId]);
             else updateWorkoutSelect(workoutSelect, null);
             workoutSelect.value = '';
+            showSubstituteHint(cell, '');
             updateCellView(cell);
         }
-        if (e.target.classList.contains('workout-select')) updateCellView(e.target.closest('.shift-cell'));
+        if (e.target.classList.contains('workout-select')) {
+            const cell = e.target.closest('.shift-cell');
+            showSubstituteHint(cell, '');
+            updateCellView(cell);
+        }
+    });
+
+    document.addEventListener('click', function(event) {
+        const button = event.target.closest('.suggest-substitute-btn');
+        if (!button) return;
+        event.preventDefault();
+        event.stopPropagation();
+        const cell = button.closest('.shift-cell');
+        if (!cell) return;
+        suggestSubstituteForCell(cell);
     });
 
     autoFillSchedule();

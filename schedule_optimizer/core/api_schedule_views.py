@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from django.conf import settings
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.core.mail import send_mail
+from django.db.models import Count
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -15,7 +16,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from .error_utils import api_error_response, humanize_exception
-from .models import Availability, Schedule, ScheduleApproval, ShiftAssignment, UserProfile, WorkoutType
+from .models import Availability, Employee, Schedule, ScheduleApproval, ShiftAssignment, UserProfile, WorkoutType
 
 
 def is_manager(user):
@@ -61,6 +62,193 @@ def _send_schedule_email_async(subject: str, message: str, recipient_list: list[
     threading.Thread(target=_job, daemon=True).start()
 
 
+def _parse_optional_int(value, field_name: str):
+    if value in (None, ''):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        raise ValueError(f'Поле "{field_name}" должно быть числом.')
+
+
+@login_required
+@user_passes_test(is_manager)
+@csrf_exempt
+@require_http_methods(['POST'])
+def api_substitute_candidates(request):
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+
+        shift_date = parse_date(data.get('date'))
+        if not shift_date:
+            raise ValueError('Укажите корректную дату слота для подбора замены.')
+
+        time_slot = (data.get('time_slot') or '').strip()
+        if not time_slot:
+            raise ValueError('Укажите время слота для подбора замены.')
+        start_time, _ = parse_time_slot(time_slot)
+
+        workout_type_id = _parse_optional_int(data.get('workout_type_id'), 'workout_type_id')
+        schedule_id = _parse_optional_int(data.get('schedule_id'), 'schedule_id')
+        exclude_employee_id = _parse_optional_int(data.get('exclude_employee_id'), 'exclude_employee_id')
+        limit = _parse_optional_int(data.get('limit'), 'limit') or 5
+        limit = max(1, min(limit, 10))
+
+        workout_type = None
+        if workout_type_id:
+            workout_type = WorkoutType.objects.filter(id=workout_type_id).first()
+            if not workout_type:
+                raise ValueError('Выбранное направление не найдено.')
+
+        schedule = None
+        rejected_employee_ids = set()
+        if schedule_id:
+            schedule = Schedule.objects.filter(id=schedule_id).first()
+            if not schedule:
+                raise ValueError('График для подбора замены не найден.')
+            rejected_employee_ids = set(
+                ScheduleApproval.objects.filter(
+                    schedule=schedule,
+                    approved=False,
+                ).values_list('employee_id', flat=True)
+            )
+
+        employee_qs = Employee.objects.select_related('user_profile__user').prefetch_related('workout_types').filter(
+            user_profile__role='employee',
+            user_profile__user__is_active=True,
+            workout_types__isnull=False,
+        )
+        if exclude_employee_id:
+            employee_qs = employee_qs.exclude(user_profile_id=exclude_employee_id)
+
+        employee_profiles = list(employee_qs)
+        if not employee_profiles:
+            return JsonResponse({'success': True, 'candidates': []})
+
+        profile_ids = [emp.user_profile_id for emp in employee_profiles]
+
+        busy_ids = set(
+            ShiftAssignment.objects.filter(
+                employee_id__in=profile_ids,
+                date=shift_date,
+                start_time=start_time,
+            ).values_list('employee_id', flat=True)
+        )
+
+        availability_map = {
+            row['employee_id']: row['is_available']
+            for row in Availability.objects.filter(
+                employee_id__in=profile_ids,
+                date=shift_date,
+                start_time=start_time,
+            ).values('employee_id', 'is_available')
+        }
+
+        week_start = shift_date - timedelta(days=shift_date.weekday())
+        week_end = week_start + timedelta(days=6)
+        weekly_load_map = {
+            row['employee_id']: row['total']
+            for row in ShiftAssignment.objects.filter(
+                employee_id__in=profile_ids,
+                date__range=(week_start, week_end),
+            )
+            .values('employee_id')
+            .annotate(total=Count('id'))
+        }
+
+        candidates = []
+        for employee in employee_profiles:
+            employee_id = employee.user_profile_id
+            if employee_id in busy_ids:
+                continue
+            if schedule and employee_id in rejected_employee_ids:
+                continue
+
+            availability_status = availability_map.get(employee_id)
+            # Подмена возможна только при явной отметке доступности на этот слот.
+            if availability_status is not True:
+                continue
+
+            workout_objects = list(employee.workout_types.all())
+            workout_ids = [wt.id for wt in workout_objects]
+
+            weekly_slots = weekly_load_map.get(employee_id, 0)
+            priority = int(employee.substitute_priority or 50)
+
+            score = 0
+            reasons = []
+
+            if employee.is_substitute:
+                score += 28
+                reasons.append('входит в пул подмен')
+            else:
+                score += 8
+                reasons.append('доступен как обычный кандидат')
+
+            score += 26
+            reasons.append('подтвердил доступность на этот слот')
+
+            score += max(0, 25 - min(priority, 100) // 2)
+            score += max(0, 20 - weekly_slots * 2)
+            reasons.append(f'текущая нагрузка: {weekly_slots} слотов за неделю')
+
+            if workout_type_id:
+                if workout_type_id in workout_ids:
+                    score += 18
+                    reasons.append(f'ведет направление «{workout_type.name}»')
+                    suggested_workout_type_id = workout_type_id
+                    suggested_workout_type_name = workout_type.name
+                else:
+                    score -= 8
+                    if workout_ids:
+                        suggested_workout_type_id = workout_ids[0]
+                        suggested_workout_type_name = workout_objects[0].name
+                        reasons.append(
+                            f'потребуется смена направления с «{workout_type.name}» на «{suggested_workout_type_name}»'
+                        )
+                    else:
+                        suggested_workout_type_id = None
+                        suggested_workout_type_name = None
+                        reasons.append(f'потребуется смена направления «{workout_type.name}»')
+            else:
+                if workout_ids:
+                    score += 4
+                suggested_workout_type_id = workout_ids[0] if workout_ids else None
+                suggested_workout_type_name = (
+                    workout_objects[0].name if workout_ids else None
+                )
+
+            user = employee.user_profile.user
+            display_name = user.get_full_name().strip() or user.username
+
+            candidates.append({
+                'employee_id': employee_id,
+                'username': user.username,
+                'display_name': display_name,
+                'is_substitute': employee.is_substitute,
+                'weekly_slots': weekly_slots,
+                'score': score,
+                'reasons': reasons,
+                'suggested_workout_type_id': suggested_workout_type_id,
+                'suggested_workout_type_name': suggested_workout_type_name,
+            })
+
+        candidates.sort(
+            key=lambda item: (
+                -item['score'],
+                item['weekly_slots'],
+                item['display_name'].lower(),
+            )
+        )
+
+        return JsonResponse({
+            'success': True,
+            'candidates': candidates[:limit],
+        })
+    except Exception as exc:
+        return api_error_response(exc, status=400)
+
+
 @login_required
 @user_passes_test(is_manager)
 @csrf_exempt
@@ -96,6 +284,28 @@ def api_update_schedule(request, schedule_id):
 
             date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
             start_time, end_time = parse_time_slot(time_slot)
+
+            if employee_id:
+                can_be_scheduled = Employee.objects.filter(
+                    user_profile_id=employee_id,
+                    workout_types__isnull=False,
+                ).exists()
+                if not can_be_scheduled:
+                    username = UserProfile.objects.filter(id=employee_id).values_list('user__username', flat=True).first() or str(employee_id)
+                    raise ValueError(
+                        f'Нельзя назначить сотрудника "{username}": у него не выбраны направления.'
+                    )
+                if workout_type_id:
+                    has_workout = Employee.objects.filter(
+                        user_profile_id=employee_id,
+                        workout_types__id=workout_type_id,
+                    ).exists()
+                    if not has_workout:
+                        username = UserProfile.objects.filter(id=employee_id).values_list('user__username', flat=True).first() or str(employee_id)
+                        workout_name = WorkoutType.objects.filter(id=workout_type_id).values_list('name', flat=True).first() or str(workout_type_id)
+                        raise ValueError(
+                            f'Нельзя назначить "{workout_name}" сотруднику "{username}": это направление не закреплено в его профиле.'
+                        )
 
             shift = ShiftAssignment.objects.create(
                 schedule=schedule,
@@ -210,6 +420,20 @@ def api_save_schedule(request):
         end_date = parse_date(data.get('end_date'))
         if not start_date or not end_date:
             raise ValueError('Некорректный диапазон дат графика.')
+        if end_date < start_date:
+            raise ValueError('Дата окончания не может быть раньше даты начала.')
+
+        existing_schedule = Schedule.objects.filter(
+            start_date=start_date,
+            end_date=end_date,
+        ).order_by('-created_at').first()
+        if existing_schedule:
+            period_start = start_date.strftime('%d.%m.%Y')
+            period_end = end_date.strftime('%d.%m.%Y')
+            raise ValueError(
+                f'График на период {period_start} — {period_end} уже создан '
+                f'(«{existing_schedule.name}»). Откройте его в списке графиков.'
+            )
 
         assignments_data = data.get('assignments', [])
         if not isinstance(assignments_data, list):
@@ -226,11 +450,27 @@ def api_save_schedule(request):
         employee_ids_with_shifts = set()
         for assignment_data in assignments_data:
             employee = UserProfile.objects.get(id=assignment_data['employee_id'])
+            can_be_scheduled = Employee.objects.filter(
+                user_profile=employee,
+                workout_types__isnull=False,
+            ).exists()
+            if not can_be_scheduled:
+                raise ValueError(
+                    f'Нельзя назначить сотрудника "{employee.user.username}": у него не выбраны направления.'
+                )
             employee_ids_with_shifts.add(employee.id)
 
             workout_type = None
             if assignment_data.get('workout_type_id'):
                 workout_type = WorkoutType.objects.get(id=assignment_data['workout_type_id'])
+                has_workout = Employee.objects.filter(
+                    user_profile=employee,
+                    workout_types=workout_type,
+                ).exists()
+                if not has_workout:
+                    raise ValueError(
+                        f'Нельзя назначить "{workout_type.name}" сотруднику "{employee.user.username}": это направление не закреплено в его профиле.'
+                    )
 
             start_time, end_time = parse_time_slot(assignment_data.get('time_slot'))
 

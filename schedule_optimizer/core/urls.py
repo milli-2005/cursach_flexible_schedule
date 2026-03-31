@@ -64,6 +64,7 @@ path('api/employee-workout-types/<int:user_id>/', api_get_employee_workout_types
     path('schedules/', views.schedule_view, name='schedule_view'),
     path('schedules/create/', views.create_schedule_view, name='create_schedule'),
     path('api/schedule/save/', api_schedule_views.api_save_schedule, name='api_save_schedule'),
+    path('api/schedule/substitute-candidates/', api_schedule_views.api_substitute_candidates, name='api_substitute_candidates'),
     path('schedules/<int:schedule_id>/', views.schedule_detail, name='schedule_detail'),
     path('schedules/<int:schedule_id>/edit/', views.edit_schedule_view, name='edit_schedule'),
     path('api/schedule/<int:schedule_id>/update/', api_schedule_views.api_update_schedule, name='api_update_schedule'),

@@ -24,6 +24,12 @@
     vertical-align: top;
 }
 
+.schedule-cell.multi-selected {
+    outline: 2px solid rgba(173, 130, 255, 0.95);
+    outline-offset: -2px;
+    box-shadow: inset 0 0 0 9999px rgba(173, 130, 255, 0.16);
+}
+
 .cell-preview {
     min-height: 38px;
     margin-bottom: 0.35rem;
@@ -33,24 +39,135 @@
     display: none;
 }
 
-.schedule-cell:hover .cell-controls,
 .schedule-cell.is-editing .cell-controls {
     display: block;
 }
 
+.substitute-row { display: flex; align-items: center; justify-content: space-between; gap: 0.45rem; margin-top: 0.35rem; }
+.suggest-substitute-btn {
+    border-color: rgba(111, 66, 193, 0.55);
+    color: #d6c2ff;
+    background: transparent;
+    font-size: 0.73rem;
+    line-height: 1.1;
+    padding: 0.2rem 0.45rem;
+}
+.suggest-substitute-btn:hover, .suggest-substitute-btn:focus {
+    border-color: #b18cff;
+    color: #f1e9ff;
+    background: rgba(111, 66, 193, 0.2);
+}
+.substitute-hint {
+    display: block;
+    margin-top: 0.35rem;
+    color: #c9b3ff;
+    font-size: 0.73rem;
+    line-height: 1.25;
+}
+
 .save-wrap {
-    margin-top: 1rem;
+    margin-top: 0.85rem;
+}
+
+.schedule-top-panel {
+    margin-bottom: 1.35rem;
+    padding: 1.1rem 1.15rem;
+    border-radius: 16px;
+    border: 1px solid rgba(146, 111, 220, 0.75);
+    background:
+        radial-gradient(1200px 200px at -5% -40%, rgba(173, 130, 255, 0.2), transparent 60%),
+        linear-gradient(135deg, rgba(111, 66, 193, 0.32) 0%, rgba(111, 66, 193, 0.08) 100%);
+    box-shadow: 0 10px 30px rgba(111, 66, 193, 0.18);
+}
+
+.schedule-title {
+    margin: 0;
+    font-weight: 700;
+}
+
+.schedule-headline {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.meta-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.65rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.08);
+    font-size: 0.92rem;
+}
+
+.meta-chip strong {
+    color: #fff;
+    font-weight: 700;
+}
+
+.schedule-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-top: 0.95rem;
+}
+
+.schedule-table-wrap {
+    margin-top: 0.35rem;
+}
+
+.bulk-actions-panel {
+    margin-top: 0.85rem;
+    padding: 0.85rem;
+    border-radius: 12px;
+    border: 1px solid rgba(173, 130, 255, 0.5);
+    background: rgba(14, 10, 25, 0.55);
 }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="management-container">
-    <h2>График "{{ schedule.name }}"</h2>
-    <p><strong>Период:</strong> {{ schedule.start_date|date:"d E Y" }} — {{ schedule.end_date|date:"d E Y" }}</p>
-    <p><strong>Статус:</strong> {{ schedule.get_status_display }}</p>
+    <div class="schedule-top-panel">
+        <div class="schedule-headline">
+            <h2 class="schedule-title">График "{{ schedule.name }}"</h2>
+            <span class="meta-chip"><strong>Статус</strong> {{ schedule.get_status_display }}</span>
+        </div>
+        {% if user.profile.role == 'manager' or user.profile.role == 'studio_admin' %}
+            <div class="schedule-actions">
+                <button id="auto-fill-schedule-btn" class="btn btn-outline-light">Заполнить автоматически</button>
+                <button id="toggle-multi-select-btn" class="btn btn-outline-warning">Мультивыбор: выкл</button>
+                <button id="cancel-multi-select-btn" class="btn btn-outline-secondary d-none">Отменить мультивыделение</button>
+                <button id="save-schedule-btn" class="btn btn-primary">Сохранить изменения</button>
+            </div>
+            <div id="bulk-actions-panel" class="bulk-actions-panel d-none">
+                <div class="d-flex flex-column flex-lg-row gap-2 align-items-lg-center">
+                    <div class="text-light">Выбрано ячеек: <strong id="bulk-selected-count">0</strong></div>
+                    <select id="bulk-employee-select" class="form-select form-select-sm" style="max-width:220px;">
+                        <option value="">Тренер...</option>
+                        {% for emp in employees %}
+                            <option value="{{ emp.id }}">{{ emp.user.username }}</option>
+                        {% endfor %}
+                    </select>
+                    <select id="bulk-workout-select" class="form-select form-select-sm" style="max-width:220px;">
+                        <option value="">Занятие...</option>
+                        {% for wt in workout_types %}
+                            <option value="{{ wt.id }}">{{ wt.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <button id="bulk-assign-btn" class="btn btn-sm btn-outline-light">Назначить выбранным</button>
+                    <button id="bulk-substitute-btn" class="btn btn-sm btn-outline-warning">Автоподмена выбранных</button>
+                    <button id="bulk-clear-btn" class="btn btn-sm btn-outline-secondary">Снять выделение</button>
+                </div>
+            </div>
+        {% endif %}
+    </div>
 
-    <div>
+    <div class="schedule-table-wrap">
         <table class="table table-bordered table-dark" id="view-schedule-table">
             <thead>
                 <tr>
@@ -65,7 +182,7 @@
                 <tr>
                     <td>{{ row.time_slot }}</td>
                     {% for cell in row.cells %}
-                    <td class="schedule-cell">
+                    <td class="schedule-cell" data-day="{{ cell.date|date:'Y-m-d' }}" data-time="{{ row.time_slot|slice:':5' }}">
                         {% if user.profile.role == 'manager' or user.profile.role == 'studio_admin' %}
                             <div class="cell-preview">
                                 {% if cell.assignment and cell.assignment.employee %}
@@ -89,6 +206,12 @@
                                         <option value="{{ wt.id }}" {% if cell.assignment and cell.assignment.workout_type and cell.assignment.workout_type.id == wt.id %}selected{% endif %}>{{ wt.name }}</option>
                                     {% endfor %}
                                 </select>
+                                <div class="substitute-row">
+                                    <button type="button" class="btn btn-sm suggest-substitute-btn" title="Подобрать замену автоматически">
+                                        <i class="bi bi-magic"></i> Подмена
+                                    </button>
+                                </div>
+                                <small class="substitute-hint d-none"></small>
                             </div>
                         {% else %}
                             {% if cell.assignment %}
@@ -106,11 +229,6 @@
         </table>
     </div>
 
-    {% if user.profile.role == 'manager' or user.profile.role == 'studio_admin' %}
-        <div class="save-wrap">
-            <button id="save-schedule-btn" class="btn btn-primary">Сохранить изменения</button>
-        </div>
-    {% endif %}
 </div>
 
 {% if schedule.status == 'pending' and user.profile.role == 'manager' %}
@@ -187,11 +305,297 @@ const TRAINER_COLORS = [
 const CAN_EDIT = {% if user.profile.role == 'manager' or user.profile.role == 'studio_admin' %}true{% else %}false{% endif %};
 const DATE_STRINGS = {{ date_strings|safe }};
 const SCHEDULE_ID = {{ schedule.id }};
+const SUBSTITUTE_API_URL = '/api/schedule/substitute-candidates/';
+const EMPLOYEES_WITH_WORKOUTS = {{ employees_with_workouts_json|safe }};
+const WORKOUT_TYPES = {{ workout_types_json|safe }};
+const AVAILABILITY_SET = new Set({{ availability_set_json|safe }});
+const EMPLOYEE_WORKOUT_MAP = {};
+EMPLOYEES_WITH_WORKOUTS.forEach(emp => {
+    EMPLOYEE_WORKOUT_MAP[emp.id] = emp.workout_types.map(wt => wt.id);
+});
+let IS_MULTI_SELECT_MODE = false;
+const SELECTED_CELLS = new Set();
 
 function colorForTrainer(employeeId) {
     const n = parseInt(employeeId, 10);
     if (!n) return null;
     return TRAINER_COLORS[Math.abs(n) % TRAINER_COLORS.length];
+}
+
+function getCsrfToken() {
+    return document.querySelector('meta[name="csrf-token"]')?.content ||
+        document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+}
+
+function showSubstituteHint(cell, text = '', isError = false) {
+    const hint = cell.querySelector('.substitute-hint');
+    if (!hint) return;
+    hint.textContent = text;
+    hint.classList.toggle('d-none', !text);
+    hint.style.color = isError ? '#ff9bb2' : '#c9b3ff';
+}
+
+function updateWorkoutSelect(workoutSelect, allowedIds) {
+    if (!workoutSelect) return;
+    const currentValue = workoutSelect.value;
+    workoutSelect.innerHTML = '<option value="">Занятие</option>';
+    WORKOUT_TYPES.forEach(wt => {
+        if (!allowedIds || allowedIds.includes(wt.id)) {
+            const option = document.createElement('option');
+            option.value = wt.id;
+            option.textContent = wt.name;
+            workoutSelect.appendChild(option);
+        }
+    });
+    if (currentValue) {
+        const hasCurrent = Array.from(workoutSelect.options).some(opt => opt.value === currentValue);
+        if (hasCurrent) workoutSelect.value = currentValue;
+        else workoutSelect.value = '';
+    }
+}
+
+function constrainCellWorkoutByTrainer(cell) {
+    const employeeSelect = cell?.querySelector('.employee-select');
+    const workoutSelect = cell?.querySelector('.workout-select');
+    if (!employeeSelect || !workoutSelect) return;
+    const empId = employeeSelect.value;
+    if (empId && EMPLOYEE_WORKOUT_MAP[empId]) {
+        updateWorkoutSelect(workoutSelect, EMPLOYEE_WORKOUT_MAP[empId]);
+    } else {
+        updateWorkoutSelect(workoutSelect, null);
+    }
+}
+
+function autoFillEmptyCells() {
+    const rows = document.querySelectorAll('#view-schedule-table tbody tr');
+    const employees = Array.from(document.querySelectorAll('.employee-select option[value]'))
+        .map(opt => ({ id: opt.value, name: opt.textContent }));
+
+    rows.forEach(row => {
+        const timeSlotText = row.querySelector('td:first-child')?.textContent?.trim() || '';
+        const startTime = timeSlotText.slice(0, 5);
+        row.querySelectorAll('.schedule-cell').forEach((cell, colIndex) => {
+            const employeeSelect = cell.querySelector('.employee-select');
+            const workoutSelect = cell.querySelector('.workout-select');
+            if (!employeeSelect || !workoutSelect) return;
+            if (employeeSelect.value) return; // заполняем только пустые слоты
+
+            const day = DATE_STRINGS[colIndex];
+            let assigned = false;
+            for (let i = 0; i < employees.length; i++) {
+                const emp = employees[i];
+                const key = `${emp.id},${day},${startTime}`;
+                if (!AVAILABILITY_SET.has(key)) continue;
+
+                employeeSelect.value = emp.id;
+                const allowedIds = EMPLOYEE_WORKOUT_MAP[emp.id] || [];
+                updateWorkoutSelect(workoutSelect, allowedIds.length ? allowedIds : null);
+                workoutSelect.value = allowedIds.length ? String(allowedIds[0]) : '';
+                assigned = true;
+                break;
+            }
+
+            if (!assigned) {
+                employeeSelect.value = '';
+                updateWorkoutSelect(workoutSelect, null);
+                workoutSelect.value = '';
+            }
+
+            showSubstituteHint(cell, '');
+            updateCellPreview(cell);
+        });
+    });
+}
+
+async function suggestSubstituteForCell(cell, options = {}) {
+    const silent = options.silent === true;
+    const employeeSelect = cell.querySelector('.employee-select');
+    const workoutSelect = cell.querySelector('.workout-select');
+    const button = cell.querySelector('.suggest-substitute-btn');
+    if (!employeeSelect || !workoutSelect || !button) return;
+
+    const previousButtonHtml = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+
+    try {
+        const response = await fetch(SUBSTITUTE_API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({
+                schedule_id: SCHEDULE_ID,
+                date: cell.dataset.day,
+                time_slot: cell.dataset.time,
+                workout_type_id: workoutSelect.value ? parseInt(workoutSelect.value, 10) : null,
+                exclude_employee_id: employeeSelect.value ? parseInt(employeeSelect.value, 10) : null,
+                limit: 5
+            })
+        });
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || data.success === false) {
+            throw new Error(data.error || 'Не удалось подобрать замену.');
+        }
+
+        if (!Array.isArray(data.candidates) || data.candidates.length === 0) {
+            showSubstituteHint(cell, 'Подходящий подменный тренер не найден.', true);
+            if (!silent) showGlobalNotification('Подходящая замена не найдена.', 'error');
+            return false;
+        }
+
+        const best = data.candidates[0];
+        const nextEmployeeId = String(best.employee_id);
+        employeeSelect.value = nextEmployeeId;
+
+        const allowedIds = EMPLOYEE_WORKOUT_MAP[nextEmployeeId] || [];
+        const currentWorkoutId = workoutSelect.value ? parseInt(workoutSelect.value, 10) : null;
+
+        if (currentWorkoutId && allowedIds.length && !allowedIds.includes(currentWorkoutId)) {
+            workoutSelect.value = '';
+        }
+
+        if (!workoutSelect.value && best.suggested_workout_type_id) {
+            const candidateWorkoutId = parseInt(best.suggested_workout_type_id, 10);
+            const hasOption = Array.from(workoutSelect.options).some(
+                opt => parseInt(opt.value || '0', 10) === candidateWorkoutId
+            );
+            if (hasOption) {
+                workoutSelect.value = String(candidateWorkoutId);
+            }
+        }
+
+        updateCellPreview(cell);
+        const reason = Array.isArray(best.reasons) && best.reasons.length ? best.reasons[0] : '';
+        showSubstituteHint(cell, reason ? `Подобран: ${best.display_name} (${reason})` : `Подобран: ${best.display_name}`);
+        if (!silent) showGlobalNotification(`Подобрана замена: ${best.display_name}`, 'success');
+        return true;
+    } catch (error) {
+        const message = error?.message || 'Ошибка сети при подборе замены.';
+        showSubstituteHint(cell, message, true);
+        if (!silent) showGlobalNotification(message, 'error');
+        return false;
+    } finally {
+        button.disabled = false;
+        button.innerHTML = previousButtonHtml;
+    }
+}
+
+function syncBulkWorkoutOptions() {
+    const employeeSelect = document.getElementById('bulk-employee-select');
+    const workoutSelect = document.getElementById('bulk-workout-select');
+    if (!employeeSelect || !workoutSelect) return;
+    const empId = employeeSelect.value;
+    if (empId && EMPLOYEE_WORKOUT_MAP[empId]) {
+        updateWorkoutSelect(workoutSelect, EMPLOYEE_WORKOUT_MAP[empId]);
+    } else {
+        updateWorkoutSelect(workoutSelect, null);
+    }
+}
+
+function updateBulkPanel() {
+    const panel = document.getElementById('bulk-actions-panel');
+    const counter = document.getElementById('bulk-selected-count');
+    if (!panel || !counter) return;
+    counter.textContent = String(SELECTED_CELLS.size);
+    panel.classList.toggle('d-none', !IS_MULTI_SELECT_MODE);
+}
+
+function clearCellSelection() {
+    SELECTED_CELLS.forEach(cell => cell.classList.remove('multi-selected'));
+    SELECTED_CELLS.clear();
+    updateBulkPanel();
+}
+
+function toggleMultiSelectMode() {
+    IS_MULTI_SELECT_MODE = !IS_MULTI_SELECT_MODE;
+    const btn = document.getElementById('toggle-multi-select-btn');
+    const cancelBtn = document.getElementById('cancel-multi-select-btn');
+    if (btn) {
+        btn.textContent = IS_MULTI_SELECT_MODE ? 'Мультивыбор: вкл' : 'Мультивыбор: выкл';
+        btn.classList.toggle('btn-warning', IS_MULTI_SELECT_MODE);
+        btn.classList.toggle('btn-outline-warning', !IS_MULTI_SELECT_MODE);
+    }
+    if (cancelBtn) {
+        cancelBtn.classList.toggle('d-none', !IS_MULTI_SELECT_MODE);
+    }
+    if (!IS_MULTI_SELECT_MODE) clearCellSelection();
+    updateBulkPanel();
+}
+
+function cancelMultiSelectMode() {
+    IS_MULTI_SELECT_MODE = true; // чтобы toggle гарантированно выключил режим
+    toggleMultiSelectMode();
+}
+
+function toggleCellSelection(cell) {
+    if (SELECTED_CELLS.has(cell)) {
+        SELECTED_CELLS.delete(cell);
+        cell.classList.remove('multi-selected');
+    } else {
+        SELECTED_CELLS.add(cell);
+        cell.classList.add('multi-selected');
+    }
+    updateBulkPanel();
+}
+
+function applyBulkAssignment() {
+    if (SELECTED_CELLS.size === 0) {
+        showGlobalNotification('Сначала выберите ячейки.', 'error');
+        return;
+    }
+    const bulkEmp = document.getElementById('bulk-employee-select')?.value || '';
+    const bulkWorkout = document.getElementById('bulk-workout-select')?.value || '';
+    if (!bulkEmp && !bulkWorkout) {
+        showGlobalNotification('Выберите тренера и/или занятие.', 'error');
+        return;
+    }
+
+    SELECTED_CELLS.forEach(cell => {
+        const employeeSelect = cell.querySelector('.employee-select');
+        const workoutSelect = cell.querySelector('.workout-select');
+        if (!employeeSelect || !workoutSelect) return;
+
+        if (bulkEmp) {
+            employeeSelect.value = bulkEmp;
+            const allowedIds = EMPLOYEE_WORKOUT_MAP[bulkEmp] || [];
+            updateWorkoutSelect(workoutSelect, allowedIds.length ? allowedIds : null);
+            if (bulkWorkout && allowedIds.includes(parseInt(bulkWorkout, 10))) {
+                workoutSelect.value = bulkWorkout;
+            } else {
+                workoutSelect.value = '';
+            }
+        } else if (bulkWorkout) {
+            workoutSelect.value = bulkWorkout;
+        }
+        showSubstituteHint(cell, '');
+        updateCellPreview(cell);
+    });
+
+    showGlobalNotification('Выбранные ячейки обновлены.', 'success');
+}
+
+async function applyBulkSubstitute() {
+    if (SELECTED_CELLS.size === 0) {
+        showGlobalNotification('Сначала выберите ячейки.', 'error');
+        return;
+    }
+    let ok = 0;
+    let fail = 0;
+    for (const cell of SELECTED_CELLS) {
+        const result = await suggestSubstituteForCell(cell, { silent: true });
+        if (result) ok += 1;
+        else fail += 1;
+    }
+    if (ok > 0 && fail === 0) {
+        showGlobalNotification(`Автоподмена выполнена для ${ok} ячеек.`, 'success');
+    } else if (ok > 0) {
+        showGlobalNotification(`Автоподмена: успешно ${ok}, без замены ${fail}.`, 'info');
+    } else {
+        showGlobalNotification('Не удалось подобрать замену для выбранных ячеек.', 'error');
+    }
 }
 
 function colorizeTrainerPill(pill) {
@@ -249,20 +653,62 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (CAN_EDIT) {
         document.querySelectorAll('.schedule-cell').forEach(cell => {
-            cell.addEventListener('click', function() {
+            cell.addEventListener('click', function(event) {
+                if (event.target.closest('select, button')) return;
+                if (IS_MULTI_SELECT_MODE) {
+                    toggleCellSelection(this);
+                    return;
+                }
                 this.classList.toggle('is-editing');
             });
+            constrainCellWorkoutByTrainer(cell);
             updateCellPreview(cell);
         });
 
         document.addEventListener('change', function(e) {
-            if (e.target.classList.contains('employee-select') || e.target.classList.contains('workout-select')) {
+            if (e.target.classList.contains('employee-select')) {
                 const cell = e.target.closest('.schedule-cell');
+                constrainCellWorkoutByTrainer(cell);
+                showSubstituteHint(cell, '');
+                updateCellPreview(cell);
+            }
+            if (e.target.classList.contains('workout-select')) {
+                const cell = e.target.closest('.schedule-cell');
+                showSubstituteHint(cell, '');
                 updateCellPreview(cell);
             }
         });
 
+        document.addEventListener('click', function(event) {
+            const button = event.target.closest('.suggest-substitute-btn');
+            if (!button) return;
+            event.preventDefault();
+            event.stopPropagation();
+            const cell = button.closest('.schedule-cell');
+            if (!cell) return;
+            suggestSubstituteForCell(cell);
+        });
+
         const saveButton = document.getElementById('save-schedule-btn');
+        const autoFillButton = document.getElementById('auto-fill-schedule-btn');
+        const toggleMultiBtn = document.getElementById('toggle-multi-select-btn');
+        const cancelMultiBtn = document.getElementById('cancel-multi-select-btn');
+        const bulkAssignBtn = document.getElementById('bulk-assign-btn');
+        const bulkSubstituteBtn = document.getElementById('bulk-substitute-btn');
+        const bulkClearBtn = document.getElementById('bulk-clear-btn');
+        const bulkEmployeeSelect = document.getElementById('bulk-employee-select');
+        if (autoFillButton) {
+            autoFillButton.addEventListener('click', function () {
+                autoFillEmptyCells();
+                showGlobalNotification('Пустые слоты заполнены автоматически.', 'success');
+            });
+        }
+        if (toggleMultiBtn) toggleMultiBtn.addEventListener('click', toggleMultiSelectMode);
+        if (cancelMultiBtn) cancelMultiBtn.addEventListener('click', cancelMultiSelectMode);
+        if (bulkAssignBtn) bulkAssignBtn.addEventListener('click', applyBulkAssignment);
+        if (bulkSubstituteBtn) bulkSubstituteBtn.addEventListener('click', applyBulkSubstitute);
+        if (bulkClearBtn) bulkClearBtn.addEventListener('click', clearCellSelection);
+        if (bulkEmployeeSelect) bulkEmployeeSelect.addEventListener('change', syncBulkWorkoutOptions);
         if (saveButton) {
             saveButton.addEventListener('click', function () {
                 const assignments = [];

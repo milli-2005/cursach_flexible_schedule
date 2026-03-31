@@ -119,6 +119,14 @@ class Employee(models.Model):
     # Предпочтения
     preferred_shifts = models.TextField(blank=True, verbose_name="Предпочитаемые смены")
     unavailable_days = models.TextField(blank=True, verbose_name="Невозможные дни")
+    is_substitute = models.BooleanField(
+        default=False,
+        verbose_name="В пуле подменных тренеров"
+    )
+    substitute_priority = models.PositiveSmallIntegerField(
+        default=50,
+        verbose_name="Приоритет подмены"
+    )
 
     # направления:
     workout_types = models.ManyToManyField(

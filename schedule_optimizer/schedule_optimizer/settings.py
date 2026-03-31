@@ -176,4 +176,4 @@ CELERY_BEAT_SCHEDULE = {
 }
 
 # В самом конце settings.py
-print("✅ LOGGING загружен")
+print("LOGGING загружен")

@@ -5,6 +5,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.models import User
+from django.db.models import Count
 from django.utils import timezone
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
@@ -59,9 +60,15 @@ def send_user_invitation(user, raw_password):
 @require_http_methods(["GET"])
 def api_get_users(request):
     users = User.objects.select_related('profile').all().order_by('username')
+    workout_count_map = {
+        row['user_profile_id']: row['workout_count']
+        for row in Employee.objects.values('user_profile_id').annotate(workout_count=Count('workout_types'))
+    }
     data = []
     for u in users:
         profile = u.profile
+        workout_count = workout_count_map.get(profile.id, 0)
+        has_workout_types = workout_count > 0
         data.append({
             'id': u.id,
             'username': u.username,
@@ -73,6 +80,8 @@ def api_get_users(request):
                 'role_display': dict(UserProfile.ROLE_CHOICES).get(profile.role, profile.role),
                 'phone': profile.phone or '',
                 'patronymic': profile.patronymic or '',
+                'workout_count': workout_count if profile.role == 'employee' else 0,
+                'has_workout_types': has_workout_types if profile.role == 'employee' else True,
             }
         })
     return JsonResponse(data, safe=False)

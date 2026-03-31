@@ -30,7 +30,6 @@
     display: none;
 }
 
-.schedule-cell:hover .cell-controls,
 .schedule-cell.is-editing .cell-controls {
     display: block;
 }
@@ -217,7 +216,8 @@ document.getElementById('auto-fill-btn').addEventListener('click', function () {
 
 document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.schedule-cell').forEach(cell => {
-        cell.addEventListener('click', function() {
+        cell.addEventListener('click', function(event) {
+            if (event.target.closest('select, button')) return;
             this.classList.toggle('is-editing');
         });
         updateCellPreview(cell);

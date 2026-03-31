@@ -24,8 +24,15 @@ class ShiftAssignmentAdmin(admin.ModelAdmin):
 
 @admin.register(Employee)
 class EmployeeAdmin(admin.ModelAdmin):
-    list_display = ('user_profile', 'max_hours_per_week', 'min_hours_per_week', 'hourly_rate')
-    list_filter = ('max_hours_per_week', 'min_hours_per_week')
+    list_display = (
+        'user_profile',
+        'is_substitute',
+        'substitute_priority',
+        'max_hours_per_week',
+        'min_hours_per_week',
+        'hourly_rate',
+    )
+    list_filter = ('is_substitute', 'max_hours_per_week', 'min_hours_per_week')
     filter_horizontal = ('workout_types',)
 
 @admin.register(WorkoutType) # Новая модель
