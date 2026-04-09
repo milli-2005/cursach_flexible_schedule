@@ -14,7 +14,7 @@ from django.conf import settings
 from django.http import JsonResponse
 from .error_utils import humanize_exception
 from .models import *
-from .forms import UserInvitationForm
+from .forms import UserInvitationForm, UserProfileEditForm
 from django.contrib.auth.models import User
 import logging
 from django.utils import timezone #для времени сброса пароля
@@ -223,9 +223,17 @@ def about(request):
     return render(request, 'core/about.html')
 
 
+@login_required
+def chat_page(request):
+    """Встроенный чат между пользователями."""
+    return render(request, 'core/chat/chat.html')
+
+
 def custom_login(request):
     """Кастомная страница входа в систему."""
     if request.user.is_authenticated:
+        if hasattr(request.user, 'profile') and request.user.profile.invitation_timestamp:
+            return redirect('change_password')
         return redirect('dashboard')
 
     if request.method == 'POST':
@@ -241,6 +249,10 @@ def custom_login(request):
                 return render(request, 'core/login.html', {'form': form})
 
             login(request, user)
+            if hasattr(user, 'profile') and user.profile.invitation_timestamp:
+                messages.info(request, "Для продолжения работы сначала смените временный пароль.")
+                return redirect('change_password')
+
             messages.success(request, f"Добро пожаловать, {user.username}!")
             return redirect('dashboard') # afo Перенаправляем на дашборд после входа
         else:
@@ -319,7 +331,7 @@ def profile_edit(request):
     profile = user.profile
 
     if request.method == 'POST':
-        form = UserProfileEditForm(request.POST, instance=profile)
+        form = UserProfileEditForm(request.POST, request.FILES, instance=profile)
         if form.is_valid():
             form.save()
             messages.success(request, "Профиль успешно обновлён.")
@@ -586,21 +598,64 @@ from django.core.paginator import Paginator
 
 @login_required
 def schedule_view(request):
+    from django.db.models import Q
+
     if not hasattr(request.user, 'profile'):
         messages.error(request, "Профиль пользователя не найден.")
         return redirect('dashboard')
 
     # Параметры
-    page_size = int(request.GET.get('page_size', 6))
+    try:
+        page_size = int(request.GET.get('page_size', 6))
+    except (TypeError, ValueError):
+        page_size = 6
+    if page_size not in [6, 10, 20, 50]:
+        page_size = 6
+
     sort_by = request.GET.get('sort', '-start_date')  # по умолчанию — новые сверху
+    query = request.GET.get('q', '').strip()
+    status_filter = request.GET.get('status', '').strip()
+    creator_filter = request.GET.get('creator', '').strip()
+    period_filter = request.GET.get('period', '').strip()
+    approval_filter = request.GET.get('approval', '').strip()
 
     # Валидация поля сортировки
-    valid_sort_fields = ['name', '-name', 'start_date', '-start_date', 'end_date', '-end_date', 'status', '-status']
+    valid_sort_fields = [
+        'name', '-name',
+        'start_date', '-start_date',
+        'end_date', '-end_date',
+        'status', '-status',
+        'created_at', '-created_at',
+    ]
     if sort_by not in valid_sort_fields:
         sort_by = '-start_date'
 
     # Запрос с сортировкой
-    schedules = Schedule.objects.all().prefetch_related('approvals').order_by(sort_by)
+    schedules = Schedule.objects.all().select_related('created_by').prefetch_related('approvals')
+
+    if query:
+        schedules = schedules.filter(
+            Q(name__icontains=query) |
+            Q(created_by__username__icontains=query) |
+            Q(created_by__first_name__icontains=query) |
+            Q(created_by__last_name__icontains=query)
+        )
+
+    if status_filter in {'draft', 'pending', 'approved'}:
+        schedules = schedules.filter(status=status_filter)
+
+    if creator_filter.isdigit():
+        schedules = schedules.filter(created_by_id=int(creator_filter))
+
+    today = timezone.localdate()
+    if period_filter == 'current':
+        schedules = schedules.filter(start_date__lte=today, end_date__gte=today)
+    elif period_filter == 'upcoming':
+        schedules = schedules.filter(start_date__gt=today)
+    elif period_filter == 'past':
+        schedules = schedules.filter(end_date__lt=today)
+
+    schedules = schedules.order_by(sort_by)
 
     total_employees = UserProfile.objects.filter(role='employee').count()
 
@@ -619,15 +674,42 @@ def schedule_view(request):
             'responded_count': responded_count,
         })
 
+    # Фильтр по состоянию согласования (после подсчёта статистики)
+    if approval_filter in {'not_reviewed', 'partially_reviewed', 'fully_reviewed', 'with_rejections'}:
+        filtered_stats = []
+        for item in schedules_with_stats:
+            responded = item['responded_count']
+            rejected = item['rejected_count']
+
+            if approval_filter == 'not_reviewed' and responded == 0:
+                filtered_stats.append(item)
+            elif approval_filter == 'partially_reviewed' and 0 < responded < total_employees:
+                filtered_stats.append(item)
+            elif approval_filter == 'fully_reviewed' and responded >= total_employees and total_employees > 0:
+                filtered_stats.append(item)
+            elif approval_filter == 'with_rejections' and rejected > 0:
+                filtered_stats.append(item)
+        schedules_with_stats = filtered_stats
+
     # Пагинация
     paginator = Paginator(schedules_with_stats, page_size)
     page_obj = paginator.get_page(request.GET.get('page', 1))
+
+    creators = User.objects.filter(
+        id__in=Schedule.objects.exclude(created_by__isnull=True).values_list('created_by_id', flat=True).distinct()
+    ).order_by('last_name', 'first_name', 'username')
 
     context = {
         'schedules_with_stats': page_obj,
         'page_obj': page_obj,
         'page_size': page_size,
         'current_sort': sort_by,
+        'filter_q': query,
+        'filter_status': status_filter,
+        'filter_creator': creator_filter,
+        'filter_period': period_filter,
+        'filter_approval': approval_filter,
+        'creators': creators,
     }
     return render(request, 'core/schedules/schedule_list.html', context)
 

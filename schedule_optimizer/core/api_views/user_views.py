@@ -60,6 +60,13 @@ def send_user_invitation(user, raw_password):
 @require_http_methods(["GET"])
 def api_get_users(request):
     users = User.objects.select_related('profile').all().order_by('username')
+    employee_workout_map = {}
+    for emp in Employee.objects.select_related('user_profile').prefetch_related('workout_types'):
+        employee_workout_map[emp.user_profile_id] = {
+            'ids': [wt.id for wt in emp.workout_types.all()],
+            'names': [wt.name for wt in emp.workout_types.all()],
+        }
+
     workout_count_map = {
         row['user_profile_id']: row['workout_count']
         for row in Employee.objects.values('user_profile_id').annotate(workout_count=Count('workout_types'))
@@ -69,12 +76,15 @@ def api_get_users(request):
         profile = u.profile
         workout_count = workout_count_map.get(profile.id, 0)
         has_workout_types = workout_count > 0
+        workout_data = employee_workout_map.get(profile.id, {'ids': [], 'names': []})
         data.append({
             'id': u.id,
             'username': u.username,
             'email': u.email,
             'first_name': u.first_name or '',
             'last_name': u.last_name or '',
+            'is_active': u.is_active,
+            'date_joined': u.date_joined.isoformat() if u.date_joined else None,
             'profile': {
                 'role': profile.role,
                 'role_display': dict(UserProfile.ROLE_CHOICES).get(profile.role, profile.role),
@@ -82,6 +92,8 @@ def api_get_users(request):
                 'patronymic': profile.patronymic or '',
                 'workout_count': workout_count if profile.role == 'employee' else 0,
                 'has_workout_types': has_workout_types if profile.role == 'employee' else True,
+                'workout_type_ids': workout_data['ids'] if profile.role == 'employee' else [],
+                'workout_type_names': workout_data['names'] if profile.role == 'employee' else [],
             }
         })
     return JsonResponse(data, safe=False)

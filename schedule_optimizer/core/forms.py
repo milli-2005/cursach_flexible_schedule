@@ -120,3 +120,17 @@ class EmployeeAdminForm(forms.ModelForm):
     class Meta:
         model = Employee
         fields = ['workout_types']
+class UserProfileEditForm(forms.ModelForm):
+    class Meta:
+        model = UserProfile
+        fields = ['phone', 'patronymic', 'avatar']
+        labels = {
+            'phone': 'Телефон',
+            'patronymic': 'Отчество',
+            'avatar': 'Аватар',
+        }
+        widgets = {
+            'phone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '+7 999 123-45-67'}),
+            'patronymic': forms.TextInput(attrs={'class': 'form-control'}),
+            'avatar': forms.ClearableFileInput(attrs={'class': 'form-control'}),
+        }

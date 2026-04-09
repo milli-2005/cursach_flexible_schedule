@@ -21,6 +21,16 @@ from .api_views.swap_views import (
 api_approve_swap_request,
 api_reject_swap_request
 )
+from .api_views.chat_views import (
+    api_chat_users,
+    api_chat_start_conversation,
+    api_chat_create_group,
+    api_chat_conversations,
+    api_chat_toggle_pin,
+    api_chat_messages,
+    api_chat_send_message,
+    api_chat_unread_count,
+)
 
 from .api_views.api_workout_views import api_get_employee_workout_types
 
@@ -35,6 +45,7 @@ urlpatterns = [
 
     # Личный кабинет и профиль
     path('dashboard/', views.dashboard, name='dashboard'),
+    path('chat/', views.chat_page, name='chat_page'),
     path('profile/', views.profile_view, name='profile_view'),
     path('profile/edit/', views.profile_edit, name='profile_edit'),
     path('profile/change-password/', views.change_password, name='change_password'),
@@ -83,6 +94,16 @@ path('remind/availability/', views.send_availability_reminder_manual, name='send
     path('api/users/<int:user_id>/update/', api_update_user, name='api_update_user'),
     path('api/users/<int:user_id>/delete/', api_delete_user, name='api_delete_user'),
     path('api/users/<int:user_id>/reset-password/', api_reset_user_password, name='api_reset_user_password'),
+
+    # Чат
+    path('api/chat/users/', api_chat_users, name='api_chat_users'),
+    path('api/chat/conversations/', api_chat_conversations, name='api_chat_conversations'),
+    path('api/chat/conversations/start/', api_chat_start_conversation, name='api_chat_start_conversation'),
+    path('api/chat/conversations/group/', api_chat_create_group, name='api_chat_create_group'),
+    path('api/chat/conversations/pin/', api_chat_toggle_pin, name='api_chat_toggle_pin'),
+    path('api/chat/conversations/<int:conversation_id>/messages/', api_chat_messages, name='api_chat_messages'),
+    path('api/chat/messages/send/', api_chat_send_message, name='api_chat_send_message'),
+    path('api/chat/unread-count/', api_chat_unread_count, name='api_chat_unread_count'),
 
     # Обмен сменами
     path('api/my-shifts-for-swap/', api_my_shifts_for_swap, name='api_my_shifts_for_swap'),

@@ -10,15 +10,31 @@
     </div>
 
     <!-- ПОИСК И ФИЛЬТР -->
-    <div class="d-flex gap-3 mb-3">
+    <div class="d-flex gap-3 mb-3 flex-wrap">
         <div class="flex-grow-1">
-            <input type="text" id="user-search" class="form-control" placeholder="Поиск по имени, фамилии, email, логину...">
+            <input type="text" id="user-search" class="form-control" placeholder="Поиск по ФИО, email, логину, телефону...">
         </div>
         <div style="width: 200px;">
             <select id="role-filter" class="form-select">
                 <option value="">Все роли</option>
                 <option value="employee">Сотрудник</option>
                 <option value="manager">Руководитель</option>
+            </select>
+        </div>
+        <div style="width: 220px;">
+            <select id="workout-filter" class="form-select">
+                <option value="">Все направления</option>
+            </select>
+        </div>
+        <div style="width: 220px;">
+            <select id="sort-filter" class="form-select">
+                <option value="full_name_asc">Сортировка: ФИО (А-Я)</option>
+                <option value="full_name_desc">Сортировка: ФИО (Я-А)</option>
+                <option value="role_asc">Сортировка: роль</option>
+                <option value="email_asc">Сортировка: email</option>
+                <option value="username_asc">Сортировка: логин</option>
+                <option value="date_joined_desc">Сортировка: новые сначала</option>
+                <option value="date_joined_asc">Сортировка: старые сначала</option>
             </select>
         </div>
     </div>
@@ -39,7 +55,7 @@
         <table>
             <thead>
                 <tr>
-                    <th>Имя пользователя</th>
+                    <th>ФИО сотрудника</th>
                     <th>Email</th>
                     <th>Роль</th>
                     <th>Действия</th>
@@ -309,9 +325,12 @@
 });
 
     document.addEventListener('DOMContentLoaded', function () {
+        loadWorkoutFilterOptions();
         loadUsers();
         document.getElementById('user-search').addEventListener('input', filterAndRenderUsers);
         document.getElementById('role-filter').addEventListener('change', filterAndRenderUsers);
+        document.getElementById('workout-filter')?.addEventListener('change', filterAndRenderUsers);
+        document.getElementById('sort-filter')?.addEventListener('change', filterAndRenderUsers);
 
         const phoneInput = document.getElementById('id_phone');
         if (phoneInput) {
@@ -338,13 +357,96 @@
             .catch(e => console.error(e));
     }
 
+    function loadWorkoutFilterOptions() {
+        fetch('/api/workout-types/')
+            .then(r => r.json())
+            .then(types => {
+                const select = document.getElementById('workout-filter');
+                if (!select) return;
+                select.innerHTML = '<option value="">Все направления</option>' +
+                    types
+                        .sort((a, b) => compareStrings(a.name, b.name))
+                        .map(wt => `<option value="${wt.id}">${wt.name}</option>`)
+                        .join('');
+            })
+            .catch(e => console.error('Ошибка загрузки направлений:', e));
+    }
+
+    function getUserFullName(user) {
+        const parts = [
+            user.last_name || '',
+            user.first_name || '',
+            user.profile?.patronymic || ''
+        ].map(v => String(v).trim()).filter(Boolean);
+
+        if (parts.length > 0) return parts.join(' ');
+        return user.username || '—';
+    }
+
+    function compareStrings(a, b) {
+        return String(a || '').localeCompare(String(b || ''), 'ru', { sensitivity: 'base' });
+    }
+
+    function sortUsers(users, sortBy) {
+        const list = [...users];
+        switch (sortBy) {
+            case 'full_name_desc':
+                list.sort((a, b) => compareStrings(getUserFullName(b), getUserFullName(a)));
+                break;
+            case 'role_asc':
+                list.sort((a, b) => compareStrings(a.profile?.role_display, b.profile?.role_display));
+                break;
+            case 'email_asc':
+                list.sort((a, b) => compareStrings(a.email, b.email));
+                break;
+            case 'username_asc':
+                list.sort((a, b) => compareStrings(a.username, b.username));
+                break;
+            case 'date_joined_desc':
+                list.sort((a, b) => new Date(b.date_joined || 0) - new Date(a.date_joined || 0));
+                break;
+            case 'date_joined_asc':
+                list.sort((a, b) => new Date(a.date_joined || 0) - new Date(b.date_joined || 0));
+                break;
+            case 'full_name_asc':
+            default:
+                list.sort((a, b) => compareStrings(getUserFullName(a), getUserFullName(b)));
+                break;
+        }
+        return list;
+    }
+
     function filterAndRenderUsers() {
         const term = document.getElementById('user-search').value.toLowerCase().trim();
         const role = document.getElementById('role-filter').value;
-        const filtered = allUsers.filter(u => {
-            const search = (u.username + ' ' + u.email + ' ' + u.first_name + ' ' + u.last_name + ' ' + (u.profile?.patronymic || '') + ' ' + (u.profile?.phone || '')).toLowerCase();
-            return search.includes(term) && (!role || u.profile.role === role);
+        const workoutFilter = document.getElementById('workout-filter')?.value || '';
+        const sortFilter = document.getElementById('sort-filter')?.value || 'full_name_asc';
+
+        let filtered = allUsers.filter(u => {
+            const fullName = getUserFullName(u);
+            const search = (
+                fullName + ' ' +
+                (u.username || '') + ' ' +
+                (u.email || '') + ' ' +
+                (u.first_name || '') + ' ' +
+                (u.last_name || '') + ' ' +
+                (u.profile?.patronymic || '') + ' ' +
+                (u.profile?.phone || '') + ' ' +
+                (u.profile?.role_display || '') + ' ' +
+                ((u.profile?.workout_type_names || []).join(' '))
+            ).toLowerCase();
+
+            const rolePass = !role || u.profile.role === role;
+            const searchPass = search.includes(term);
+            const workoutPass = !workoutFilter || (
+                u.profile?.role === 'employee' &&
+                Array.isArray(u.profile?.workout_type_ids) &&
+                u.profile.workout_type_ids.includes(parseInt(workoutFilter, 10))
+            );
+
+            return searchPass && rolePass && workoutPass;
         });
+        filtered = sortUsers(filtered, sortFilter);
         renderMissingWorkoutsWarning(allUsers);
 
         const tbody = document.getElementById('userTableBody');
@@ -356,7 +458,8 @@
         tbody.innerHTML = filtered.map(user => `
             <tr>
                 <td>
-                    ${user.username}
+                    <div class="fw-semibold">${getUserFullName(user)}</div>
+                    <div class="small text-muted">Логин: ${user.username || '—'}</div>
                     ${user.profile.role === 'employee' && !user.profile.has_workout_types
                         ? '<div><span class="badge text-bg-warning mt-1">Нет направлений</span></div>'
                         : ''}
@@ -367,6 +470,7 @@
                     ${user.profile.role === 'employee' && !user.profile.has_workout_types
                         ? '<div class="small text-warning mt-1">Не попадет в график, пока не заданы направления</div>'
                         : ''}
+                    ${!user.is_active ? '<div class="small text-danger mt-1">Аккаунт отключен</div>' : ''}
                 </td>
                 <td>
                     <button type="button" class="btn btn-sm btn-outline-secondary" onclick="openEditUserModal(${user.id})">
@@ -399,7 +503,7 @@
             return;
         }
 
-        const names = missing.map(u => u.username);
+        const names = missing.map(u => getUserFullName(u));
         const preview = names.slice(0, 5).join(', ');
         const tail = names.length > 5 ? ` и ещё ${names.length - 5}` : '';
         textEl.textContent = `Нужно выбрать направления для: ${preview}${tail}.`;
@@ -409,7 +513,9 @@
     function focusEmployeesWithoutWorkouts() {
         const search = document.getElementById('user-search');
         const roleFilter = document.getElementById('role-filter');
+        const workoutFilter = document.getElementById('workout-filter');
         if (roleFilter) roleFilter.value = 'employee';
+        if (workoutFilter) workoutFilter.value = '';
         if (search) search.value = '';
         filterAndRenderUsers();
         document.getElementById('userTableBody')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -422,15 +528,18 @@ function loadWorkoutTypes(containerId) {
         .then(r => r.json())
         .then(types => {
             const container = document.getElementById(containerId);
+            if (!container) return;
+
+            const prefix = containerId === 'workoutTypesCreate' ? 'create_wt_' : 'edit_wt_';
             container.innerHTML = types.map(wt => `
                 <div class="form-check">
-    <input class="form-check-input" type="checkbox"
-           name="workout_types" value="{{ wt.id }}"
-           id="edit_wt_{{ wt.id }}">
-    <label class="form-check-label" for="edit_wt_{{ wt.id }}">
-        {{ wt.name }}
-    </label>
-</div>
+                    <input class="form-check-input" type="checkbox"
+                           name="workout_types" value="${wt.id}"
+                           id="${prefix}${wt.id}">
+                    <label class="form-check-label" for="${prefix}${wt.id}">
+                        ${wt.name}
+                    </label>
+                </div>
             `).join('');
         });
 }

@@ -2,72 +2,359 @@
 
 {% block title %}Заявки на обмен сменами - {{ block.super }}{% endblock %}
 
+{% block extra_css %}
+<style>
+.swap-page {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.swap-header {
+    margin-bottom: 1rem;
+    padding: 1rem 1.1rem;
+    border-radius: 16px;
+    border: 1px solid rgba(111, 66, 193, 0.34);
+    background:
+        radial-gradient(900px 180px at -5% -40%, rgba(111, 66, 193, 0.18), transparent 62%),
+        linear-gradient(180deg, var(--app-surface-soft) 0%, var(--app-surface) 100%);
+}
+
+.swap-title {
+    margin: 0;
+    font-weight: 700;
+}
+
+.swap-subtitle {
+    margin: 0.35rem 0 0;
+    color: var(--app-text-muted);
+}
+
+.swap-table-wrap {
+    border: 1px solid var(--app-border);
+    border-radius: 14px;
+    overflow: hidden;
+}
+
+.swap-table {
+    margin-bottom: 0;
+}
+
+.swap-table thead th {
+    font-weight: 700;
+}
+
+.swap-slots {
+    display: grid;
+    gap: 0.35rem;
+}
+
+.swap-slot {
+    padding: 0.35rem 0.5rem;
+    border: 1px solid var(--app-border);
+    border-radius: 8px;
+    background: rgba(111, 66, 193, 0.06);
+    font-size: 0.9rem;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.24rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.status-pending { background: rgba(255, 193, 7, 0.22); color: #a36e00; border: 1px solid rgba(255, 193, 7, 0.45); }
+.status-employee { background: rgba(13, 202, 240, 0.2); color: #0b6e84; border: 1px solid rgba(13, 202, 240, 0.4); }
+.status-approved { background: rgba(25, 135, 84, 0.18); color: #2c8f5a; border: 1px solid rgba(25, 135, 84, 0.36); }
+.status-rejected { background: rgba(220, 53, 69, 0.16); color: #b53446; border: 1px solid rgba(220, 53, 69, 0.38); }
+
+.swap-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+}
+
+.swap-empty {
+    border: 1px solid var(--app-border);
+    border-radius: 14px;
+    background: linear-gradient(180deg, var(--app-surface-soft) 0%, var(--app-surface) 100%);
+    padding: 1rem;
+    color: var(--app-text-muted);
+}
+
+@media (max-width: 992px) {
+    .swap-table-wrap {
+        overflow-x: auto;
+    }
+
+    .swap-table {
+        min-width: 900px;
+    }
+}
+
+.swap-filters {
+    border: 1px solid var(--app-border);
+    border-radius: 12px;
+    padding: 0.85rem;
+    margin-bottom: 0.9rem;
+    background: linear-gradient(180deg, var(--app-surface-soft) 0%, var(--app-surface) 100%);
+}
+</style>
+{% endblock %}
+
 {% block content %}
-
-<h2>Заявки на обмен сменами</h2>
-
-{% if swap_requests %}
-    <div class="table-responsive">
-        <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th>От кого</th>
-                    <th>Кому</th>
-                    <th>Смена</th>
-                    <th>Причина</th>
-                    <th>Статус</th>
-                    <th>Действия</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for req in swap_requests %}
-                <tr>
-                    <td>{{ req.from_employee.user_profile.user.get_full_name }}</td>
-                    <td>{{ req.to_employee.user_profile.user.get_full_name }}</td>
-                    <td>
-  {% for s in req.shifts.all %}
-    {{ s.shift_assignment.date }}<br>
-    {{ s.shift_assignment.start_time }}–{{ s.shift_assignment.end_time }}<br>
-  {% empty %}
-    —
-  {% endfor %}
-</td>
-                    <td>{{ req.reason|truncatewords:10 }}</td>
-                    <td>
-                        {% if req.status == 'pending' %}
-                            <span class="badge bg-warning">На рассмотрении</span>
-                        {% elif req.status == 'approved_by_employee' %}
-                            <span class="badge bg-info">Одобрено сотрудником</span>
-                        {% elif req.status == 'approved_by_manager' or req.status == 'completed' %}
-                            <span class="badge bg-success">Утверждено</span>
-                        {% elif req.status == 'rejected' %}
-                            <span class="-badge bg-danger">Отклонено</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if req.status == 'pending' or req.status == 'approved_by_employee' %}
-                            <button class="btn btn-sm btn-success" onclick="approveSwap({{ req.id }})">
-                                Утвердить
-                            </button>
-                            <button class="btn btn-sm btn-danger" onclick="rejectSwap({{ req.id }})">
-                                Отклонить
-                            </button>
-                        {% else %}
-                            —
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+<div class="swap-page">
+    <div class="swap-header">
+        <h2 class="swap-title">Заявки на обмен сменами</h2>
+        <p class="swap-subtitle">Проверяйте запросы сотрудников и утверждайте только корректные подмены.</p>
     </div>
-{% else %}
-    <p>Нет заявок на обмен.</p>
-{% endif %}
+
+    {% if swap_requests %}
+        <div class="swap-filters">
+            <div class="d-flex flex-wrap gap-2">
+                <div style="min-width: 200px;">
+                    <select id="swap-status-filter" class="form-select">
+                        <option value="">Все статусы</option>
+                        <option value="pending">На рассмотрении</option>
+                        <option value="approved_by_employee">Одобрено сотрудником</option>
+                        <option value="approved_by_manager">Утверждено</option>
+                        <option value="completed">Завершено</option>
+                        <option value="rejected">Отклонено</option>
+                    </select>
+                </div>
+                <div style="min-width: 220px;">
+                    <select id="swap-from-filter" class="form-select">
+                        <option value="">От кого: все</option>
+                    </select>
+                </div>
+                <div style="min-width: 220px;">
+                    <select id="swap-to-filter" class="form-select">
+                        <option value="">Кому: все</option>
+                    </select>
+                </div>
+                <div style="min-width: 220px;">
+                    <select id="swap-sort" class="form-select">
+                        <option value="created_desc">Сортировка: новые сверху</option>
+                        <option value="created_asc">Сортировка: старые сверху</option>
+                        <option value="status_asc">Сортировка: по статусу</option>
+                        <option value="from_asc">Сортировка: от кого (А-Я)</option>
+                        <option value="to_asc">Сортировка: кому (А-Я)</option>
+                    </select>
+                </div>
+                <div>
+                    <button type="button" id="swap-reset-filters" class="btn btn-outline-secondary">Сбросить</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="swap-table-wrap management-table">
+            <table class="table table-dark table-striped align-middle swap-table">
+                <thead>
+                    <tr>
+                        <th>От кого</th>
+                        <th>Кому</th>
+                        <th>Смены</th>
+                        <th>Причина</th>
+                        <th>Статус</th>
+                        <th>Создана</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody id="swap-table-body">
+                    {% for req in swap_requests %}
+                    <tr class="swap-row"
+                        data-status="{{ req.status }}"
+                        data-from="{{ req.from_employee.user_profile.user.get_full_name|default:req.from_employee.user_profile.user.username|lower }}"
+                        data-to="{{ req.to_employee.user_profile.user.get_full_name|default:req.to_employee.user_profile.user.username|lower }}"
+                        data-reason="{{ req.reason|default:''|lower }}"
+                        data-created="{{ req.created_at|date:'c' }}">
+                        <td>{{ req.from_employee.user_profile.user.get_full_name }}</td>
+                        <td>{{ req.to_employee.user_profile.user.get_full_name }}</td>
+                        <td>
+                            <div class="swap-slots">
+                                {% for s in req.shifts.all %}
+                                    <div class="swap-slot">
+                                        {{ s.shift_assignment.date|date:"d E Y" }}
+                                        <br>
+                                        {{ s.shift_assignment.start_time|time:"H:i" }}-{{ s.shift_assignment.end_time|time:"H:i" }}
+                                    </div>
+                                {% empty %}
+                                    <span>—</span>
+                                {% endfor %}
+                            </div>
+                        </td>
+                        <td>{{ req.reason|default:"—"|truncatewords:16 }}</td>
+                        <td>
+                            {% if req.status == 'pending' %}
+                                <span class="status-badge status-pending">На рассмотрении</span>
+                            {% elif req.status == 'approved_by_employee' %}
+                                <span class="status-badge status-employee">Одобрено сотрудником</span>
+                            {% elif req.status == 'approved_by_manager' or req.status == 'completed' %}
+                                <span class="status-badge status-approved">Утверждено</span>
+                            {% elif req.status == 'rejected' %}
+                                <span class="status-badge status-rejected">Отклонено</span>
+                            {% else %}
+                                <span class="status-badge">{{ req.get_status_display }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ req.created_at|date:"d.m.Y H:i" }}</td>
+                        <td>
+                            {% if req.status == 'pending' or req.status == 'approved_by_employee' %}
+                                <div class="swap-actions">
+                                    <button class="btn btn-sm btn-success" onclick="approveSwap({{ req.id }})">
+                                        Утвердить
+                                    </button>
+                                    <button class="btn btn-sm btn-danger" onclick="rejectSwap({{ req.id }})">
+                                        Отклонить
+                                    </button>
+                                </div>
+                            {% else %}
+                                <span>—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    <tr id="swap-empty-row" style="display:none;">
+                        <td colspan="7" class="text-center text-muted">Заявки не найдены</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="swap-empty">Пока нет заявок на обмен сменами.</div>
+    {% endif %}
+</div>
 
 <script>
-// Получаем CSRF-токен из метатега
 const csrftoken = document.querySelector('[name=csrf-token]').getAttribute('content');
+
+function compareText(a, b) {
+    return String(a || '').localeCompare(String(b || ''), 'ru', { sensitivity: 'base' });
+}
+
+function statusRank(value) {
+    const order = {
+        pending: 1,
+        approved_by_employee: 2,
+        approved_by_manager: 3,
+        completed: 4,
+        rejected: 5
+    };
+    return order[value] || 99;
+}
+
+function applySwapFilters() {
+    const status = document.getElementById('swap-status-filter')?.value || '';
+    const fromFilter = document.getElementById('swap-from-filter')?.value || '';
+    const toFilter = document.getElementById('swap-to-filter')?.value || '';
+    const sortBy = document.getElementById('swap-sort')?.value || 'created_desc';
+
+    const tbody = document.getElementById('swap-table-body');
+    if (!tbody) return;
+    const rows = Array.from(tbody.querySelectorAll('.swap-row'));
+
+    const filtered = rows.filter((row) => {
+        const rowStatus = row.dataset.status || '';
+        const from = row.dataset.from || '';
+        const to = row.dataset.to || '';
+        const reason = row.dataset.reason || '';
+
+        const statusOk = !status || rowStatus === status;
+        const fromOk = !fromFilter || from === fromFilter;
+        const toOk = !toFilter || to === toFilter;
+
+        return statusOk && fromOk && toOk;
+    });
+
+    filtered.sort((a, b) => {
+        const aFrom = a.dataset.from || '';
+        const bFrom = b.dataset.from || '';
+        const aTo = a.dataset.to || '';
+        const bTo = b.dataset.to || '';
+        const aStatus = a.dataset.status || '';
+        const bStatus = b.dataset.status || '';
+        const aCreated = new Date(a.dataset.created || 0).getTime();
+        const bCreated = new Date(b.dataset.created || 0).getTime();
+
+        if (sortBy === 'created_asc') return aCreated - bCreated;
+        if (sortBy === 'status_asc') return statusRank(aStatus) - statusRank(bStatus);
+        if (sortBy === 'from_asc') return compareText(aFrom, bFrom);
+        if (sortBy === 'to_asc') return compareText(aTo, bTo);
+        return bCreated - aCreated;
+    });
+
+    rows.forEach((row) => (row.style.display = 'none'));
+    filtered.forEach((row) => {
+        row.style.display = '';
+        tbody.appendChild(row);
+    });
+
+    const emptyRow = document.getElementById('swap-empty-row');
+    if (emptyRow) {
+        emptyRow.style.display = filtered.length === 0 ? '' : 'none';
+        if (filtered.length === 0) tbody.appendChild(emptyRow);
+    }
+}
+
+function initSwapFilterOptions() {
+    const rows = Array.from(document.querySelectorAll('#swap-table-body .swap-row'));
+    const fromSelect = document.getElementById('swap-from-filter');
+    const toSelect = document.getElementById('swap-to-filter');
+    if (!fromSelect || !toSelect) return;
+
+    const fromNames = [...new Set(rows.map(r => r.dataset.from || '').filter(Boolean))].sort(compareText);
+    const toNames = [...new Set(rows.map(r => r.dataset.to || '').filter(Boolean))].sort(compareText);
+
+    fromNames.forEach((name) => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        fromSelect.appendChild(opt);
+    });
+
+    toNames.forEach((name) => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        toSelect.appendChild(opt);
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    initSwapFilterOptions();
+
+    const fields = [
+        'swap-status-filter',
+        'swap-from-filter',
+        'swap-to-filter',
+        'swap-sort'
+    ];
+
+    fields.forEach((id) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('change', applySwapFilters);
+    });
+
+    const resetBtn = document.getElementById('swap-reset-filters');
+    if (resetBtn) {
+        resetBtn.addEventListener('click', function () {
+            const statusEl = document.getElementById('swap-status-filter');
+            const fromEl = document.getElementById('swap-from-filter');
+            const toEl = document.getElementById('swap-to-filter');
+            const sortEl = document.getElementById('swap-sort');
+            if (statusEl) statusEl.value = '';
+            if (fromEl) fromEl.value = '';
+            if (toEl) toEl.value = '';
+            if (sortEl) sortEl.value = 'created_desc';
+            applySwapFilters();
+        });
+    }
+
+    applySwapFilters();
+});
 
 function approveSwap(swapId) {
     fetch(`/api/swap-request/${swapId}/approve/`, {
@@ -80,20 +367,18 @@ function approveSwap(swapId) {
     .then(r => r.json())
     .then(data => {
         if (data.success) {
-            showGlobalNotification('Заявка утверждена и смена обновлена.', 'success');
+            showGlobalNotification('Заявка утверждена и смены обновлены.', 'success');
             location.reload();
         } else {
             showGlobalNotification('Ошибка: ' + data.error, 'error');
         }
     })
-    .catch(err => {
-        console.error('Ошибка:', err);
-        showGlobalNotification('Не удалось выполнить запрос.', 'error');
-    });
+    .catch(() => showGlobalNotification('Не удалось выполнить запрос.', 'error'));
 }
 
 function rejectSwap(swapId) {
-    if (!confirm('Вы уверены, что хотите отклонить заявку?')) return;
+    if (!confirm('Отклонить эту заявку на обмен?')) return;
+
     fetch(`/api/swap-request/${swapId}/reject/`, {
         method: 'POST',
         headers: {
@@ -109,7 +394,8 @@ function rejectSwap(swapId) {
         } else {
             showGlobalNotification('Ошибка: ' + data.error, 'error');
         }
-    });
+    })
+    .catch(() => showGlobalNotification('Не удалось выполнить запрос.', 'error'));
 }
 </script>
 {% endblock %}

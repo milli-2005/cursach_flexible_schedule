@@ -102,5 +102,36 @@ from .models import Availability
 class AvailabilityAdmin(admin.ModelAdmin):
     list_display = ['employee', 'date', 'start_time', 'end_time', 'updated_at']
     list_filter = ['employee', 'date']
-    
-    
+
+
+@admin.register(ChatConversation)
+class ChatConversationAdmin(admin.ModelAdmin):
+    list_display = ('id', 'is_group', 'title', 'participant_a', 'participant_b', 'updated_at')
+    search_fields = ('title', 'participant_a__username', 'participant_b__username', 'participants__username')
+    list_filter = ('is_group', 'updated_at')
+    filter_horizontal = ('participants',)
+    ordering = ('-updated_at',)
+
+
+@admin.register(ChatMessage)
+class ChatMessageAdmin(admin.ModelAdmin):
+    list_display = ('id', 'conversation', 'sender', 'is_read', 'created_at')
+    search_fields = ('sender__username', 'text')
+    list_filter = ('is_read', 'created_at')
+    ordering = ('-created_at',)
+
+
+@admin.register(ChatMessageRead)
+class ChatMessageReadAdmin(admin.ModelAdmin):
+    list_display = ('id', 'message', 'user', 'read_at')
+    search_fields = ('user__username', 'message__text')
+    list_filter = ('read_at',)
+    ordering = ('-id',)
+
+
+@admin.register(ChatConversationPin)
+class ChatConversationPinAdmin(admin.ModelAdmin):
+    list_display = ('id', 'user', 'conversation', 'created_at')
+    search_fields = ('user__username', 'conversation__title')
+    list_filter = ('created_at',)
+    ordering = ('-created_at',)

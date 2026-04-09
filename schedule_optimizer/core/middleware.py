@@ -1,7 +1,8 @@
 import json
 
 from django.http import JsonResponse
-from django.shortcuts import render
+from django.shortcuts import render, redirect
+from django.urls import reverse
 
 from .error_utils import humanize_error_text, humanize_exception
 
@@ -66,3 +67,33 @@ class FriendlyErrorMiddleware:
             return JsonResponse(payload, status=response.status_code)
 
         return response
+
+
+class ForcePasswordChangeMiddleware:
+    """
+    Если у пользователя установлен временный пароль (invitation_timestamp),
+    принудительно ведем его на страницу смены пароля до завершения смены.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        user = getattr(request, "user", None)
+        if user and user.is_authenticated and hasattr(user, "profile"):
+            profile = user.profile
+            must_change_password = bool(profile.invitation_timestamp)
+
+            if must_change_password:
+                allowed_paths = {
+                    reverse("change_password"),
+                    reverse("logout"),
+                }
+                current_path = request.path
+                is_allowed = any(current_path.startswith(path) for path in allowed_paths)
+                is_static = current_path.startswith("/static/") or current_path.startswith("/media/")
+
+                if not is_allowed and not is_static:
+                    return redirect("change_password")
+
+        return self.get_response(request)

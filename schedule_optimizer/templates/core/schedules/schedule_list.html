@@ -22,6 +22,72 @@
         {% endif %}
     </div>
 
+    <form method="get" class="management-table p-3 mb-3" id="schedule-filters-form">
+        <div class="d-flex flex-wrap gap-2">
+            <div class="flex-grow-1" style="min-width: 240px;">
+                <input type="text" name="q" class="form-control" placeholder="Поиск по названию графика или создателю" value="{{ filter_q }}">
+            </div>
+            <div style="min-width: 180px;">
+                <select name="status" class="form-select">
+                    <option value="">Все статусы</option>
+                    <option value="draft" {% if filter_status == 'draft' %}selected{% endif %}>Черновик</option>
+                    <option value="pending" {% if filter_status == 'pending' %}selected{% endif %}>На согласовании</option>
+                    <option value="approved" {% if filter_status == 'approved' %}selected{% endif %}>Утвержден</option>
+                </select>
+            </div>
+            <div style="min-width: 180px;">
+                <select name="creator" class="form-select">
+                    <option value="">Все создатели</option>
+                    {% for creator in creators %}
+                        <option value="{{ creator.id }}" {% if filter_creator == creator.id|stringformat:"s" %}selected{% endif %}>
+                            {{ creator.get_full_name|default:creator.username }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div style="min-width: 180px;">
+                <select name="period" class="form-select">
+                    <option value="">Любой период</option>
+                    <option value="current" {% if filter_period == 'current' %}selected{% endif %}>Текущая неделя</option>
+                    <option value="upcoming" {% if filter_period == 'upcoming' %}selected{% endif %}>Будущие</option>
+                    <option value="past" {% if filter_period == 'past' %}selected{% endif %}>Прошедшие</option>
+                </select>
+            </div>
+            <div style="min-width: 220px;">
+                <select name="approval" class="form-select">
+                    <option value="">Любое согласование</option>
+                    <option value="not_reviewed" {% if filter_approval == 'not_reviewed' %}selected{% endif %}>Нет ответов</option>
+                    <option value="partially_reviewed" {% if filter_approval == 'partially_reviewed' %}selected{% endif %}>Частично просмотрено</option>
+                    <option value="fully_reviewed" {% if filter_approval == 'fully_reviewed' %}selected{% endif %}>Полностью просмотрено</option>
+                    <option value="with_rejections" {% if filter_approval == 'with_rejections' %}selected{% endif %}>Есть отказы</option>
+                </select>
+            </div>
+            <div style="min-width: 220px;">
+                <select name="sort" class="form-select">
+                    <option value="-start_date" {% if current_sort == '-start_date' %}selected{% endif %}>Сортировка: дата начала ↓</option>
+                    <option value="start_date" {% if current_sort == 'start_date' %}selected{% endif %}>Сортировка: дата начала ↑</option>
+                    <option value="-end_date" {% if current_sort == '-end_date' %}selected{% endif %}>Сортировка: дата окончания ↓</option>
+                    <option value="end_date" {% if current_sort == 'end_date' %}selected{% endif %}>Сортировка: дата окончания ↑</option>
+                    <option value="name" {% if current_sort == 'name' %}selected{% endif %}>Сортировка: название А-Я</option>
+                    <option value="-name" {% if current_sort == '-name' %}selected{% endif %}>Сортировка: название Я-А</option>
+                    <option value="-created_at" {% if current_sort == '-created_at' %}selected{% endif %}>Сортировка: новые сверху</option>
+                    <option value="created_at" {% if current_sort == 'created_at' %}selected{% endif %}>Сортировка: старые сверху</option>
+                </select>
+            </div>
+            <div style="min-width: 160px;">
+                <select name="page_size" class="form-select">
+                    <option value="6" {% if page_size == 6 %}selected{% endif %}>6 на странице</option>
+                    <option value="10" {% if page_size == 10 %}selected{% endif %}>10 на странице</option>
+                    <option value="20" {% if page_size == 20 %}selected{% endif %}>20 на странице</option>
+                    <option value="50" {% if page_size == 50 %}selected{% endif %}>50 на странице</option>
+                </select>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{% url 'schedule_view' %}" class="btn btn-outline-secondary">Сбросить</a>
+            </div>
+        </div>
+    </form>
+
     <div class="management-table">
         <table class="table table-dark table-striped">
             <thead>
@@ -45,10 +111,10 @@
                     <th>Действия</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="schedule-table-body">
                 {% for item in schedules_with_stats %}
                     {% with s=item.schedule %}
-                    <tr>
+                    <tr class="schedule-row" data-search="{{ s.name|lower }} {{ s.created_by.username|default:''|lower }} {{ s.get_status_display|lower }}">
                         <td><a href="{% url 'schedule_detail' s.id %}">{{ s.name }}</a></td>
                         <td>{{ s.start_date|date:"d E Y" }}</td>
                         <td>{{ s.end_date|date:"d E Y" }}</td>
@@ -83,7 +149,7 @@
                     </tr>
                     {% endwith %}
                 {% empty %}
-                    <tr>
+                    <tr id="schedule-empty-row">
                         <td colspan="7" class="text-center">Графики не найдены.</td>
                     </tr>
                 {% endfor %}
@@ -104,7 +170,7 @@
             </span>
         {% endif %}
 
-        <span class="text-white">Стр. {{ page_obj.number }} из {{ page_obj.paginator.num_pages }}</span>
+        <span>Стр. {{ page_obj.number }} из {{ page_obj.paginator.num_pages }}</span>
 
         {% if page_obj.has_next %}
             <a href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}"
@@ -119,4 +185,45 @@
     </div>
     {% endif %}
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('schedule-filters-form');
+    if (!form) return;
+
+    const searchInput = form.querySelector('input[name="q"]');
+    const selectFields = form.querySelectorAll('select');
+    const rows = Array.from(document.querySelectorAll('#schedule-table-body .schedule-row'));
+    const emptyRow = document.getElementById('schedule-empty-row');
+
+    function runLocalSearch() {
+        const term = (searchInput?.value || '').toLowerCase().trim();
+        let visibleCount = 0;
+
+        rows.forEach((row) => {
+            const haystack = row.dataset.search || '';
+            const isVisible = !term || haystack.includes(term);
+            row.style.display = isVisible ? '' : 'none';
+            if (isVisible) visibleCount += 1;
+        });
+
+        if (emptyRow) {
+            emptyRow.style.display = visibleCount === 0 ? '' : 'none';
+        }
+    }
+
+    if (searchInput) {
+        searchInput.addEventListener('input', runLocalSearch);
+        runLocalSearch();
+    }
+
+    selectFields.forEach((el) => {
+        el.addEventListener('change', function () {
+            // Только текстовый поиск работает без перезагрузки (как на странице пользователей).
+            // Остальные фильтры и сортировки остаются серверными.
+            form.submit();
+        });
+    });
+});
+</script>
 {% endblock %}
