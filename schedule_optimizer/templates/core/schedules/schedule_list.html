@@ -2,6 +2,114 @@
 
 {% block title %}Управление графиками - {{ block.super }}{% endblock %}
 
+{% block extra_css %}
+<style>
+    .schedule-filters-panel {
+        position: relative;
+        overflow: hidden;
+        border: 1px solid var(--app-border);
+        border-radius: 14px;
+        background: linear-gradient(145deg, var(--app-surface-soft) 0%, var(--app-surface) 100%);
+        box-shadow: var(--app-shadow);
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .schedule-filters-panel::before {
+        content: "";
+        position: absolute;
+        inset: 0 auto auto 0;
+        width: 100%;
+        height: 3px;
+        background: linear-gradient(90deg, var(--app-accent), transparent);
+        opacity: 0.85;
+    }
+
+    .schedule-filters-grid {
+        display: grid;
+        grid-template-columns: 2fr repeat(4, minmax(170px, 1fr));
+        gap: 0.75rem;
+        align-items: end;
+    }
+
+    .schedule-filter-field {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        min-width: 0;
+    }
+
+    .schedule-filter-field label {
+        font-size: 0.76rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        color: var(--app-text-muted);
+        text-transform: uppercase;
+        margin: 0;
+    }
+
+    .schedule-filter-field .form-control,
+    .schedule-filter-field .form-select {
+        min-height: 42px;
+        border-radius: 10px;
+    }
+
+    .schedule-filter-row-secondary {
+        margin-top: 0.75rem;
+        display: grid;
+        grid-template-columns: minmax(220px, 1.3fr) minmax(170px, 1fr) auto;
+        gap: 0.75rem;
+        align-items: end;
+    }
+
+    .schedule-filter-actions {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        height: 100%;
+    }
+
+    .schedule-filter-actions .btn {
+        min-width: 130px;
+        min-height: 42px;
+        border-radius: 10px;
+        font-weight: 600;
+    }
+
+    @media (max-width: 1200px) {
+        .schedule-filters-grid {
+            grid-template-columns: repeat(3, minmax(170px, 1fr));
+        }
+
+        .schedule-filter-row-secondary {
+            grid-template-columns: repeat(3, minmax(170px, 1fr));
+        }
+    }
+
+    @media (max-width: 900px) {
+        .schedule-filters-grid,
+        .schedule-filter-row-secondary {
+            grid-template-columns: repeat(2, minmax(150px, 1fr));
+        }
+
+        .schedule-filter-actions {
+            justify-content: stretch;
+        }
+
+        .schedule-filter-actions .btn {
+            width: 100%;
+        }
+    }
+
+    @media (max-width: 620px) {
+        .schedule-filters-grid,
+        .schedule-filter-row-secondary {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="management-container">
 
@@ -22,21 +130,24 @@
         {% endif %}
     </div>
 
-    <form method="get" class="management-table p-3 mb-3" id="schedule-filters-form">
-        <div class="d-flex flex-wrap gap-2">
-            <div class="flex-grow-1" style="min-width: 240px;">
-                <input type="text" name="q" class="form-control" placeholder="Поиск по названию графика или создателю" value="{{ filter_q }}">
+    <form method="get" class="schedule-filters-panel" id="schedule-filters-form">
+        <div class="schedule-filters-grid">
+            <div class="schedule-filter-field">
+                <label for="filter-schedule-q">Поиск</label>
+                <input id="filter-schedule-q" type="text" name="q" class="form-control" placeholder="Поиск по названию графика или создателю" value="{{ filter_q }}">
             </div>
-            <div style="min-width: 180px;">
-                <select name="status" class="form-select">
+            <div class="schedule-filter-field">
+                <label for="filter-schedule-status">Статус</label>
+                <select id="filter-schedule-status" name="status" class="form-select">
                     <option value="">Все статусы</option>
                     <option value="draft" {% if filter_status == 'draft' %}selected{% endif %}>Черновик</option>
                     <option value="pending" {% if filter_status == 'pending' %}selected{% endif %}>На согласовании</option>
                     <option value="approved" {% if filter_status == 'approved' %}selected{% endif %}>Утвержден</option>
                 </select>
             </div>
-            <div style="min-width: 180px;">
-                <select name="creator" class="form-select">
+            <div class="schedule-filter-field">
+                <label for="filter-schedule-creator">Создатель</label>
+                <select id="filter-schedule-creator" name="creator" class="form-select">
                     <option value="">Все создатели</option>
                     {% for creator in creators %}
                         <option value="{{ creator.id }}" {% if filter_creator == creator.id|stringformat:"s" %}selected{% endif %}>
@@ -45,16 +156,18 @@
                     {% endfor %}
                 </select>
             </div>
-            <div style="min-width: 180px;">
-                <select name="period" class="form-select">
+            <div class="schedule-filter-field">
+                <label for="filter-schedule-period">Период</label>
+                <select id="filter-schedule-period" name="period" class="form-select">
                     <option value="">Любой период</option>
                     <option value="current" {% if filter_period == 'current' %}selected{% endif %}>Текущая неделя</option>
                     <option value="upcoming" {% if filter_period == 'upcoming' %}selected{% endif %}>Будущие</option>
                     <option value="past" {% if filter_period == 'past' %}selected{% endif %}>Прошедшие</option>
                 </select>
             </div>
-            <div style="min-width: 220px;">
-                <select name="approval" class="form-select">
+            <div class="schedule-filter-field">
+                <label for="filter-schedule-approval">Согласование</label>
+                <select id="filter-schedule-approval" name="approval" class="form-select">
                     <option value="">Любое согласование</option>
                     <option value="not_reviewed" {% if filter_approval == 'not_reviewed' %}selected{% endif %}>Нет ответов</option>
                     <option value="partially_reviewed" {% if filter_approval == 'partially_reviewed' %}selected{% endif %}>Частично просмотрено</option>
@@ -62,8 +175,12 @@
                     <option value="with_rejections" {% if filter_approval == 'with_rejections' %}selected{% endif %}>Есть отказы</option>
                 </select>
             </div>
-            <div style="min-width: 220px;">
-                <select name="sort" class="form-select">
+        </div>
+
+        <div class="schedule-filter-row-secondary">
+            <div class="schedule-filter-field">
+                <label for="filter-schedule-sort">Сортировка</label>
+                <select id="filter-schedule-sort" name="sort" class="form-select">
                     <option value="-start_date" {% if current_sort == '-start_date' %}selected{% endif %}>Сортировка: дата начала ↓</option>
                     <option value="start_date" {% if current_sort == 'start_date' %}selected{% endif %}>Сортировка: дата начала ↑</option>
                     <option value="-end_date" {% if current_sort == '-end_date' %}selected{% endif %}>Сортировка: дата окончания ↓</option>
@@ -74,15 +191,16 @@
                     <option value="created_at" {% if current_sort == 'created_at' %}selected{% endif %}>Сортировка: старые сверху</option>
                 </select>
             </div>
-            <div style="min-width: 160px;">
-                <select name="page_size" class="form-select">
+            <div class="schedule-filter-field">
+                <label for="filter-schedule-page-size">На странице</label>
+                <select id="filter-schedule-page-size" name="page_size" class="form-select">
                     <option value="6" {% if page_size == 6 %}selected{% endif %}>6 на странице</option>
                     <option value="10" {% if page_size == 10 %}selected{% endif %}>10 на странице</option>
                     <option value="20" {% if page_size == 20 %}selected{% endif %}>20 на странице</option>
                     <option value="50" {% if page_size == 50 %}selected{% endif %}>50 на странице</option>
                 </select>
             </div>
-            <div class="d-flex gap-2">
+            <div class="schedule-filter-actions">
                 <a href="{% url 'schedule_view' %}" class="btn btn-outline-secondary">Сбросить</a>
             </div>
         </div>

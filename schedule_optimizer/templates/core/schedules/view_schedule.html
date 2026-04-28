@@ -9,7 +9,8 @@
     display: inline-block;
     padding: 0.12rem 0.45rem;
     border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.25);
+    border: 1px solid var(--app-border);
+    background: var(--app-accent-soft);
     color: #fff;
     font-weight: 700;
     margin-bottom: 0.2rem;
@@ -134,7 +135,18 @@
 <div class="management-container">
     <div class="schedule-top-panel">
         <div class="schedule-headline">
-            <h2 class="schedule-title">График "{{ schedule.name }}"</h2>
+            {% if user.profile.role == 'manager' or user.profile.role == 'studio_admin' %}
+                <label class="w-100">
+                    <span class="d-block mb-1 text-muted small">Название графика</span>
+                    <input id="schedule-name-input"
+                           type="text"
+                           class="form-control"
+                           maxlength="200"
+                           value="{{ schedule.name }}">
+                </label>
+            {% else %}
+                <h2 class="schedule-title">График "{{ schedule.name }}"</h2>
+            {% endif %}
             <span class="meta-chip"><strong>Статус</strong> {{ schedule.get_status_display }}</span>
         </div>
         {% if user.profile.role == 'manager' or user.profile.role == 'studio_admin' %}
@@ -196,6 +208,11 @@
                             <div class="cell-controls">
                                 <select class="form-select form-select-sm mb-1 employee-select">
                                     <option value="">Выберите...</option>
+                                    {% if cell.assignment and cell.assignment.employee and cell.assignment.employee.id not in editable_employee_ids %}
+                                        <option value="{{ cell.assignment.employee.id }}" selected>
+                                            {{ cell.assignment.employee.user.username }}
+                                        </option>
+                                    {% endif %}
                                     {% for emp in employees %}
                                         <option value="{{ emp.id }}" {% if cell.assignment and cell.assignment.employee and cell.assignment.employee.id == emp.id %}selected{% endif %}>{{ emp.user.username }}</option>
                                     {% endfor %}
@@ -603,8 +620,8 @@ function colorizeTrainerPill(pill) {
     const cell = pill.closest('td');
 
     if (!palette) {
-        pill.style.backgroundColor = 'transparent';
-        pill.style.borderColor = 'rgba(255, 255, 255, 0.25)';
+        pill.style.backgroundColor = 'var(--app-accent-soft)';
+        pill.style.borderColor = 'var(--app-border)';
         if (cell) cell.classList.remove('assigned-cell');
         return;
     }
@@ -697,6 +714,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const bulkSubstituteBtn = document.getElementById('bulk-substitute-btn');
         const bulkClearBtn = document.getElementById('bulk-clear-btn');
         const bulkEmployeeSelect = document.getElementById('bulk-employee-select');
+        const scheduleNameInput = document.getElementById('schedule-name-input');
         if (autoFillButton) {
             autoFillButton.addEventListener('click', function () {
                 autoFillEmptyCells();
@@ -711,6 +729,13 @@ document.addEventListener('DOMContentLoaded', function() {
         if (bulkEmployeeSelect) bulkEmployeeSelect.addEventListener('change', syncBulkWorkoutOptions);
         if (saveButton) {
             saveButton.addEventListener('click', function () {
+                const scheduleName = scheduleNameInput ? scheduleNameInput.value.trim() : '';
+                if (scheduleNameInput && !scheduleName) {
+                    showGlobalNotification('Укажите название графика.', 'error');
+                    scheduleNameInput.focus();
+                    return;
+                }
+
                 const assignments = [];
                 document.querySelectorAll('#view-schedule-table tbody tr').forEach(row => {
                     const timeSlot = row.querySelector('td:first-child').textContent.trim();
@@ -732,7 +757,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         'Content-Type': 'application/json',
                         'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
                     },
-                    body: JSON.stringify({ assignments })
+                    body: JSON.stringify({
+                        name: scheduleName || undefined,
+                        assignments
+                    })
                 })
                 .then(r => r.json())
                 .then(data => {

@@ -1,0 +1,52 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: schedule_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: schedule_optimizer
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d schedule_optimizer"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: schedule_backend
+    restart: unless-stopped
+    env_file:
+      - .env.docker
+    depends_on:
+      db:
+        condition: service_healthy
+    command: sh -c "python manage.py migrate && python manage.py collectstatic --noinput && python manage.py runserver 0.0.0.0:8000"
+    expose:
+      - "8000"
+    volumes:
+      - media_data:/app/media
+      - static_data:/app/staticfiles
+
+  frontend:
+    image: nginx:1.27-alpine
+    container_name: schedule_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "8000:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - media_data:/app/media:ro
+      - static_data:/app/staticfiles:ro
+
+volumes:
+  pg_data:
+  media_data:
+  static_data:

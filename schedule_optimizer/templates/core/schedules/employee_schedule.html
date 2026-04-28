@@ -3,284 +3,354 @@
 {% block title %}Мой график — {{ block.super }}{% endblock %}
 
 {% block content %}
-<!-- Заголовок и навигация -->
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-4 gap-3">
-    <div>
-        <h2 class="text-white">Мой график</h2>
-
-    </div>
-
-    <div class="d-flex gap-2">
-        <!-- Навигация по месяцам -->
-        {% if current_month == 1 %}
-            <a href="?year={{ current_year|add:"-1" }}&month=12" class="btn btn-outline-light">&laquo; Пред.</a>
-        {% else %}
-            <a href="?year={{ current_year }}&month={{ current_month|add:"-1" }}" class="btn btn-outline-light">&laquo; Пред.</a>
-        {% endif %}
-
-        <button class="btn btn-purple text-white" disabled>{{ month_name }}</button>
-
-        {% if current_month == 12 %}
-            <a href="?year={{ current_year|add:"1" }}&month=1" class="btn btn-outline-light">След. &raquo;</a>
-        {% else %}
-            <a href="?year={{ current_year }}&month={{ current_month|add:"1" }}" class="btn btn-outline-light">След. &raquo;</a>
-        {% endif %}
-
-        <!-- Кнопка "Весь месяц" -->
-        <button class="btn btn-outline-light" onclick="toggleFullSchedule()">
-            <i class="bi bi-calendar-check"></i> Весь месяц
-        </button>
-    </div>
-</div>
-
-
-<!-- Простое уведомление о графике на утверждение -->
-{% if pending_approvals %}
-    <div class="alert alert-warning d-flex justify-content-between align-items-center mb-4">
+<div class="my-schedule-page">
+    <section class="my-schedule-top">
         <div>
-            <i class="bi bi-exclamation-triangle-fill me-2"></i>
-            <strong>Требуется подтверждение графика</strong><br>
-            {% for approval in pending_approvals %}
-                «{{ approval.schedule.name }}»
-            {% endfor %}
+            <h1 class="my-schedule-title">Мой график</h1>
+            <p class="my-schedule-subtitle">Нажмите на день с занятиями, чтобы посмотреть смены и выбрать их для обмена.</p>
         </div>
-        <a href="{% url 'schedule_detail' pending_approvals.0.schedule.id %}"
-           class="btn btn-sm btn-purple">
-            Подтвердить
-        </a>
-    </div>
-{% endif %}
+        <div class="my-schedule-nav">
+            {% if current_month == 1 %}
+                <a href="?year={{ current_year|add:"-1" }}&month=12" class="btn btn-outline-light btn-sm">&laquo; Пред.</a>
+            {% else %}
+                <a href="?year={{ current_year }}&month={{ current_month|add:"-1" }}" class="btn btn-outline-light btn-sm">&laquo; Пред.</a>
+            {% endif %}
+            <button class="btn btn-light btn-sm" disabled>{{ month_name }}</button>
+            {% if current_month == 12 %}
+                <a href="?year={{ current_year|add:"1" }}&month=1" class="btn btn-outline-light btn-sm">След. &raquo;</a>
+            {% else %}
+                <a href="?year={{ current_year }}&month={{ current_month|add:"1" }}" class="btn btn-outline-light btn-sm">След. &raquo;</a>
+            {% endif %}
+            <button class="btn btn-outline-light btn-sm" type="button" onclick="toggleFullSchedule()">
+                <i class="bi bi-list-check"></i> Все смены
+            </button>
+        </div>
+    </section>
 
+    {% if pending_approvals %}
+        <section class="my-schedule-approval">
+            <div>
+                <strong><i class="bi bi-exclamation-triangle-fill me-1"></i> Требуется подтверждение графика</strong>
+                <div class="small mt-1">
+                    {% for approval in pending_approvals %}
+                        «{{ approval.schedule.name }}»{% if not forloop.last %}, {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+            <a href="{% url 'schedule_detail' pending_approvals.0.schedule.id %}" class="btn btn-warning btn-sm">Открыть</a>
+        </section>
+    {% endif %}
 
-    <!-- КАЛЕНДАРЬ -->
-    <div class="card bg-dark border-0 rounded-4 shadow">
-        <div class="card-body p-3">
-            <div class="table-responsive">
-                <table class="table table-dark text-center mb-0">
-                    <thead>
-                        <tr class="text-muted">
-                            <th>Пн</th><th>Вт</th><th>Ср</th><th>Чт</th><th>Пт</th><th>Сб</th><th>Вс</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for week in weeks %}
+    <section class="my-schedule-card">
+        <div class="table-responsive">
+            <table class="table my-schedule-calendar mb-0">
+                <thead>
+                    <tr>
+                        <th>Пн</th>
+                        <th>Вт</th>
+                        <th>Ср</th>
+                        <th>Чт</th>
+                        <th>Пт</th>
+                        <th>Сб</th>
+                        <th>Вс</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for week in weeks %}
                         <tr>
                             {% for day in week %}
                                 {% if day %}
-                                    <td class="calendar-day {% if day.has_shift %}has-shift{% endif %}"
-                                        data-date="{{ day.date|date:'Y-m-d' }}"
-                                        style="width: 14.28%; padding: 0.6rem;">
-                                        <div class="position-relative">
-                                            <div class="
-                                                {% if day.is_today %}text-primary fw-bold{% else %}text-light{% endif %}
-                                                {% if day.is_past %}opacity-50{% endif %}
-                                            ">
-                                                {{ day.date.day }}
-                                            </div>
-                                            {% if day.has_shift %}
-                                                <div class="mt-1">
-                                                    <span class="badge bg-success rounded-pill px-2 py-1 fs-6">✓</span>
-                                                </div>
-                                            {% endif %}
-                                        </div>
+                                    <td class="calendar-day {% if day.has_shift %}has-shift{% endif %} {% if day.is_today %}is-today{% endif %}"
+                                        data-date="{{ day.date|date:'Y-m-d' }}">
+                                        <div class="calendar-day-num {% if day.is_past %}is-past{% endif %}">{{ day.date.day }}</div>
+                                        {% if day.has_shift %}
+                                            <div class="calendar-shift-dot" title="Есть занятия"></div>
+                                        {% else %}
+                                            <div class="calendar-no-shift">—</div>
+                                        {% endif %}
                                     </td>
                                 {% else %}
-                                    <td class="bg-transparent"></td>
+                                    <td class="calendar-day-empty"></td>
                                 {% endif %}
                             {% endfor %}
                         </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
-    </div>
+    </section>
 
-    <!-- ПАНЕЛЬ СМЕН -->
-    <div id="shiftsPanel" class="card bg-dark border-0 rounded-4 shadow mt-4 d-none">
-        <div class="card-header bg-gradient-purple text-white d-flex justify-content-between align-items-center">
+    <section id="shiftsPanel" class="my-schedule-card mt-4 d-none">
+        <div class="my-schedule-card-head">
             <h5 class="mb-0" id="shiftsDateTitle">Смены</h5>
-            <button type="button" class="btn-close btn-close-white" onclick="hideShifts()"></button>
+            <button type="button" class="btn-close" aria-label="Закрыть" onclick="hideShifts()"></button>
         </div>
-        <div class="card-body" id="shiftsList">
-            <!-- Сюда подгружается список -->
-        </div>
-    </div>
+        <div class="my-schedule-card-body" id="shiftsList"></div>
+    </section>
 
-    <div id="swapActions" class="card bg-dark border-0 rounded-4 shadow mt-3 d-none">
-        <div class="card-body d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
-            <div class="text-light">
-                Выбрано смен для обмена: <strong id="swapSelectedCount">0</strong>
-            </div>
-            <div class="d-flex gap-2">
-                <button class="btn btn-sm btn-outline-secondary" type="button" onclick="clearSwapSelection()">
-                    Очистить выбор
-                </button>
-                <button class="btn btn-sm btn-outline-info" type="button" onclick="openSwapForm()">
-                    Обменять выбранные
-                </button>
-            </div>
+    <section id="swapActions" class="my-schedule-bulk mt-3 d-none">
+        <div>Выбрано смен для обмена: <strong id="swapSelectedCount">0</strong></div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary btn-sm" type="button" onclick="clearSwapSelection()">Очистить</button>
+            <button class="btn btn-primary btn-sm" type="button" onclick="openSwapForm()">Обменять выбранные</button>
         </div>
-    </div>
+    </section>
 
-    <!-- КНОПКА: ВСЁ РАСПИСАНИЕ -->
     <div class="text-center mt-4">
-        <a href="{% url 'schedule_view' %}" class="btn btn-outline-light btn-sm mt-2">
-            <i class="bi bi-list"></i> Показать все графики
+        <a href="{% url 'schedule_view' %}" class="btn btn-outline-light btn-sm">
+            <i class="bi bi-calendar-week"></i> Показать все графики
         </a>
     </div>
 
-
-
-    <!-- ПОЛНОЕ РАСПИСАНИЕ -->
-    <div id="fullSchedule" class="d-none mt-4">
-        <div class="card bg-dark border-0 rounded-4 shadow">
-            <div class="card-header bg-gradient-purple text-white">
-                <h5 class="mb-0">Все смены в {{ month_name }}</h5>
-            </div>
-            <div class="list-group list-group-flush">
-                {% for d in shifts_by_date.keys %}
-                    {% if shifts_by_date|get_item:d %}
-                        <div class="list-group-item bg-dark border-bottom border-secondary">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <strong class="text-light">{{ d|date:"l, d F Y" }}</strong>
-                            </div>
-                            <div class="mt-2">
-                                {% for shift in shifts_by_date|get_item:d %}
-                                    <div class="d-flex justify-content-between align-items-center bg-gray-900 rounded p-2 mb-2">
-                                        <div>
-                                            <span class="badge bg-primary">{{ shift.workout_type.name|default:"Работа" }}</span>
-                                           <span class="text-light-gray">
-    {{ shift.start_time|time:"H:i" }}
-    {% if shift.end_time %}
-        – {{ shift.end_time|time:"H:i" }}
-    {% else %}
-        – ??
-{% endif %}
-</span>
-                                        </div>
-                                        {% if shift.date >= today %}
-                                            <div class="form-check mb-0">
-                                                <input class="form-check-input swap-checkbox"
-                                                       type="checkbox"
-                                                       value="{{ shift.id }}"
-                                                       id="full-swap-{{ shift.id }}"
-                                                       data-shift-id="{{ shift.id }}">
-                                                <label class="form-check-label" for="full-swap-{{ shift.id }}">Выбрать</label>
-                                            </div>
-                                        {% else %}
-                                            <span class="text-light-gray small">Прошедшая</span>
-                                        {% endif %}
-                                    </div>
-                                {% endfor %}
-                            </div>
-                        </div>
-                    {% endif %}
-                {% empty %}
-                    <div class="list-group-item text-center text-muted">
-                        Нет запланированных смен
-                    </div>
-                {% endfor %}
-            </div>
+    <section id="fullSchedule" class="my-schedule-card mt-4 d-none">
+        <div class="my-schedule-card-head">
+            <h5 class="mb-0">Все смены за {{ month_name }}</h5>
         </div>
-    </div>
+        <div class="my-schedule-card-body">
+            {% for d in shifts_by_date.keys %}
+                {% if shifts_by_date|get_item:d %}
+                    <div class="my-day-block">
+                        <div class="my-day-title">{{ d|date:"l, d F Y" }}</div>
+                        <div class="my-day-list">
+                            {% for shift in shifts_by_date|get_item:d %}
+                                <div class="my-shift-item">
+                                    <div>
+                                        <span class="workout-chip">{{ shift.workout_type.name|default:"Работа" }}</span>
+                                        <span class="my-shift-time">
+                                            {{ shift.start_time|time:"H:i" }}
+                                            {% if shift.end_time %}
+                                                — {{ shift.end_time|time:"H:i" }}
+                                            {% else %}
+                                                — —
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                    {% if shift.date >= today %}
+                                        <label class="form-check mb-0">
+                                            <input class="form-check-input swap-checkbox"
+                                                   type="checkbox"
+                                                   value="{{ shift.id }}"
+                                                   id="full-swap-{{ shift.id }}"
+                                                   data-shift-id="{{ shift.id }}">
+                                            <span class="form-check-label">Выбрать</span>
+                                        </label>
+                                    {% else %}
+                                        <span class="small text-muted">Прошедшая</span>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+            {% empty %}
+                <div class="text-center text-muted py-3">Нет запланированных смен</div>
+            {% endfor %}
+        </div>
+    </section>
 </div>
+{% endblock %}
 
-
+{% block extra_css %}
 <style>
+.my-schedule-page { color: var(--app-text); }
+.my-schedule-top {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+.my-schedule-title {
+    margin: 0;
+    color: var(--app-heading);
+    font-size: 2rem;
+    font-weight: 800;
+}
+.my-schedule-subtitle {
+    margin: .35rem 0 0;
+    color: var(--app-text-muted);
+}
+.my-schedule-nav { display: flex; flex-wrap: wrap; gap: .5rem; }
 
-.btn-purple {
-    background: #8A6BBE;
+.my-schedule-card {
+    background: linear-gradient(180deg, var(--app-surface-soft) 0%, var(--app-surface) 100%);
+    border: 1px solid var(--app-border);
+    border-radius: 18px;
+    box-shadow: var(--app-shadow);
+    overflow: hidden;
 }
-.calendar-day.has-shift {
-    cursor: pointer;
-    transition: background-color 0.2s;
+.my-schedule-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .8rem;
+    padding: .9rem 1rem;
+    border-bottom: 1px solid var(--app-border);
+    background: var(--app-surface-strong);
+    color: var(--app-heading);
 }
+.my-schedule-card-body { padding: 1rem; }
+
+.my-schedule-calendar {
+    --cell-border: var(--app-border);
+    margin: 0;
+}
+.my-schedule-calendar thead th {
+    background: var(--app-surface-strong);
+    color: var(--app-heading);
+    border: 1px solid var(--cell-border);
+    font-weight: 700;
+    text-align: center;
+    padding: .75rem .4rem;
+}
+.my-schedule-calendar tbody td {
+    border: 1px solid var(--cell-border);
+    min-height: 86px;
+    height: 86px;
+    vertical-align: top;
+    padding: .55rem .5rem;
+    background: var(--app-surface);
+}
+.calendar-day-empty { background: var(--app-surface-soft) !important; }
+.calendar-day { position: relative; transition: background-color .2s ease, transform .2s ease; }
+.calendar-day.has-shift { cursor: pointer; }
 .calendar-day.has-shift:hover {
-    background-color: rgba(106, 17, 203, 0.1);
+    background: var(--app-hover) !important;
+    transform: translateY(-1px);
 }
-.card {
-    border-radius: 16px !important;
+.calendar-day.is-today {
+    outline: 2px solid var(--app-accent);
+    outline-offset: -2px;
 }
-.table-dark th, .table-dark td {
-    border-color: rgba(255,255,255,0.1) !important;
+.calendar-day-num { color: var(--app-heading); font-weight: 700; }
+.calendar-day-num.is-past { opacity: .65; }
+.calendar-shift-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--app-accent);
+    margin-top: .45rem;
+    box-shadow: 0 0 0 6px var(--app-accent-soft);
 }
-    .text-light-gray {
-    color: #a1a1aa !important;
+.calendar-no-shift {
+    margin-top: .35rem;
+    color: var(--app-text-muted);
 }
-.text-gray-500 {
-    color: #71717a !important;
+
+.my-schedule-approval {
+    margin-bottom: 1rem;
+    border-radius: 14px;
+    border: 1px solid rgba(246, 198, 69, .45);
+    background: rgba(246, 198, 69, .14);
+    color: var(--app-text);
+    padding: .75rem .95rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: .9rem;
+}
+
+.my-shift-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .8rem;
+    padding: .62rem .68rem;
+    border: 1px solid var(--app-border);
+    border-radius: 10px;
+    background: var(--app-surface-soft);
+    margin-bottom: .55rem;
+}
+.my-shift-item:last-child { margin-bottom: 0; }
+.my-shift-time { color: var(--app-text); margin-left: .45rem; }
+
+.workout-chip {
+    display: inline-block;
+    border-radius: 999px;
+    padding: .2rem .58rem;
+    background: var(--app-accent-soft);
+    color: var(--app-heading);
+    border: 1px solid var(--app-border);
+    font-size: .82rem;
+    font-weight: 700;
+}
+
+.my-schedule-bulk {
+    border: 1px solid var(--app-border);
+    background: var(--app-surface-soft);
+    border-radius: 14px;
+    box-shadow: var(--app-shadow);
+    padding: .75rem .9rem;
+    display: flex;
+    gap: .8rem;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+}
+
+.my-day-block { padding-bottom: .9rem; margin-bottom: .9rem; border-bottom: 1px solid var(--app-border); }
+.my-day-block:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: 0; }
+.my-day-title { font-weight: 700; color: var(--app-heading); margin-bottom: .55rem; text-transform: capitalize; }
+.my-day-list { display: grid; gap: .5rem; }
+
+@media (max-width: 768px) {
+    .my-schedule-title { font-size: 1.6rem; }
+    .my-schedule-calendar tbody td { height: 76px; min-height: 76px; padding: .4rem; }
 }
 </style>
+{% endblock %}
 
-<!-- ДАННЫЕ ДЛЯ JS -->
+{% block extra_js %}
 <script>
 const shiftsData = {{ shifts_json|safe }};
 const selectedSwapShiftIds = new Set();
-</script>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Клик по дню
-    document.querySelectorAll('.calendar-day.has-shift').forEach(day => {
-        day.addEventListener('click', function() {
-            const dateStr = this.getAttribute('data-date');
-            showShifts(dateStr);
-        });
-    });
-
-    // Закрытие панели
-    document.querySelector('#shiftsPanel .btn-close').addEventListener('click', hideShifts);
-
-    // Чекбоксы в блоке "Весь месяц"
-    document.querySelectorAll('#fullSchedule .swap-checkbox').forEach(cb => {
-        cb.addEventListener('change', function() {
-            onSwapCheckboxChange(this);
-        });
-    });
-
-    updateSwapActions();
-});
+function escapeHtml(v) {
+    return String(v || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
 
 function showShifts(dateStr) {
     const shifts = shiftsData[dateStr] || [];
-    let html = '';
-
-    if (shifts.length === 0) {
-        html = '<p class="text-muted">Нет смен</p>';
-    } else {
-        shifts.forEach(shift => {
-            const btn = shift.is_past
-                ? '<span class="text-light-gray small">Прошедшая</span>'
-                : `
-                    <div class="form-check mb-1">
-                        <input class="form-check-input swap-checkbox" type="checkbox" 
-                               value="${shift.id}" id="swap-${shift.id}" data-shift-id="${shift.id}"
-                               ${selectedSwapShiftIds.has(String(shift.id)) ? 'checked' : ''}>
-                        <label class="form-check-label" for="swap-${shift.id}">Выбрать</label>
-                    </div>
-                `;
-            html += `
-                <div class="d-flex justify-content-between align-items-center bg-gray-900 rounded p-2 mb-2">
-                    <div>
-                        <span class="badge bg-primary">${shift.workout}</span>
-                        ${shift.start} – ${shift.end}
-                    </div>
-                    <div>${btn}</div>
-                </div>
-            `;
-        });
-    }
+    const list = document.getElementById('shiftsList');
+    const title = document.getElementById('shiftsDateTitle');
 
     const dateObj = new Date(dateStr);
     const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-    document.getElementById('shiftsDateTitle').textContent = 'Смены: ' + dateObj.toLocaleDateString('ru-RU', options);
-    document.getElementById('shiftsList').innerHTML = html;
-    document.getElementById('shiftsPanel').classList.remove('d-none');
+    title.textContent = 'Смены: ' + dateObj.toLocaleDateString('ru-RU', options);
 
-    // Подключаем обработчики после рендера
-    document.querySelectorAll('#shiftsList .swap-checkbox').forEach(cb => {
-        cb.addEventListener('change', function() {
+    if (!shifts.length) {
+        list.innerHTML = '<p class="text-muted mb-0">На этот день смен нет.</p>';
+        document.getElementById('shiftsPanel').classList.remove('d-none');
+        return;
+    }
+
+    list.innerHTML = shifts.map((shift) => {
+        const selected = selectedSwapShiftIds.has(String(shift.id));
+        const controls = shift.is_past
+            ? '<span class="small text-muted">Прошедшая</span>'
+            : `<label class="form-check mb-0">
+                    <input class="form-check-input swap-checkbox" type="checkbox" value="${shift.id}" data-shift-id="${shift.id}" ${selected ? 'checked' : ''}>
+                    <span class="form-check-label">Выбрать</span>
+               </label>`;
+
+        return `<div class="my-shift-item">
+                    <div>
+                        <span class="workout-chip">${escapeHtml(shift.workout || 'Работа')}</span>
+                        <span class="my-shift-time">${escapeHtml(shift.start)} — ${escapeHtml(shift.end || '')}</span>
+                    </div>
+                    <div>${controls}</div>
+                </div>`;
+    }).join('');
+
+    document.getElementById('shiftsPanel').classList.remove('d-none');
+    document.querySelectorAll('#shiftsList .swap-checkbox').forEach((cb) => {
+        cb.addEventListener('change', function () {
             onSwapCheckboxChange(this);
         });
     });
@@ -290,27 +360,22 @@ function onSwapCheckboxChange(checkbox) {
     const shiftId = String(checkbox.dataset.shiftId || checkbox.value);
     if (!shiftId) return;
 
-    if (checkbox.checked) {
-        selectedSwapShiftIds.add(shiftId);
-    } else {
-        selectedSwapShiftIds.delete(shiftId);
-    }
+    if (checkbox.checked) selectedSwapShiftIds.add(shiftId);
+    else selectedSwapShiftIds.delete(shiftId);
 
     syncSwapCheckboxes(shiftId, checkbox.checked);
     updateSwapActions();
 }
 
 function syncSwapCheckboxes(shiftId, checked) {
-    document.querySelectorAll(`.swap-checkbox[data-shift-id="${shiftId}"]`).forEach(cb => {
-        if (cb.checked !== checked) {
-            cb.checked = checked;
-        }
+    document.querySelectorAll(`.swap-checkbox[data-shift-id="${shiftId}"]`).forEach((cb) => {
+        if (cb.checked !== checked) cb.checked = checked;
     });
 }
 
 function clearSwapSelection() {
     selectedSwapShiftIds.clear();
-    document.querySelectorAll('.swap-checkbox[data-shift-id]').forEach(cb => {
+    document.querySelectorAll('.swap-checkbox[data-shift-id]').forEach((cb) => {
         cb.checked = false;
     });
     updateSwapActions();
@@ -326,107 +391,39 @@ function updateSwapActions() {
 
 function openSwapForm() {
     if (selectedSwapShiftIds.size === 0) {
-        alert('Выберите хотя бы одну смену для обмена');
+        showGlobalNotification('Выберите хотя бы одну смену для обмена.', 'error');
         return;
     }
-
     const shiftIds = Array.from(selectedSwapShiftIds);
-    const url = `/shift-swaps/?shift_ids=${shiftIds.join(',')}`;
-    window.location.href = url;
+    window.location.href = `/shift-swaps/?shift_ids=${shiftIds.join(',')}`;
 }
-
-
-// function openSwapForm(dateStr) {
-//     const selectedShifts = document.querySelectorAll(`.swap-checkbox:checked`);
-//     if (selectedShifts.length === 0) {
-//         alert('Выберите хотя бы одну смену для обмена');
-//         return;
-//     }
-
-//     // Сохраняем выбранные ID в sessionStorage
-//     const shiftIds = Array.from(selectedShifts).map(cb => cb.value);
-//     sessionStorage.setItem('swap_shift_ids', JSON.stringify(shiftIds));
-
-//     // Переход на страницу обмена
-//     window.location.href = '/shift-swaps/';
-// }
 
 function hideShifts() {
     document.getElementById('shiftsPanel').classList.add('d-none');
 }
 
 function toggleFullSchedule() {
-    const full = document.getElementById('fullSchedule');
-    full.classList.toggle('d-none');
+    document.getElementById('fullSchedule').classList.toggle('d-none');
 }
 
-// Закрытие по Esc
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') hideShifts();
-});
-
-    // Показ/скрытие комментария
-document.querySelectorAll('input[name="decision"]').forEach(radio => {
-    radio.addEventListener('change', function() {
-        const scheduleId = this.closest('.approval-form').dataset.scheduleId;
-        const commentGroup = document.getElementById(`comment-group-${scheduleId}`);
-        if (this.value === 'reject') {
-            commentGroup.classList.remove('d-none');
-            commentGroup.querySelector('textarea').required = true;
-        } else {
-            commentGroup.classList.add('d-none');
-            commentGroup.querySelector('textarea').required = false;
-        }
-    });
-});
-
-// Отправка решения
-document.querySelectorAll('.approval-form').forEach(form => {
-    form.addEventListener('submit', function(e) {
-        e.preventDefault();
-        const scheduleId = this.dataset.scheduleId;
-        const decision = this.querySelector('input[name="decision"]:checked')?.value;
-        const comment = this.querySelector(`#comment-${scheduleId}`)?.value || '';
-
-        if (!decision) return;
-
-        const approved = decision === 'approve';
-        if (!approved && !comment.trim()) {
-            alert('Пожалуйста, укажите причину отклонения.');
-            return;
-        }
-
-        fetch(`/api/schedule/${scheduleId}/approve/`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            },
-            body: JSON.stringify({ approved, comment })
-        })
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                showGlobalNotification('Решение отправлено', 'success');
-                this.closest('.card').remove();
-                // Если больше нет карточек — скрываем блок
-                if (!document.querySelector('.approval-form')) {
-                    document.querySelector('.alert-warning').remove();
-                }
-            } else {
-                showGlobalNotification('Ошибка: ' + (data.error || ''), 'error');
-            }
-        })
-        .catch(err => {
-            console.error(err);
-            showGlobalNotification('Ошибка сети', 'error');
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.calendar-day.has-shift').forEach((dayCell) => {
+        dayCell.addEventListener('click', function () {
+            showShifts(this.getAttribute('data-date'));
         });
     });
-});
 
-    console.log("✅ pending_approvals (в шаблоне):", {{ pending_approvals|length }});
-    {% for approval in pending_approvals %}
-        console.log("   → Schedule ID {{ approval.schedule.id }}: {{ approval.schedule.name }}");
-    {% endfor %}
+    document.querySelectorAll('#fullSchedule .swap-checkbox').forEach((cb) => {
+        cb.addEventListener('change', function () {
+            onSwapCheckboxChange(this);
+        });
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') hideShifts();
+    });
+
+    updateSwapActions();
+});
 </script>
 {% endblock %}

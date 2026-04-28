@@ -1,239 +1,523 @@
-{% extends "core/base.html" %}
+﻿{% extends "core/base.html" %}
 {% load custom_filters %}
 
 {% block title %}Аналитика — {{ block.super }}{% endblock %}
 
+{% block extra_css %}
+<style>
+    .report-page {
+        max-width: 1280px;
+        margin: 0 auto;
+    }
+
+    .report-head {
+        border: 1px solid var(--app-border);
+        border-radius: 16px;
+        padding: 1rem 1.1rem;
+        margin-bottom: 1rem;
+        background:
+            radial-gradient(900px 180px at -5% -40%, rgba(111, 66, 193, 0.18), transparent 62%),
+            linear-gradient(180deg, var(--app-surface-soft) 0%, var(--app-surface) 100%);
+    }
+
+    .report-title {
+        margin: 0;
+        font-weight: 800;
+        letter-spacing: 0.01em;
+    }
+
+    .report-subtitle {
+        margin: 0.3rem 0 0;
+        color: var(--app-text-muted);
+    }
+
+    .report-filters,
+    .report-card,
+    .report-table-wrap {
+        border: 1px solid var(--app-border);
+        border-radius: 14px;
+        background: linear-gradient(180deg, var(--app-surface-soft) 0%, var(--app-surface) 100%);
+        box-shadow: var(--app-shadow);
+    }
+
+    .report-filters {
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .report-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 14px;
+        margin-bottom: 1rem;
+    }
+
+    .report-kpi {
+        padding: 1rem;
+        border-radius: 12px;
+        border: 1px solid var(--app-border);
+        background: rgba(111, 66, 193, 0.06);
+    }
+
+    .report-kpi-value {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: var(--app-heading);
+        line-height: 1.1;
+    }
+
+    .report-kpi-label {
+        margin-top: 0.3rem;
+        color: var(--app-text-muted);
+        font-size: 0.92rem;
+    }
+
+    .report-panels {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+        margin-bottom: 1rem;
+    }
+
+    .report-card {
+        padding: 0.9rem;
+    }
+
+    .report-card h3 {
+        margin: 0 0 0.55rem;
+        font-size: 1.02rem;
+        font-weight: 700;
+    }
+
+    .report-chart-wrap {
+        height: 260px;
+    }
+
+    .report-chart-wrap canvas {
+        width: 100% !important;
+        height: 100% !important;
+    }
+
+    .report-table-wrap {
+        overflow: hidden;
+        margin-bottom: 1rem;
+    }
+
+    .report-table-head {
+        padding: 0.8rem 1rem;
+        border-bottom: 1px solid var(--app-border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.6rem;
+    }
+
+    .report-table-head h3 {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 700;
+    }
+
+    .report-table-head .help {
+        color: var(--app-text-muted);
+        font-size: 0.9rem;
+    }
+
+    .report-table-wrap .table {
+        margin: 0;
+    }
+
+    .report-table-wrap .table th {
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .report-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .rate-inline {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        flex-wrap: nowrap;
+        margin: 0;
+    }
+
+    .rate-inline .form-control {
+        min-width: 92px;
+    }
+
+    .rate-inline .btn {
+        white-space: nowrap;
+    }
+
+    
+    .timesheet-table thead th {
+        color: #ffffff !important;
+        background: #2f2f36 !important;
+        border-color: rgba(255, 255, 255, 0.12) !important;
+    }
+
+    .timesheet-table thead .weekday {
+        display: block;
+        margin-top: 0.14rem;
+        font-size: 0.78rem;
+        line-height: 1.1;
+        font-weight: 700;
+        color: #d8c8ff !important;
+    }
+
+    .timesheet-table td.cell-worked,
+    .timesheet-table td.cell-worked-force {
+        background: #cfc1e6 !important;
+        background-color: #cfc1e6 !important;
+        --bs-table-bg-type: transparent !important;
+        --bs-table-bg-state: transparent !important;
+        box-shadow: inset 0 0 0 9999px #cfc1e6 !important;
+        color: #2a1d4a !important;
+        font-weight: 700;
+        border-color: rgba(76, 51, 125, 0.18) !important;
+    }
+
+    .timesheet-table td.cell-empty {
+        background: transparent !important;
+        color: var(--app-text) !important;
+    }
+
+    .timesheet-table tr.total-row td {
+        background: rgba(111, 66, 193, 0.2) !important;
+        color: #ffffff !important;
+        font-weight: 700;
+    }
+
+    html[data-theme='light'] .timesheet-table thead th {
+        color: #ffffff !important;
+        background: #2f2f36 !important;
+    }
+
+    html[data-theme='light'] .timesheet-table thead .weekday {
+        color: #e1d3ff !important;
+    }
+
+    html[data-theme='light'] .timesheet-table td.cell-worked,
+    html[data-theme='light'] .timesheet-table td.cell-worked-force {
+        background: #cfc1e6 !important;
+        background-color: #cfc1e6 !important;
+        --bs-table-bg-type: transparent !important;
+        --bs-table-bg-state: transparent !important;
+        box-shadow: inset 0 0 0 9999px #cfc1e6 !important;
+        color: #2a1d4a !important;
+    }
+
+    html[data-theme='light'] .timesheet-table td.cell-empty {
+        color: #2a2538 !important;
+    }
+
+    html[data-theme='light'] .timesheet-table tr.total-row td {
+        background: rgba(122, 91, 200, 0.2) !important;
+        color: #2a1d4a !important;
+    }
+
+    .timesheet-table.table-striped > tbody > tr > td.cell-worked,
+    .timesheet-table.table-striped > tbody > tr > td.cell-worked-force {
+        background: #cfc1e6 !important;
+        color: #2a1d4a !important;
+        font-weight: 700;
+    }
+
+    @media (max-width: 1200px) {
+        .report-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .report-panels {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .report-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .rate-inline {
+            flex-wrap: wrap;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="management-container">
-    <h2 class="mb-4">Аналитика загрузки</h2>
+<div class="report-page">
+    <section class="report-head">
+        <h2 class="report-title">Аналитика загрузки</h2>
+        <p class="report-subtitle">Период: {{ start_date|date:"d.m.Y" }} — {{ end_date|date:"d.m.Y" }}</p>
+    </section>
 
-    <div class="alert alert-info mb-4">
-        <strong>Период:</strong>
-        {{ start_date|date:"d.m.Y" }} — {{ end_date|date:"d.m.Y" }}
-    </div>
+    <form method="get" class="report-filters">
+        <div class="row g-3">
+            <div class="col-md-2">
+                <label class="form-label">Период</label>
+                <select name="period" class="form-select" onchange="toggleCustomDateFields(this.value); this.form.submit();">
+                    <option value="week" {% if period == 'week' %}selected{% endif %}>Неделя</option>
+                    <option value="month" {% if period == 'month' %}selected{% endif %}>Месяц</option>
+                    <option value="year" {% if period == 'year' %}selected{% endif %}>Год</option>
+                    <option value="custom" {% if period == 'custom' %}selected{% endif %}>Свой период</option>
+                </select>
+            </div>
 
-<!-- ФИЛЬТРЫ -->
-<form method="get" class="row g-3 mb-4 p-3 bg-dark rounded">
-    <div class="col-md-2">
-        <label class="form-label">Период</label>
-    <select name="period" class="form-select" onchange="toggleCustomDateFields(this.value)">
-        <option value="week" {% if period == 'week' %}selected{% endif %}>Неделя</option>
-        <option value="month" {% if period == 'month' %}selected{% endif %}>Месяц</option>
-        <option value="year" {% if period == 'year' %}selected{% endif %}>Год</option>
-        <option value="custom" {% if period == 'custom' %}selected{% endif %}>Свой период</option>
-    </select>
-</div>
+            <div id="custom-date-fields" class="col-md-2" style="display:none;">
+                <label class="form-label">С</label>
+                <input type="date" name="start_date" class="form-control" value="{% if start_date %}{{ start_date|date:'Y-m-d' }}{% endif %}">
+            </div>
 
-<!-- Поля для кастомного периода (скрыты по умолчанию) -->
-<div id="custom-date-fields" class="col-md-4" style="display: none;">
-    <label class="form-label">С</label>
-    <input type="date" name="start_date" class="form-control" value="{% if start_date %}{{ start_date|date:"Y-m-d" }}{% endif %}">
-</div>
-<div id="custom-date-fields-end" class="col-md-4" style="display: none;">
-    <label class="form-label">По</label>
-    <input type="date" name="end_date" class="form-control" value="{% if end_date %}{{ end_date|date:"Y-m-d" }}{% endif %}">
-</div>
+            <div id="custom-date-fields-end" class="col-md-2" style="display:none;">
+                <label class="form-label">По</label>
+                <input type="date" name="end_date" class="form-control" value="{% if end_date %}{{ end_date|date:'Y-m-d' }}{% endif %}">
+            </div>
 
-    <!-- Тип занятия — для всех -->
-    <div class="col-md-2">
-        <label class="form-label">Тип занятия</label>
-        <select name="workout" class="form-select" onchange="this.form.submit()">
-            <option value="all">Все</option>
-            {% for wt in workout_types %}
-                <option value="{{ wt.id }}" {% if workout_id|slugify == wt.id|slugify %}selected{% endif %}>
-                    {{ wt.name }}
-                </option>
-            {% endfor %}
-        </select>
-    </div>
+            <div class="col-md-2">
+                <label class="form-label">Тип занятия</label>
+                <select name="workout" class="form-select" onchange="this.form.submit()">
+                    <option value="all">Все</option>
+                    {% for wt in workout_types %}
+                        <option value="{{ wt.id }}" {% if workout_id|slugify == wt.id|slugify %}selected{% endif %}>{{ wt.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            {% if is_manager %}
+                <div class="col-md-2">
+                    <label class="form-label">Сотрудник</label>
+                    <select name="employee" class="form-select" onchange="this.form.submit()">
+                        <option value="all">Все</option>
+                        {% for emp in all_employees %}
+                            <option value="{{ emp.id }}" {% if employee_id|slugify == emp.id|slugify %}selected{% endif %}>
+                                {{ emp.user.username }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <label class="form-label">Направление (охват)</label>
+                    <select name="coverage_direction" class="form-select" onchange="this.form.submit()">
+                        <option value="all" {% if coverage_direction == 'all' %}selected{% endif %}>Все</option>
+                        {% for wt in workout_types %}
+                            <option value="{{ wt.id }}" {% if coverage_direction|slugify == wt.id|slugify %}selected{% endif %}>{{ wt.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">Поиск</label>
+                    <input type="text" name="search" class="form-control" placeholder="Имя или тип..." value="{{ search_query }}">
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">Сортировка охвата</label>
+                    <select name="coverage_sort" class="form-select" onchange="this.form.submit()">
+                        <option value="trainers_desc" {% if coverage_sort == 'trainers_desc' %}selected{% endif %}>По числу тренеров (убывание)</option>
+                        <option value="trainers_asc" {% if coverage_sort == 'trainers_asc' %}selected{% endif %}>По числу тренеров (возрастание)</option>
+                        <option value="hours_desc" {% if coverage_sort == 'hours_desc' %}selected{% endif %}>По часам (убывание)</option>
+                        <option value="hours_asc" {% if coverage_sort == 'hours_asc' %}selected{% endif %}>По часам (возрастание)</option>
+                        <option value="name_asc" {% if coverage_sort == 'name_asc' %}selected{% endif %}>Название А-Я</option>
+                        <option value="name_desc" {% if coverage_sort == 'name_desc' %}selected{% endif %}>Название Я-А</option>
+                    </select>
+                </div>
+
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">Применить</button>
+                </div>
+            {% else %}
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">Применить</button>
+                </div>
+            {% endif %}
+        </div>
+    </form>
+
+    <section class="report-grid">
+        <div class="report-kpi">
+            <div class="report-kpi-value">{{ total_all_hours|floatformat:0 }} ч</div>
+            <div class="report-kpi-label">Всего часов</div>
+        </div>
+        <div class="report-kpi">
+            <div class="report-kpi-value">{% if salary_available %}{{ total_salary }} ₽{% else %}—{% endif %}</div>
+            <div class="report-kpi-label">Общая ЗП</div>
+        </div>
+        <div class="report-kpi">
+            <div class="report-kpi-value">{{ active_employees }}</div>
+            <div class="report-kpi-label">Сотрудников</div>
+        </div>
+        <div class="report-kpi">
+            <div class="report-actions">
+                <button type="button" class="btn btn-success w-100" onclick="exportExcel()">
+                    <i class="bi bi-file-earmark-excel me-2"></i>Экспорт Excel
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <section class="report-panels">
+        <article class="report-card">
+            <h3>Загрузка по сотрудникам</h3>
+            <div class="report-chart-wrap"><canvas id="chart-emp"></canvas></div>
+        </article>
+        <article class="report-card">
+            <h3>Нагрузка по дням недели</h3>
+            <div class="report-chart-wrap"><canvas id="chart-days"></canvas></div>
+        </article>
+        <article class="report-card">
+            <h3>Распределение по типам занятий</h3>
+            <div class="report-chart-wrap"><canvas id="chart-workout"></canvas></div>
+        </article>
+        <article class="report-card">
+            <h3>Нагрузка по датам</h3>
+            <div class="report-chart-wrap"><canvas id="chart-dates"></canvas></div>
+        </article>
+        {% if is_manager %}
+        <article class="report-card">
+            <h3>Покрытие направлений тренерами</h3>
+            <div class="report-chart-wrap"><canvas id="chart-direction-coverage"></canvas></div>
+        </article>
+        <article class="report-card">
+            <h3>Количество направлений у сотрудников</h3>
+            <div class="report-chart-wrap"><canvas id="chart-employee-skills"></canvas></div>
+        </article>
+        {% endif %}
+    </section>
 
     {% if is_manager %}
-        <div class="col-md-2">
-            <label class="form-label">Сотрудник</label>
-            <select name="employee" class="form-select" onchange="this.form.submit()">
-                <option value="all">Все</option>
-                {% for emp in all_employees %}
-                    <option value="{{ emp.id }}" {% if employee_id|slugify == emp.id|slugify %}selected{% endif %}>
-                        {{ emp.user.username }}
-                    </option>
-                {% endfor %}
-            </select>
+    <section class="report-table-wrap">
+        <div class="report-table-head">
+            <h3>Направления: кто ведет и фактическая нагрузка</h3>
+            <span class="help">Сводка по назначенным тренерам, часам и сменам за выбранный период</span>
         </div>
-        <div class="col-md-4">
-            <label class="form-label">Поиск</label>
-            <input type="text" name="search" class="form-control" placeholder="Имя или тип..." value="{{ search_query }}">
+        <div class="table-responsive">
+            <table class="table table-dark table-striped align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Направление</th>
+                        <th>Тренеров</th>
+                        <th>Кто ведет</th>
+                        <th>Часы</th>
+                        <th>Смены</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in direction_rows %}
+                    <tr>
+                        <td>{{ row.name }}</td>
+                        <td>{{ row.trainers_count }}</td>
+                        <td>
+                            {% if row.trainers %}
+                                {{ row.trainers|join:", " }}
+                            {% else %}
+                                <span class="text-danger">Нет назначенных тренеров</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ row.hours|floatformat:1 }}</td>
+                        <td>{{ row.shifts }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted">Нет данных по выбранным фильтрам</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
-        <div class="col-md-2 d-flex align-items-end">
-            <button type="submit" class="btn btn-primary w-100">Применить</button>
-        </div>
-    {% else %}
-        <!-- Для сотрудника — только кнопка "Применить" -->
-        <div class="col-md-2 d-flex align-items-end">
-            <button type="submit" class="btn btn-primary w-100">Применить</button>
-        </div>
+    </section>
     {% endif %}
-</form>
 
-    <!-- МЕТРИКИ -->
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card bg-gradient-primary text-white p-3">
-                <div class="fs-4">{{ total_all_hours|floatformat:0 }} ч</div>
-                <div class="text-white-50">Всего часов</div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-gradient-warning text-white p-3">
-                <div class="fs-4">
-                    {% if hour_rate %}
-                        {{ total_salary }} ₽
-                    {% else %}
-                        —
-                    {% endif %}
-                </div>
-                <div class="text-white-50">Общая ЗП</div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-gradient-info text-white p-3">
-                <div class="fs-4">{{ active_employees }}</div>
-                <div class="text-white-50">Сотрудников</div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <!-- Кнопка экспорта -->
-<button type="button" class="btn btn-success w-100 h-100 d-flex align-items-center justify-content-center"
-        onclick="exportExcel()">
-    <i class="bi bi-file-earmark-excel me-2"></i>Экспорт Excel
-</button>
-        </div>
-    </div>
-
-    <!-- ГРАФИКИ -->
-    <div class="row mb-4">
-        <div class="col-lg-6 mb-4">
-            <div class="card h-100">
-                <div class="card-header">Загрузка по сотрудникам</div>
-                <div class="card-body"><canvas id="chart-emp" height="200"></canvas></div>
-            </div>
-        </div>
-        <div class="col-lg-6 mb-4">
-            <div class="card h-100">
-                <div class="card-header">Нагрузка по дням недели</div>
-                <div class="card-body"><canvas id="chart-days" height="200"></canvas></div>
-            </div>
-        </div>
-        <div class="col-lg-6 mb-4">
-            <div class="card h-100">
-                <div class="card-header">По типам занятий</div>
-                <div class="card-body"><canvas id="chart-workout" height="200"></canvas></div>
-            </div>
-        </div>
-        <div class="col-lg-6 mb-4">
-            <div class="card h-100">
-                <div class="card-header">Загрузка по дням месяца</div>
-                <div class="card-body"><canvas id="chart-dates" height="200"></canvas></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ТАБЕЛЬ -->
-    <div class="card mb-4">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <span>Табель учёта за период с {{ start_date|date:"d.m.Y" }} по {{ end_date|date:"d.m.Y" }}</span>
-            <!-- Кнопка экспорта -->
-<button type="button" class="btn btn-success w-100 h-100 d-flex align-items-center justify-content-center"
-        onclick="exportExcel()">
-    <i class="bi bi-file-earmark-excel me-2"></i>Экспорт Excel
-</button>
-        </div>
-
-        <!-- СТАВКА ЗА ЧАС -->
-        <div class="card-body border-bottom">
-            <form method="get" class="d-inline-flex align-items-center gap-2 flex-wrap">
-                {% for key, value in request.GET.items %}
-                    {% if key != 'hour_rate' and key != 'set_hour_rate' and key != 'reset_rate' %}
-                        <input type="hidden" name="{{ key }}" value="{{ value }}">
-                    {% endif %}
-                {% endfor %}
-                <strong>Ставка:</strong>
-                <input type="number" name="hour_rate" value="{% if hour_rate %}{{ hour_rate|floatformat:0 }}{% endif %}" min="0" step="1" class="form-control form-control-sm" style="width:100px;" placeholder="₽/час">
-                <button type="submit" name="set_hour_rate" class="btn btn-sm btn-primary">Сохранить</button>
-                {% if hour_rate %}
-                    <a href="?reset_rate=1" class="btn btn-sm btn-outline-secondary ms-2">Сбросить</a>
-                {% endif %}
-            </form>
-        </div>
-
-        <!-- ТАБЛИЦА -->
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-bordered table-dark text-center">
-                    <thead>
-                        <tr>
-                            <th>Сотрудник</th>
-                            {% for d in all_dates %}
-                                <th style="min-width:40px;">
-                                    {{ d.day }}<br><small>{{ d|date:"D" }}</small>
-                                </th>
-                            {% endfor %}
-                            <th>Часов</th>
-                            <th>ЗП</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for emp in employees %}
-                            <tr>
-                                <td>{{ emp.user.username }}</td>
-                                {% for d in all_dates %}
-                                    {% with hours=data|get_item:emp.id|get_item:d %}
-                                        <td class="{% if hours > 0 %}bg-success text-white{% else %}bg-light text-dark{% endif %}">
-                                            {% if hours > 0 %}{{ hours|floatformat:0 }}{% else %}0{% endif %}
-                                        </td>
-                                    {% endwith %}
-                                {% endfor %}
-                                <td>{{ total_hours|get_item:emp.id|floatformat:0 }}</td>
-                                <td>
-                                    {% if hour_rate %}
-                                        {{ total_hours|get_item:emp.id|multiply:hour_rate|floatformat:0 }}
-                                    {% else %}
-                                        —
-                                    {% endif %}
-                                </td>
-                            </tr>
+    <section class="report-table-wrap">
+        <div class="report-table-head">
+            <h3>Табель учета за период</h3>
+            <div class="rate-inline">
+                {% if is_manager %}
+                    <form method="get" class="rate-inline" id="hour-rate-form">
+                        {% for key, value in request.GET.items %}
+                            {% if key != 'hour_rate' and key != 'set_hour_rate' and key != 'reset_rate' %}
+                                <input type="hidden" name="{{ key }}" value="{{ value }}">
+                            {% endif %}
                         {% endfor %}
-
-                        <!-- ИТОГО ПО ДНЯМ -->
-                        <tr class="fw-bold bg-secondary">
-                            <td>Итого по дням</td>
-                            {% for total in daily_totals %}
-                                <td>{{ total }}</td>
+                        <span class="help">Ставка:</span>
+                        <input type="number" name="hour_rate" value="{% if hour_rate is not None %}{{ hour_rate|floatformat:0 }}{% endif %}" min="0" step="1" class="form-control form-control-sm" placeholder="₽/час">
+                        <button type="submit" name="set_hour_rate" class="btn btn-sm btn-primary">Сохранить</button>
+                        {% if hour_rate is not None %}
+                            <span class="help">
+                                Текущая: {{ hour_rate|floatformat:0 }} ₽/ч
+                                {% if rate_last_changed_at %}(с {{ rate_last_changed_at|date:"d.m.Y H:i" }}){% endif %}
+                            </span>
+                        {% endif %}
+                    </form>
+                {% else %}
+                    <div class="rate-inline">
+                        <span class="help">Ставка:</span>
+                        <strong>{% if hour_rate is not None %}{{ hour_rate|floatformat:0 }} ₽/ч{% else %}не задана{% endif %}</strong>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-dark table-striped text-center align-middle mb-0 timesheet-table">
+                <thead>
+                    <tr>
+                        <th>Сотрудник</th>
+                        {% for d in all_dates %}
+                            <th style="min-width:42px;">{{ d.day }}<span class="weekday">{{ d|date:"D" }}</span></th>
+                        {% endfor %}
+                        <th>Часов</th>
+                        <th>ЗП</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for emp in employees %}
+                        <tr>
+                            <td>{{ emp.user.username }}</td>
+                            {% for d in all_dates %}
+                                {% with hours=data|get_item:emp.id|get_item:d %}
+                                    <td class="{% if hours|is_positive %}cell-worked{% else %}cell-empty{% endif %}" {% if hours|is_positive %}style="background:#cfc1e6 !important; background-color:#cfc1e6 !important; box-shadow:inset 0 0 0 9999px #cfc1e6 !important; color:#2a1d4a !important; font-weight:700; border-color:rgba(76,51,125,0.18) !important;"{% endif %}>{% if hours|is_positive %}{{ hours|floatformat:0 }}{% else %}0{% endif %}</td>
+                                {% endwith %}
                             {% endfor %}
-                            <td>{{ total_all_hours|floatformat:0 }}</td>
+                            <td>{{ total_hours|get_item:emp.id|floatformat:0 }}</td>
                             <td>
-                                {% if hour_rate %}
-                                    {{ total_all_hours|multiply:hour_rate|floatformat:0 }}
+                                {% if salary_available %}
+                                    {{ total_salary_per_emp|get_item:emp.id|floatformat:0 }}
                                 {% else %}
                                     —
                                 {% endif %}
                             </td>
                         </tr>
-                    </tbody>
-                </table>
-            </div>
+                    {% endfor %}
+                    <tr class="fw-bold total-row">
+                        <td>Итого по дням</td>
+                        {% for total in daily_totals %}
+                            <td>{{ total }}</td>
+                        {% endfor %}
+                        <td>{{ total_all_hours|floatformat:0 }}</td>
+                        <td>
+                            {% if salary_available %}
+                                {{ total_salary|floatformat:0 }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
-    </div>
+    </section>
 </div>
 
-<!-- ДАННЫЕ -->
-<script id="report-data" type="application/json">
-{{ chart_data_json|safe }}
-</script>
-
-<!-- CHART.JS -->
+<script id="report-data" type="application/json">{{ chart_data_json|safe }}</script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     const dataEl = document.getElementById('report-data');
     if (!dataEl) return;
 
@@ -241,125 +525,128 @@ document.addEventListener('DOMContentLoaded', function() {
     try {
         data = JSON.parse(dataEl.textContent);
     } catch (e) {
-        console.error("Ошибка парсинга данных:", e);
+        console.error('Ошибка парсинга данных аналитики', e);
         return;
     }
 
-    // 1. Сотрудники
-    const empEl = document.getElementById('chart-emp');
-    if (empEl && data.empNames?.length > 0) {
-        new Chart(empEl.getContext('2d'), {
-            type: 'bar',
-            data: {
-                labels: data.empNames,
-                datasets: [{
-                    label: 'Часов',
-                    data: data.empValues,
-                    backgroundColor: '#9b59b6'
-                }]
-            },
-            options: { responsive: true, scales: { y: { beginAtZero: true } } }
+    function mountChart(id, config) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        new Chart(el.getContext('2d'), config);
+    }
+
+    mountChart('chart-emp', {
+        type: 'bar',
+        data: {
+            labels: data.empNames || [],
+            datasets: [{ label: 'Часов', data: data.empValues || [], backgroundColor: '#8a6bbe' }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+    });
+
+    mountChart('chart-days', {
+        type: 'line',
+        data: {
+            labels: data.dayLabels || [],
+            datasets: [{ label: 'Часов', data: data.dayValues || [], borderColor: '#4aa3ff', tension: 0.28, fill: false }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+    });
+
+    mountChart('chart-workout', {
+        type: 'doughnut',
+        data: {
+            labels: data.workoutLabels || [],
+            datasets: [{ data: data.workoutValues || [], backgroundColor: ['#8a6bbe','#4aa3ff','#2fbf8f','#f1b43a','#e56b6f','#6ecb63'] }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+    });
+
+    mountChart('chart-dates', {
+        type: 'bar',
+        data: {
+            labels: data.dateLabels || [],
+            datasets: [{ label: 'Часов', data: data.dateValues || [], backgroundColor: '#6f42c1' }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+    });
+
+    {% if is_manager %}
+    const directionLabels = [{% for row in direction_rows %}"{{ row.name|escapejs }}"{% if not forloop.last %}, {% endif %}{% endfor %}];
+    const directionCoverage = [{% for row in direction_rows %}{{ row.trainers_count|default:0 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+    mountChart('chart-direction-coverage', {
+        type: 'bar',
+        data: {
+            labels: directionLabels,
+            datasets: [{ label: 'Тренеров на направление', data: directionCoverage, backgroundColor: '#7a5bc8' }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, precision: 0 } } }
+    });
+
+    const empSkillLabels = [{% for row in employees_direction_rows %}"{{ row.name|escapejs }}"{% if not forloop.last %}, {% endif %}{% endfor %}];
+    const empSkillValues = [{% for row in employees_direction_rows %}{{ row.workout_count|default:0 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
+    mountChart('chart-employee-skills', {
+        type: 'bar',
+        data: {
+            labels: empSkillLabels,
+            datasets: [{ label: 'Направлений у сотрудника', data: empSkillValues, backgroundColor: '#4f9cff' }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, precision: 0 } } }
+    });
+    {% endif %}
+
+    const searchInput = document.querySelector('input[name="search"]');
+    if (searchInput) {
+        searchInput.addEventListener('input', function () {
+            clearTimeout(window.searchTimer);
+            window.searchTimer = setTimeout(() => this.form.submit(), 450);
         });
     }
 
-    // 2. Дни недели
-    const daysEl = document.getElementById('chart-days');
-    if (daysEl && data.dayLabels?.length > 0) {
-        new Chart(daysEl.getContext('2d'), {
-            type: 'line',
-            data: {
-                labels: data.dayLabels,
-                datasets: [{
-                    label: 'Часов',
-                    data: data.dayValues,
-                    borderColor: '#3498db',
-                    fill: false,
-                    tension: 0.3
-                }]
-            },
-            options: { responsive: true, scales: { y: { beginAtZero: true } } }
+    const periodSelect = document.querySelector('select[name="period"]');
+    if (periodSelect) toggleCustomDateFields(periodSelect.value);
+
+    const hourRateForm = document.getElementById('hour-rate-form');
+    if (hourRateForm) {
+        hourRateForm.addEventListener('submit', function (event) {
+            const ok = confirm('Точно изменить часовую ставку? После сохранения новые смены будут рассчитываться по новой ставке.');
+            if (!ok) event.preventDefault();
         });
     }
 
-    // 3. Типы
-    const wtEl = document.getElementById('chart-workout');
-    if (wtEl && data.workoutLabels?.length > 0) {
-        new Chart(wtEl.getContext('2d'), {
-            type: 'doughnut',
-            data: {
-                labels: data.workoutLabels,
-                datasets: [{
-                    data: data.workoutValues,
-                    backgroundColor: ['#e74c3c', '#3498db', '#2ecc71', '#f39c12']
-                }]
-            },
-            options: { responsive: true, plugins: { legend: { position: 'right' } } }
-        });
-    }
-
-    // 4. Дни месяца
-    const datesEl = document.getElementById('chart-dates');
-    if (datesEl && data.dateLabels?.length > 0) {
-        new Chart(datesEl.getContext('2d'), {
-            type: 'bar',
-            data: {
-                labels: data.dateLabels,
-                datasets: [{
-                    label: 'Часов',
-                    data: data.dateValues,
-                    backgroundColor: '#3498db'
-                }]
-            },
-            options: { responsive: true, scales: { y: { beginAtZero: true } } }
-        });
-    }
-
-    // активный поиск (мгновенный)
-document.querySelector('input[name="search"]').addEventListener('input', function(e) {
-    clearTimeout(window.searchTimer);
-    window.searchTimer = setTimeout(() => {
-        this.form.submit();
-    }, 500); // Отправка через 500мс после остановки ввода
+    const timesheetRows = document.querySelectorAll('.timesheet-table tbody tr:not(.total-row)');
+    timesheetRows.forEach((row) => {
+        const cells = row.querySelectorAll('td');
+        if (cells.length < 4) return;
+        for (let i = 1; i < cells.length - 2; i += 1) {
+            const cell = cells[i];
+            const raw = (cell.textContent || '').trim().replace(',', '.');
+            const val = Number(raw);
+            if (!Number.isNaN(val) && val > 0) {
+                cell.classList.add('cell-worked-force');
+            }
+        }
+    });
 });
-});
 
-    function toggleCustomDateFields(value) {
+function toggleCustomDateFields(value) {
     const customStart = document.getElementById('custom-date-fields');
     const customEnd = document.getElementById('custom-date-fields-end');
+    if (!customStart || !customEnd) return;
     if (value === 'custom') {
         customStart.style.display = 'block';
         customEnd.style.display = 'block';
     } else {
         customStart.style.display = 'none';
         customEnd.style.display = 'none';
-        // НЕ ОЧИЩАЙ ЗНАЧЕНИЯ!
-        // startInput.value = '';  ← УДАЛИ ЭТИ СТРОКИ
-        // endInput.value = '';
     }
 }
 
-// Инициализация при загрузке
-document.addEventListener('DOMContentLoaded', function() {
-    const select = document.querySelector('select[name="period"]');
-    if (select) {
-        toggleCustomDateFields(select.value);
-    }
-});
-
-    function exportExcel() {
-    // Берём ВСЕ параметры из текущего URL
+function exportExcel() {
     const url = new URL(window.location.href);
     const params = url.searchParams;
-
-    // Убираем служебные параметры (если есть)
     params.delete('set_hour_rate');
-    params.delete('reset_rate');
-
-    // Формируем URL для экспорта
-    const exportUrl = '/reports/export/tabel/?' + params.toString();
-
-    // Переходим
-    window.location.href = exportUrl;
+    window.location.href = '/reports/export/tabel/?' + params.toString();
 }
 </script>
 {% endblock %}

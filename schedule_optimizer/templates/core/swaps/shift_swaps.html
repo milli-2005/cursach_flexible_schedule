@@ -1,94 +1,212 @@
-<!-- templates/core/shift_swaps.html -->
 {% extends "core/base.html" %}
 
 {% block title %}Обмены сменами - {{ block.super }}{% endblock %}
 
+{% block extra_css %}
+<style>
+.swap-page {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.swap-header {
+    margin-bottom: 1rem;
+    padding: 1rem 1.1rem;
+    border-radius: 16px;
+    border: 1px solid rgba(111, 66, 193, 0.34);
+    background:
+        radial-gradient(900px 180px at -5% -40%, rgba(111, 66, 193, 0.18), transparent 62%),
+        linear-gradient(180deg, var(--app-surface-soft) 0%, var(--app-surface) 100%);
+}
+
+.swap-title {
+    margin: 0;
+    font-weight: 700;
+}
+
+.swap-subtitle {
+    margin: 0.35rem 0 0;
+    color: var(--app-text-muted);
+}
+
+.swap-selected-panel,
+.swap-form-wrap,
+.swap-table-wrap,
+.swap-empty {
+    border: 1px solid var(--app-border);
+    border-radius: 14px;
+    background: linear-gradient(180deg, var(--app-surface-soft) 0%, var(--app-surface) 100%);
+}
+
+.swap-selected-panel {
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.swap-form-wrap {
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.swap-table-wrap {
+    overflow: hidden;
+}
+
+.swap-table {
+    margin-bottom: 0;
+}
+
+.swap-table thead th {
+    font-weight: 700;
+}
+
+.swap-slots {
+    display: grid;
+    gap: 0.35rem;
+}
+
+.swap-slot {
+    padding: 0.35rem 0.5rem;
+    border: 1px solid var(--app-border);
+    border-radius: 8px;
+    background: rgba(111, 66, 193, 0.06);
+    font-size: 0.9rem;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.24rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.status-pending { background: rgba(255, 193, 7, 0.22); color: #a36e00; border: 1px solid rgba(255, 193, 7, 0.45); }
+.status-employee { background: rgba(13, 202, 240, 0.2); color: #0b6e84; border: 1px solid rgba(13, 202, 240, 0.4); }
+.status-approved { background: rgba(25, 135, 84, 0.18); color: #2c8f5a; border: 1px solid rgba(25, 135, 84, 0.36); }
+.status-rejected { background: rgba(220, 53, 69, 0.16); color: #b53446; border: 1px solid rgba(220, 53, 69, 0.38); }
+
+.swap-empty {
+    padding: 1rem;
+    color: var(--app-text-muted);
+}
+
+@media (max-width: 992px) {
+    .swap-table-wrap {
+        overflow-x: auto;
+    }
+
+    .swap-table {
+        min-width: 900px;
+    }
+}
+</style>
+{% endblock %}
+
 {% block content %}
-
-<!-- Список ваших заявок -->
-<h2>Ваши заявки на обмен</h2>
-
-
-<!-- Форма создания (показывается, если выбраны смены) -->
-{% if selected_shifts %}
-    <div class="alert alert-info mb-4">
-        <strong>Вы хотите обменять {{ selected_shifts|length }} смен(ы):</strong>
-        <ul>
-        {% for shift in selected_shifts %}
-            <li>{{ shift.date }} | {{ shift.start_time }}–{{ shift.end_time }} | {{ shift.workout_type.name|default:"Работа" }}</li>
-        {% endfor %}
-        </ul>
+<div class="swap-page">
+    <div class="swap-header">
+        <h2 class="swap-title">Обмены сменами</h2>
+        <p class="swap-subtitle">Выбирайте смены в «Мой график», отправляйте заявку и отслеживайте ее статус.</p>
     </div>
 
-    <form id="swapForm" class="mb-5">
-        {% csrf_token %}
-        <input type="hidden" name="shift_ids" value="{{ shift_ids_json }}">
-
-        <div class="mb-3">
-            <label>Выберите сотрудника для обмена</label>
-            <select name="to_employee_id" class="form-select" required>
-                <option value="">-- Выберите --</option>
-                {% for emp in available_employees %}
-                    <option value="{{ emp.id }}">{{ emp.name }}</option>
+    {% if selected_shifts %}
+        <div class="swap-selected-panel">
+            <div class="fw-semibold mb-2">Вы выбрали для обмена: {{ selected_shifts|length }} смен(ы)</div>
+            <div class="swap-slots">
+                {% for shift in selected_shifts %}
+                    <div class="swap-slot">
+                        {{ shift.date|date:"d.m.Y" }} |
+                        {{ shift.start_time|time:"H:i" }}-{{ shift.end_time|time:"H:i" }} |
+                        {{ shift.workout_type.name|default:"Работа" }}
+                    </div>
                 {% endfor %}
-            </select>
+            </div>
         </div>
 
-        <div class="mb-3">
-            <label>Причина</label>
-            <textarea name="reason" class="form-control" rows="3" placeholder="Например: болею, семейные обстоятельства..."></textarea>
-        </div>
+        <form id="swapForm" class="swap-form-wrap">
+            {% csrf_token %}
+            <input type="hidden" name="shift_ids" value="{{ shift_ids_json }}">
 
-        <button type="submit" class="btn btn-primary">Отправить заявку</button>
-    </form>
-{% endif %}
-
-<!-- Список всех заявок (показывается всегда) -->
-{% if my_requests %}
-    <div class="table-responsive">
-        <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th>Смена</th>
-                    <th>Кому</th>
-                    <th>Причина</th>
-                    <th>Статус</th>
-                    <th>Дата</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for req in my_requests %}
-                <tr>
-                    <td>
-                        {% for s in req.shifts.all %}
-                            {{ s.shift_assignment.date }}<br>
-                            {{ s.shift_assignment.start_time }}–{{ s.shift_assignment.end_time }}<br>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Сотрудник для обмена</label>
+                    <select name="to_employee_id" class="form-select" required>
+                        <option value="">Выберите сотрудника...</option>
+                        {% for emp in available_employees %}
+                            <option value="{{ emp.id }}">{{ emp.name }}</option>
                         {% endfor %}
-                    </td>
-                    <td>{{ req.to_employee.user_profile.user.get_full_name }}</td>
-                    <td>{{ req.reason|truncatewords:10 }}</td>
-                    <td>
-                        {% if req.status == 'pending' %}
-                            <span class="badge bg-warning">На рассмотрении</span>
-                        {% elif req.status == 'approved_by_employee' %}
-                            <span class="badge bg-info">Одобрено сотрудником</span>
-                        {% elif req.status == 'approved_by_manager' %}
-                            <span class="badge bg-success">Одобрено менеджером</span>
-                        {% elif req.status == 'completed' %}
-                            <span class="badge bg-success">Завершено</span>
-                        {% elif req.status == 'rejected' %}
-                            <span class="badge bg-danger">Отклонено</span>
-                        {% endif %}
-                    </td>
-                    <td>{{ req.created_at|date:"d.m.Y H:i" }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-{% else %}
-    <p>У вас пока нет заявок на обмен.</p>
-{% endif %}
+                    </select>
+                </div>
+                <div class="col-md-12">
+                    <label class="form-label fw-semibold">Причина</label>
+                    <textarea
+                        name="reason"
+                        class="form-control"
+                        rows="3"
+                        placeholder="Например: не смогу выйти по личным обстоятельствам."
+                        required
+                    ></textarea>
+                </div>
+                <div class="col-md-12">
+                    <button type="submit" class="btn btn-primary">Отправить заявку</button>
+                </div>
+            </div>
+        </form>
+    {% endif %}
+
+    {% if my_requests %}
+        <div class="swap-table-wrap management-table">
+            <table class="table table-dark table-striped align-middle swap-table">
+                <thead>
+                    <tr>
+                        <th>Смены</th>
+                        <th>Кому</th>
+                        <th>Причина</th>
+                        <th>Статус</th>
+                        <th>Создана</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for req in my_requests %}
+                        <tr>
+                            <td>
+                                <div class="swap-slots">
+                                    {% for s in req.shifts.all %}
+                                        <div class="swap-slot">
+                                            {{ s.shift_assignment.date|date:"d.m.Y" }}
+                                            <br>
+                                            {{ s.shift_assignment.start_time|time:"H:i" }}-{{ s.shift_assignment.end_time|time:"H:i" }}
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </td>
+                            <td>{{ req.to_employee.user_profile.user.get_full_name|default:req.to_employee.user_profile.user.username }}</td>
+                            <td>{{ req.reason|default:"—"|truncatewords:16 }}</td>
+                            <td>
+                                {% if req.status == 'pending' %}
+                                    <span class="status-badge status-pending">На рассмотрении</span>
+                                {% elif req.status == 'approved_by_employee' %}
+                                    <span class="status-badge status-employee">Одобрено сотрудником</span>
+                                {% elif req.status == 'approved_by_manager' or req.status == 'completed' %}
+                                    <span class="status-badge status-approved">Утверждено</span>
+                                {% elif req.status == 'rejected' %}
+                                    <span class="status-badge status-rejected">Отклонено</span>
+                                {% else %}
+                                    <span class="status-badge">{{ req.get_status_display }}</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ req.created_at|date:"d.m.Y H:i" }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="swap-empty">У вас пока нет заявок на обмен сменами.</div>
+    {% endif %}
+</div>
 
 <script>
 document.getElementById('swapForm')?.addEventListener('submit', async (e) => {
@@ -96,22 +214,27 @@ document.getElementById('swapForm')?.addEventListener('submit', async (e) => {
     const formData = new FormData(e.target);
     const data = Object.fromEntries(formData);
 
-    const response = await fetch('{% url "api_create_swap_request" %}', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-        },
-        body: JSON.stringify(data)
-    });
+    try {
+        const response = await fetch('{% url "api_create_swap_request" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            },
+            body: JSON.stringify(data)
+        });
 
-    const result = await response.json();
-    if (result.success) {
-        showGlobalNotification(result.message, 'success');
-        // Можно перенаправить или обновить
-    } else {
-        showGlobalNotification('Ошибка: ' + result.error, 'error');
+        const result = await response.json();
+        if (result.success) {
+            showGlobalNotification(result.message || 'Заявка отправлена.', 'success');
+            setTimeout(() => window.location.href = '{% url "shift_swaps" %}', 450);
+        } else {
+            showGlobalNotification('Ошибка: ' + (result.error || 'Не удалось отправить заявку.'), 'error');
+        }
+    } catch (_) {
+        showGlobalNotification('Ошибка сети. Попробуйте еще раз.', 'error');
     }
 });
 </script>
 {% endblock %}
+

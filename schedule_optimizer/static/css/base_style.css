@@ -573,7 +573,7 @@ img {
     background-color: #333333;
 }
 
-.login-form button {
+.login-form button:not(.password-toggle-btn) {
     width: 100%;
     padding: 1rem;
     background: linear-gradient(90deg, #8A6BBE, #6E4596);
@@ -585,7 +585,7 @@ img {
     transition: background 0.3s ease, transform 0.2s ease;
 }
 
-.login-form button:hover {
+.login-form button:not(.password-toggle-btn):hover {
     background: linear-gradient(90deg, #6E4596, #8A6BBE);
     transform: translateY(-2px);
 }
@@ -657,7 +657,7 @@ img {
     background-color: #333333;
 }
 
-.profile-form button {
+.profile-form button:not(.password-toggle-btn) {
     padding: 0.8rem 1.5rem;
     background: linear-gradient(90deg, #8A6BBE, #6E4596);
     color: white;
@@ -669,7 +669,7 @@ img {
     transition: background 0.3s ease, transform 0.2s ease;
 }
 
-.profile-form button:hover {
+.profile-form button:not(.password-toggle-btn):hover {
     background: linear-gradient(90deg, #6E4596, #8A6BBE);
     transform: translateY(-2px);
 }
@@ -1040,7 +1040,6 @@ h1, h2, h3 {
 /* === ГАРАНТИЯ БЕЛОГО ТЕКСТА ВО ВСЕХ ПОЛЯХ === */
 .form-control,
 .form-select,
-.form-check-input,
 .form-check-label,
 input[type="text"],
 input[type="email"],
@@ -1050,6 +1049,42 @@ textarea {
     color: var(--app-text) !important;
     background-color: var(--app-surface-soft) !important;
     border-color: var(--app-border) !important;
+}
+
+/* === Чекбоксы: единая читаемость во всех темах === */
+input[type="checkbox"],
+.form-check-input[type="checkbox"] {
+    -webkit-appearance: auto !important;
+    appearance: auto !important;
+    display: inline-block !important;
+    vertical-align: middle !important;
+    width: 1.05rem;
+    height: 1.05rem;
+    cursor: pointer;
+    accent-color: var(--app-accent);
+    pointer-events: auto !important;
+}
+
+label:has(> input[type="checkbox"]),
+.form-check,
+.form-check-label {
+    cursor: pointer;
+}
+
+input[type="checkbox"]:checked,
+.form-check-input[type="checkbox"]:checked {
+    accent-color: var(--app-accent);
+}
+
+input[type="checkbox"]:focus,
+.form-check-input[type="checkbox"]:focus {
+    border-color: var(--app-accent) !important;
+    box-shadow: 0 0 0 0.15rem var(--app-accent-soft) !important;
+}
+
+html[data-theme='light'] input[type="checkbox"],
+html[data-theme='light'] .form-check-input[type="checkbox"] {
+    accent-color: #8a6bbe;
 }
 
 /* Для плейсхолдеров */
@@ -1243,7 +1278,7 @@ a:hover {
 .form-control,
 .form-select,
 textarea,
-input,
+input:not([type="checkbox"]):not([type="radio"]),
 select {
     background-color: var(--app-surface-soft) !important;
     border-color: var(--app-border) !important;
@@ -1253,7 +1288,7 @@ select {
 .form-control:focus,
 .form-select:focus,
 textarea:focus,
-input:focus,
+input:not([type="checkbox"]):not([type="radio"]):focus,
 select:focus {
     border-color: var(--app-accent) !important;
     box-shadow: 0 0 0 0.2rem var(--app-accent-soft) !important;
@@ -1793,4 +1828,220 @@ html[data-theme='light'] .management-table > table > thead > tr > th * {
     45% { transform: scale(0.95); }
     65% { transform: scale(1.12); }
     100% { transform: scale(1); }
+}
+
+/* Sidebar brand logo */
+.brand-logo-link {
+    display: inline-flex;
+    align-items: center;
+    padding: 0 0.1rem 0.5rem 0.1rem;
+}
+
+.brand-logo-image {
+    width: 190px;
+    max-width: 100%;
+    height: auto;
+    display: block;
+}
+
+/* About landing page */
+.about-landing {
+    max-width: 980px;
+    margin: 12px auto 0;
+}
+
+.about-landing-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 18px;
+    border: 1px solid rgba(138, 107, 190, 0.45);
+    background:
+        radial-gradient(500px 240px at 90% -10%, rgba(138, 107, 190, 0.24), transparent 65%),
+        radial-gradient(380px 180px at -10% 100%, rgba(95, 70, 150, 0.22), transparent 65%),
+        linear-gradient(180deg, #1b1830 0%, #141127 100%);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.34);
+    padding: clamp(28px, 4vw, 52px);
+    text-align: center;
+}
+
+.about-landing-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 34px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 0.88rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: #efe7ff;
+    background: rgba(138, 107, 190, 0.32);
+    border: 1px solid rgba(184, 159, 233, 0.4);
+}
+
+.about-landing-card h1 {
+    margin: 16px 0 10px;
+    font-size: clamp(2rem, 4vw, 2.75rem);
+    line-height: 1.15;
+    color: #ffffff;
+}
+
+.about-landing-lead {
+    margin: 0 auto 14px;
+    max-width: 760px;
+    font-size: clamp(1.06rem, 2vw, 1.22rem);
+    line-height: 1.65;
+    color: #e8defb;
+    font-weight: 600;
+}
+
+.about-landing-text {
+    margin: 0 auto;
+    max-width: 760px;
+    font-size: 1.02rem;
+    line-height: 1.8;
+    color: #d5c8f0;
+}
+
+.about-landing-actions {
+    margin-top: 26px;
+}
+
+.about-landing-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 180px;
+    min-height: 46px;
+    padding: 10px 20px;
+    border-radius: 12px;
+    border: 1px solid rgba(197, 178, 238, 0.62);
+    background: #8a6bbe;
+    color: #ffffff;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    text-decoration: none;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.about-landing-btn:hover {
+    color: #ffffff;
+    background: #7e5fb4;
+    box-shadow: 0 10px 18px rgba(99, 72, 150, 0.45);
+    transform: translateY(-1px);
+}
+
+html[data-theme='light'] .about-landing-card {
+    border-color: rgba(138, 107, 190, 0.28);
+    background:
+        radial-gradient(500px 240px at 90% -10%, rgba(138, 107, 190, 0.12), transparent 65%),
+        radial-gradient(380px 180px at -10% 100%, rgba(138, 107, 190, 0.08), transparent 65%),
+        #ffffff;
+    box-shadow: 0 16px 32px rgba(52, 34, 94, 0.16);
+}
+
+html[data-theme='light'] .about-landing-badge {
+    color: #4f3382;
+    background: rgba(138, 107, 190, 0.16);
+    border-color: rgba(138, 107, 190, 0.36);
+}
+
+html[data-theme='light'] .about-landing-card h1 {
+    color: #2a1f46;
+}
+
+html[data-theme='light'] .about-landing-lead {
+    color: #3d2e63;
+}
+
+html[data-theme='light'] .about-landing-text {
+    color: #4b3c73;
+}
+
+html[data-theme='light'] .about-landing-btn {
+    background: #8a6bbe;
+    border-color: #8a6bbe;
+    color: #ffffff;
+}
+
+html[data-theme='light'] .about-landing-btn:hover {
+    background: #7655af;
+    border-color: #7655af;
+    color: #ffffff;
+}
+
+/* Contrast safety net across pages */
+html[data-theme='light'] .main-content .text-white,
+html[data-theme='light'] .main-content .text-light {
+    color: #211a33 !important;
+}
+
+html[data-theme='light'] .main-content .bg-dark .text-white,
+html[data-theme='light'] .main-content .bg-dark .text-light,
+html[data-theme='light'] .main-content .table-dark .text-white,
+html[data-theme='light'] .main-content .table-dark .text-light,
+html[data-theme='light'] .main-content .badge .text-white,
+html[data-theme='light'] .main-content .badge.text-white {
+    color: #ffffff !important;
+}
+
+html[data-theme='light'] .main-content .text-muted {
+    color: #4d4668 !important;
+}
+
+html[data-theme='dark'] .main-content .text-dark,
+html[data-theme='dark'] .main-content .text-black {
+    color: #e7e6f2 !important;
+}
+
+html[data-theme='dark'] .main-content .bg-light,
+html[data-theme='dark'] .main-content .bg-white {
+    color: #1f1b2e !important;
+}
+
+html[data-theme='dark'] .main-content .bg-light .text-dark,
+html[data-theme='dark'] .main-content .bg-white .text-dark {
+    color: #1f1b2e !important;
+}
+
+/* Password visibility toggle */
+.password-toggle-wrap {
+    position: relative;
+}
+
+.password-toggle-wrap input[type="password"],
+.password-toggle-wrap input[type="text"] {
+    padding-right: 2.75rem !important;
+}
+
+.password-toggle-btn {
+    position: absolute;
+    top: 50%;
+    right: 0.6rem;
+    transform: translateY(-50%);
+    border: none !important;
+    background: transparent !important;
+    color: #9aa0ae !important;
+    font-size: 1rem !important;
+    line-height: 1;
+    padding: 0.2rem !important;
+    width: auto !important;
+    min-width: auto !important;
+    height: auto !important;
+    min-height: auto !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    cursor: pointer;
+    z-index: 2;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+}
+
+.password-toggle-btn:hover,
+.password-toggle-btn:focus {
+    color: var(--app-accent) !important;
+    outline: none !important;
+    transform: translateY(-50%) !important;
 }

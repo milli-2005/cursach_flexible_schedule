@@ -22,3 +22,11 @@ def multiply(value, arg):
         return int(float(value) * float(arg))
     except (ValueError, TypeError):
         return 0
+
+
+@register.filter
+def is_positive(value):
+    try:
+        return float(value) > 0
+    except (ValueError, TypeError):
+        return False

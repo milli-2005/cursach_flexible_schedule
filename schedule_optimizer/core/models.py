@@ -4,48 +4,48 @@ from django.db.models import Q
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from django.utils import timezone  #Р”Р»СЏ СЂР°СЃСЃС‡РµС‚Р° РІСЂРµРјРµРЅРё СЃРјРµРЅС‹ РїР°СЂРѕР»СЏ
+from django.utils import timezone  #Для рассчета времени смены пароля
 
 class UserProfile(models.Model):
     """
-    Р Р°СЃС€РёСЂРµРЅРЅС‹Р№ РїСЂРѕС„РёР»СЊ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ.
-    РЎРІСЏР·С‹РІР°РµС‚СЃСЏ СЃРѕ СЃС‚Р°РЅРґР°СЂС‚РЅРѕР№ РјРѕРґРµР»СЊСЋ User С‡РµСЂРµР· OneToOne.
+    Расширенный профиль пользователя.
+    Связывается со стандартной моделью User через OneToOne.
     """
-    # Р РѕР»Рё РїРѕР»СЊР·РѕРІР°С‚РµР»РµР№
+    # Роли пользователей
     ROLE_CHOICES = [
         ('employee', 'Сотрудник'),
         ('manager', 'Руководитель'),
     ]
-    # Р”РѕР»Р¶РЅРѕСЃС‚Рё (РґР»СЏ Р±РёР·РЅРµСЃ-Р»РѕРіРёРєРё)
+    # Должности (для бизнес-логики)
     # POSITION_CHOICES = [
-    #     ('trainer', 'РўСЂРµРЅРµСЂ'),
-    #     ('administrator', 'РђРґРјРёРЅРёСЃС‚СЂР°С‚РѕСЂ'),
+    #     ('trainer', 'Тренер'),
+    #     ('administrator', 'Администратор'),
     # ]
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='employee')
-    phone = models.CharField(max_length=20, blank=True, verbose_name="РўРµР»РµС„РѕРЅ")
+    phone = models.CharField(max_length=20, blank=True, verbose_name="Телефон")
     # position = models.CharField(
     #     max_length=20,
     #     choices=POSITION_CHOICES,
     #     default='trainer',
-    #     verbose_name="Р”РѕР»Р¶РЅРѕСЃС‚СЊ"
+    #     verbose_name="Должность"
     # )
 
     patronymic = models.CharField(
         max_length=150,
         blank=True,
-        verbose_name="РћС‚С‡РµСЃС‚РІРѕ"
+        verbose_name="Отчество"
     )
 
     avatar = models.ImageField(upload_to='avatars/', null=True, blank=True, verbose_name='Аватар')
 
-    # РџРѕР»Рµ РґР»СЏ С…СЂР°РЅРµРЅРёСЏ РІСЂРµРјРµРЅРё РїСЂРёРіР»Р°С€РµРЅРёСЏ/СЃР±СЂРѕСЃР° РїР°СЂРѕР»СЏ
-    invitation_timestamp = models.DateTimeField(null=True, blank=True, verbose_name="Р’СЂРµРјСЏ РїСЂРёРіР»Р°С€РµРЅРёСЏ/СЃР±СЂРѕСЃР° РїР°СЂРѕР»СЏ")
+    # Поле для хранения времени приглашения/сброса пароля
+    invitation_timestamp = models.DateTimeField(null=True, blank=True, verbose_name="Время приглашения/сброса пароля")
 
     class Meta:
-        verbose_name = "РџСЂРѕС„РёР»СЊ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ"
-        verbose_name_plural = "РџСЂРѕС„РёР»Рё РїРѕР»СЊР·РѕРІР°С‚РµР»РµР№"
+        verbose_name = "Профиль пользователя"
+        verbose_name_plural = "Профили пользователей"
 
     def __str__(self):
         return f"{self.user.username} ({self.get_role_display()})"
@@ -53,12 +53,12 @@ class UserProfile(models.Model):
 
     def is_temporary_password_expired(self, timeout_minutes=5):
         """
-        РџСЂРѕРІРµСЂСЏРµС‚, РёСЃС‚С‘Рє Р»Рё СЃСЂРѕРє РґРµР№СЃС‚РІРёСЏ РІСЂРµРјРµРЅРЅРѕРіРѕ РїР°СЂРѕР»СЏ.
-        :param timeout_minutes: Р’СЂРµРјСЏ РІ РјРёРЅСѓС‚Р°С…, РїРѕСЃР»Рµ РєРѕС‚РѕСЂРѕРіРѕ РїР°СЂРѕР»СЊ СЃС‚Р°РЅРѕРІРёС‚СЃСЏ РЅРµРґРµР№СЃС‚РІРёС‚РµР»СЊРЅС‹Рј.
-        :return: True, РµСЃР»Рё СЃСЂРѕРє РґРµР№СЃС‚РІРёСЏ РёСЃС‚С‘Рє, False РІ РїСЂРѕС‚РёРІРЅРѕРј СЃР»СѓС‡Р°Рµ.
+        Проверяет, истёк ли срок действия временного пароля.
+        :param timeout_minutes: Время в минутах, после которого пароль становится недействительным.
+        :return: True, если срок действия истёк, False в противном случае.
         """
         if not self.invitation_timestamp:
-            # Р•СЃР»Рё РІСЂРµРјРµРЅРЅР°СЏ РјРµС‚РєР° РЅРµ СѓСЃС‚Р°РЅРѕРІР»РµРЅР°, СЃС‡РёС‚Р°РµРј, С‡С‚Рѕ РїР°СЂРѕР»СЊ РЅРµ РІСЂРµРјРµРЅРЅС‹Р№ РёР»Рё СЃСЂРѕРє РЅРµ РѕРіСЂР°РЅРёС‡РµРЅ
+            # Если временная метка не установлена, считаем, что пароль не временный или срок не ограничен
             return False
         expiration_time = self.invitation_timestamp + timezone.timedelta(minutes=timeout_minutes)
         return timezone.now() > expiration_time
@@ -71,7 +71,7 @@ def save_user_profile(sender, instance, **kwargs):
 
 
 
-# Р“Р»РѕР±Р°Р»СЊРЅС‹Рµ РєРѕРЅСЃС‚Р°РЅС‚С‹ РґР»СЏ РІСЃРµР№ СЃС‚СѓРґРёРё
+# Глобальные константы для всей студии
 WORKOUT_DURATION_MINUTES = 50
 TRAINER_RATE_PER_SESSION = 400.00
 ADMIN_RATE_PER_DAY = 1500.00
@@ -79,63 +79,63 @@ ADMIN_RATE_PER_DAY = 1500.00
 
 class WorkoutType(models.Model):
     """
-    РўРёРї РіСЂСѓРїРїРѕРІРѕРіРѕ Р·Р°РЅСЏС‚РёСЏ (С‚СЂРµРЅРёСЂРѕРІРєРё).
-    РќР°РїСЂРёРјРµСЂ: Stretch Basic, Deep Stretch, Yoga.
-    Р’СЃРµ Р·Р°РЅСЏС‚РёСЏ РґР»СЏС‚СЃСЏ 50 РјРёРЅСѓС‚ Рё РѕРїР»Р°С‡РёРІР°СЋС‚СЃСЏ РїРѕ С„РёРєСЃРёСЂРѕРІР°РЅРЅРѕР№ СЃС‚Р°РІРєРµ.
+    Тип группового занятия (тренировки).
+    Например: Stretch Basic, Deep Stretch, Yoga.
+    Все занятия длятся 50 минут и оплачиваются по фиксированной ставке.
     """
-    name = models.CharField(max_length=100, verbose_name="РќР°Р·РІР°РЅРёРµ Р·Р°РЅСЏС‚РёСЏ")
-    description = models.TextField(blank=True, verbose_name="РћРїРёСЃР°РЅРёРµ")
+    name = models.CharField(max_length=100, verbose_name="Название занятия")
+    description = models.TextField(blank=True, verbose_name="Описание")
 
     class Meta:
-        verbose_name = "РўРёРї Р·Р°РЅСЏС‚РёСЏ"
-        verbose_name_plural = "РўРёРїС‹ Р·Р°РЅСЏС‚РёР№"
+        verbose_name = "Тип занятия"
+        verbose_name_plural = "Типы занятий"
 
     def __str__(self):
         return self.name
 
     @property
     def duration_minutes(self):
-        """Р’РѕР·РІСЂР°С‰Р°РµС‚ РґР»РёС‚РµР»СЊРЅРѕСЃС‚СЊ Р·Р°РЅСЏС‚РёСЏ РєР°Рє РєРѕРЅСЃС‚Р°РЅС‚Сѓ."""
+        """Возвращает длительность занятия как константу."""
         return WORKOUT_DURATION_MINUTES
 
     @property
     def rate_per_session(self):
-        """Р’РѕР·РІСЂР°С‰Р°РµС‚ СЃС‚Р°РІРєСѓ Р·Р° Р·Р°РЅСЏС‚РёРµ РєР°Рє РєРѕРЅСЃС‚Р°РЅС‚Сѓ."""
+        """Возвращает ставку за занятие как константу."""
         return TRAINER_RATE_PER_SESSION
 
 
 
 class Employee(models.Model):
     """
-    РњРѕРґРµР»СЊ СЃРѕС‚СЂСѓРґРЅРёРєР° СЃ РґРѕРїРѕР»РЅРёС‚РµР»СЊРЅС‹РјРё Р°С‚СЂРёР±СѓС‚Р°РјРё РґР»СЏ РїР»Р°РЅРёСЂРѕРІР°РЅРёСЏ.
+    Модель сотрудника с дополнительными атрибутами для планирования.
     """
     user_profile = models.OneToOneField(UserProfile, on_delete=models.CASCADE, related_name='employee_profile')
 
-    # Р Р°Р±РѕС‡РёРµ РїР°СЂР°РјРµС‚СЂС‹
-    max_hours_per_week = models.IntegerField(default=40, verbose_name="РњР°РєСЃ. С‡Р°СЃРѕРІ РІ РЅРµРґРµР»СЋ")
-    min_hours_per_week = models.IntegerField(default=20, verbose_name="РњРёРЅ. С‡Р°СЃРѕРІ РІ РЅРµРґРµР»СЋ")
-    hourly_rate = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="Р§Р°СЃРѕРІР°СЏ СЃС‚Р°РІРєР°")
+    # Рабочие параметры
+    max_hours_per_week = models.IntegerField(default=40, verbose_name="Макс. часов в неделю")
+    min_hours_per_week = models.IntegerField(default=20, verbose_name="Мин. часов в неделю")
+    hourly_rate = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="Часовая ставка")
 
-    # РљРІР°Р»РёС„РёРєР°С†РёСЏ
-    qualifications = models.TextField(blank=True, verbose_name="РљРІР°Р»РёС„РёРєР°С†РёРё")
+    # Квалификация
+    qualifications = models.TextField(blank=True, verbose_name="Квалификации")
 
-    # РџСЂРµРґРїРѕС‡С‚РµРЅРёСЏ
-    preferred_shifts = models.TextField(blank=True, verbose_name="РџСЂРµРґРїРѕС‡РёС‚Р°РµРјС‹Рµ СЃРјРµРЅС‹")
-    unavailable_days = models.TextField(blank=True, verbose_name="РќРµРІРѕР·РјРѕР¶РЅС‹Рµ РґРЅРё")
+    # Предпочтения
+    preferred_shifts = models.TextField(blank=True, verbose_name="Предпочитаемые смены")
+    unavailable_days = models.TextField(blank=True, verbose_name="Невозможные дни")
     is_substitute = models.BooleanField(
         default=False,
-        verbose_name="Р’ РїСѓР»Рµ РїРѕРґРјРµРЅРЅС‹С… С‚СЂРµРЅРµСЂРѕРІ"
+        verbose_name="В пуле подменных тренеров"
     )
     substitute_priority = models.PositiveSmallIntegerField(
         default=50,
-        verbose_name="РџСЂРёРѕСЂРёС‚РµС‚ РїРѕРґРјРµРЅС‹"
+        verbose_name="Приоритет подмены"
     )
 
-    # РЅР°РїСЂР°РІР»РµРЅРёСЏ:
+    # направления:
     workout_types = models.ManyToManyField(
         'WorkoutType',
         blank=True,
-        verbose_name="РќР°РїСЂР°РІР»РµРЅРёСЏ, РєРѕС‚РѕСЂС‹Рµ РІРµРґС‘С‚"
+        verbose_name="Направления, которые ведёт"
     )
 
     def __str__(self):
@@ -143,12 +143,39 @@ class Employee(models.Model):
 
 
     class Meta:
-        verbose_name = "РЎРѕС‚СЂСѓРґРЅРёРє"
-        verbose_name_plural = "РЎРѕС‚СЂСѓРґРЅРёРєРё"
+        verbose_name = "Сотрудник"
+        verbose_name_plural = "Сотрудники"
 
     def __str__(self):
         return f"{self.user_profile.user.get_full_name() or self.user_profile.user.username}"
 
+
+
+class HourRateChange(models.Model):
+    """
+    История изменений часовой ставки.
+    Старые смены считаются по ставке, которая действовала на момент их начала.
+    """
+    rate = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Часовая ставка")
+    effective_from = models.DateTimeField(default=timezone.now, db_index=True, verbose_name="Действует с")
+    changed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='hour_rate_changes',
+        verbose_name="Кто изменил",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Создано")
+
+    class Meta:
+        verbose_name = "Изменение часовой ставки"
+        verbose_name_plural = "История изменения часовой ставки"
+        ordering = ['-effective_from', '-id']
+
+    def __str__(self):
+        who = self.changed_by.username if self.changed_by_id else "system"
+        return f"{self.rate} ₽/ч с {self.effective_from:%Y-%m-%d %H:%M} ({who})"
 
 
 @receiver(post_save, sender=UserProfile)
@@ -159,27 +186,27 @@ def create_employee_for_user_profile(sender, instance, created, **kwargs):
 
 class Schedule(models.Model):
     """
-    РњРѕРґРµР»СЊ РіСЂР°С„РёРєР° СЂР°Р±РѕС‚С‹ РЅР° РѕРїСЂРµРґРµР»РµРЅРЅС‹Р№ РїРµСЂРёРѕРґ.
+    Модель графика работы на определенный период.
     """
-    name = models.CharField(max_length=200, verbose_name="РќР°Р·РІР°РЅРёРµ РіСЂР°С„РёРєР°")
-    start_date = models.DateField(verbose_name="Р”Р°С‚Р° РЅР°С‡Р°Р»Р°")
-    end_date = models.DateField(verbose_name="Р”Р°С‚Р° РѕРєРѕРЅС‡Р°РЅРёСЏ")
+    name = models.CharField(max_length=200, verbose_name="Название графика")
+    start_date = models.DateField(verbose_name="Дата начала")
+    end_date = models.DateField(verbose_name="Дата окончания")
 
 
-    # РЎС‚Р°С‚СѓСЃ РіСЂР°С„РёРєР°
+    # Статус графика
     STATUS_CHOICES = [
         ('draft', 'Черновик'),
         ('pending', 'На согласовании'),
         ('approved', 'Утвержден')
     ]
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
-    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, verbose_name="РЎРѕР·РґР°С‚РµР»СЊ")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Р”Р°С‚Р° СЃРѕР·РґР°РЅРёСЏ")
-    updated_at = models.DateTimeField(auto_now=True, verbose_name="Р”Р°С‚Р° РѕР±РЅРѕРІР»РµРЅРёСЏ")
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, verbose_name="Создатель")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата создания")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Дата обновления")
 
     class Meta:
-        verbose_name = "Р“СЂР°С„РёРє СЂР°Р±РѕС‚С‹"
-        verbose_name_plural = "Р“СЂР°С„РёРєРё СЂР°Р±РѕС‚С‹"
+        verbose_name = "График работы"
+        verbose_name_plural = "Графики работы"
 
     def __str__(self):
         return f"{self.name} ({self.start_date} - {self.end_date})"
@@ -188,31 +215,31 @@ class Schedule(models.Model):
 
 class ShiftAssignment(models.Model):
     """
-    РќР°Р·РЅР°С‡РµРЅРёРµ СЃРѕС‚СЂСѓРґРЅРёРєР° РЅР° РєРѕРЅРєСЂРµС‚РЅРѕРµ Р·Р°РЅСЏС‚РёРµ РІ РєРѕРЅРєСЂРµС‚РЅС‹Р№ РґРµРЅСЊ Рё РІСЂРµРјСЏ.
+    Назначение сотрудника на конкретное занятие в конкретный день и время.
     """
-    # РЎРІСЏР·СЊ СЃ РіСЂР°С„РёРєРѕРј
+    # Связь с графиком
     schedule = models.ForeignKey('Schedule', on_delete=models.CASCADE, related_name='assignments')
 
-    # РЎРѕС‚СЂСѓРґРЅРёРє, РєРѕС‚РѕСЂРѕРіРѕ РЅР°Р·РЅР°С‡Р°СЋС‚
-    employee = models.ForeignKey(UserProfile, on_delete=models.CASCADE, verbose_name="РЎРѕС‚СЂСѓРґРЅРёРє")
+    # Сотрудник, которого назначают
+    employee = models.ForeignKey(UserProfile, on_delete=models.CASCADE, verbose_name="Сотрудник")
 
-    # РўРёРї Р·Р°РЅСЏС‚РёСЏ (РґР»СЏ С‚СЂРµРЅРµСЂРѕРІ) РёР»Рё РїСЂРѕСЃС‚Рѕ "Р Р°Р±РѕС‚Р°" (РґР»СЏ Р°РґРјРёРЅРёСЃС‚СЂР°С‚РѕСЂРѕРІ)
+    # Тип занятия (для тренеров) или просто "Работа" (для администраторов)
     workout_type = models.ForeignKey(
         WorkoutType,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        verbose_name="РўРёРї Р·Р°РЅСЏС‚РёСЏ"
+        verbose_name="Тип занятия"
     )
     
     
 
-    # Р’СЂРµРјРµРЅРЅС‹Рµ СЂР°РјРєРё
-    date = models.DateField(verbose_name="Р”Р°С‚Р°")
-    start_time = models.TimeField(verbose_name="Р’СЂРµРјСЏ РЅР°С‡Р°Р»Р°")
-    end_time = models.TimeField(verbose_name="Р’СЂРµРјСЏ РѕРєРѕРЅС‡Р°РЅРёСЏ", null=True, blank=True)
+    # Временные рамки
+    date = models.DateField(verbose_name="Дата")
+    start_time = models.TimeField(verbose_name="Время начала")
+    end_time = models.TimeField(verbose_name="Время окончания", null=True, blank=True)
 
-    # РЎС‚Р°С‚СѓСЃ РЅР°Р·РЅР°С‡РµРЅРёСЏ
+    # Статус назначения
     STATUS_CHOICES = [
         ('scheduled', 'Запланировано'),
         ('confirmed', 'Подтверждено'),
@@ -221,48 +248,48 @@ class ShiftAssignment(models.Model):
     ]
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='scheduled')
 
-    # Р¤Р°РєС‚РёС‡РµСЃРєРё РѕС‚СЂР°Р±РѕС‚Р°РЅРЅС‹Рµ С‡Р°СЃС‹ (Р·Р°РїРѕР»РЅСЏРµС‚СЃСЏ РїРѕСЃС‚С„Р°РєС‚СѓРј)
-    actual_hours = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True, verbose_name="Р¤Р°РєС‚. С‡Р°СЃС‹")
+    # Фактически отработанные часы (заполняется постфактум)
+    actual_hours = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True, verbose_name="Факт. часы")
 
     class Meta:
-        verbose_name = "РќР°Р·РЅР°С‡РµРЅРёРµ РЅР° Р·Р°РЅСЏС‚РёРµ"
-        verbose_name_plural = "РќР°Р·РЅР°С‡РµРЅРёСЏ РЅР° Р·Р°РЅСЏС‚РёСЏ"
-        unique_together = ['employee', 'date', 'start_time']  # РЎРѕС‚СЂСѓРґРЅРёРє РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РІ РґРІСѓС… РјРµСЃС‚Р°С… РѕРґРЅРѕРІСЂРµРјРµРЅРЅРѕ
+        verbose_name = "Назначение на занятие"
+        verbose_name_plural = "Назначения на занятия"
+        unique_together = ['employee', 'date', 'start_time']  # Сотрудник не может быть в двух местах одновременно
 
     def __str__(self):
-        # Р•РґРёРЅСЃС‚РІРµРЅРЅС‹Р№, РїСЂР°РІРёР»СЊРЅС‹Р№ РјРµС‚РѕРґ __str__
+        # Единственный, правильный метод __str__
         end_time_str = self.end_time.strftime('%H:%M') if self.end_time else '??:??'
         return f"{self.employee.user.username} - {self.workout_type or 'Работа'} ({self.date} {self.start_time.strftime('%H:%M')}-{end_time_str})"
 
     # def get_payment_amount(self):
     #     """
-    #     Р Р°СЃСЃС‡РёС‚С‹РІР°РµС‚ СЃСѓРјРјСѓ Рє РІС‹РїР»Р°С‚Рµ Р·Р° СЌС‚Рѕ РЅР°Р·РЅР°С‡РµРЅРёРµ.
+    #     Рассчитывает сумму к выплате за это назначение.
     #     """
     #     if self.employee.position == 'trainer':
-    #         # Р”Р»СЏ С‚СЂРµРЅРµСЂР°: СЃС‚Р°РІРєР° Р·Р° Р·Р°РЅСЏС‚РёРµ
+    #         # Для тренера: ставка за занятие
     #         return self.workout_type.rate_per_session if self.workout_type else 0
     #     elif self.employee.position == 'administrator':
-    #         # Р”Р»СЏ Р°РґРјРёРЅРёСЃС‚СЂР°С‚РѕСЂР°: СЃС‚Р°РІРєР° Р·Р° РґРµРЅСЊ
+    #         # Для администратора: ставка за день
     #         return ADMIN_RATE_PER_DAY
     #     return 0
 
 
-    #РІС‹С‡РёСЃР»СЏРµС‚ РїСЂРѕРґРѕР»Р¶РёС‚РµР»СЊРЅРѕСЃС‚СЊ СЃРјРµРЅС‹ РІ С‡Р°СЃР°С…
+    #вычисляет продолжительность смены в часах
     def get_duration(self):
         from datetime import datetime, date
-        # РЎРѕР·РґР°С‘Рј "С„РёРєС‚РёРІРЅСѓСЋ" РґР°С‚Сѓ (01.01.0001), С‡С‚РѕР±С‹ РїСЂРµРІСЂР°С‚РёС‚СЊ РІСЂРµРјСЏ РІ РїРѕР»РЅРѕС†РµРЅРЅС‹Р№ datetime
-        start = datetime.combine(date.min, self.start_time)  # в†’ datetime(1, 1, 1, 9, 0)
-        end = datetime.combine(date.min, self.end_time)  # в†’ datetime(1, 1, 1, 10, 0)
+        # Создаём "фиктивную" дату (01.01.0001), чтобы превратить время в полноценный datetime
+        start = datetime.combine(date.min, self.start_time)  # -> datetime(1, 1, 1, 9, 0)
+        end = datetime.combine(date.min, self.end_time)  # -> datetime(1, 1, 1, 10, 0)
 
-        # РЎС‡РёС‚Р°РµРј СЂР°Р·РЅРёС†Сѓ РІ СЃРµРєСѓРЅРґР°С… Рё РїРµСЂРµРІРѕРґРёРј РІ С‡Р°СЃС‹
-        return (end - start).total_seconds() / 3600  # в†’ 1.0
+        # Считаем разницу в секундах и переводим в часы
+        return (end - start).total_seconds() / 3600  # -> 1.0
 
 
 
 
 class TimeOffRequest(models.Model):
     """
-    Р—Р°СЏРІРєР° РЅР° РѕС‚РіСѓР»/РѕС‚РїСѓСЃРє.
+    Заявка на отгул/отпуск.
     """
     REQUEST_TYPES = [
         ('vacation', 'Отпуск'),
@@ -277,18 +304,18 @@ class TimeOffRequest(models.Model):
         ('rejected', 'Отклонено'),
     ]
 
-    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, verbose_name="РЎРѕС‚СЂСѓРґРЅРёРє")
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, verbose_name="Сотрудник")
     request_type = models.CharField(max_length=20, choices=REQUEST_TYPES, default='personal')
-    start_date = models.DateField(verbose_name="Р”Р°С‚Р° РЅР°С‡Р°Р»Р°")
-    end_date = models.DateField(verbose_name="Р”Р°С‚Р° РѕРєРѕРЅС‡Р°РЅРёСЏ")
-    reason = models.TextField(verbose_name="РџСЂРёС‡РёРЅР°")
+    start_date = models.DateField(verbose_name="Дата начала")
+    end_date = models.DateField(verbose_name="Дата окончания")
+    reason = models.TextField(verbose_name="Причина")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Р”Р°С‚Р° СЃРѕР·РґР°РЅРёСЏ")
-    updated_at = models.DateTimeField(auto_now=True, verbose_name="Р”Р°С‚Р° РѕР±РЅРѕРІР»РµРЅРёСЏ")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата создания")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Дата обновления")
 
     class Meta:
-        verbose_name = "Р—Р°СЏРІРєР° РЅР° РѕС‚РіСѓР»"
-        verbose_name_plural = "Р—Р°СЏРІРєРё РЅР° РѕС‚РіСѓР»"
+        verbose_name = "Заявка на отгул"
+        verbose_name_plural = "Заявки на отгул"
 
     def __str__(self):
         return f"{self.employee} - {self.get_request_type_display()} ({self.start_date} - {self.end_date})"
@@ -297,11 +324,11 @@ class TimeOffRequest(models.Model):
 
 class ShiftSwapRequest(models.Model):
     """
-    Р—Р°СЏРІРєР° РЅР° РѕР±РјРµРЅ СЃРјРµРЅР°РјРё РјРµР¶РґСѓ СЃРѕС‚СЂСѓРґРЅРёРєР°РјРё.
+    Заявка на обмен сменами между сотрудниками.
     """
     from_employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='swap_requests_sent')
     to_employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='swap_requests_received')
-    reason = models.TextField(verbose_name="РџСЂРёС‡РёРЅР° РѕР±РјРµРЅР°")
+    reason = models.TextField(verbose_name="Причина обмена")
 
     STATUS_CHOICES = [
         ('pending', 'На рассмотрении'),
@@ -311,11 +338,11 @@ class ShiftSwapRequest(models.Model):
         ('rejected', 'Отклонено'),
     ]
     status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='pending')
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Р”Р°С‚Р° СЃРѕР·РґР°РЅРёСЏ")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата создания")
 
     class Meta:
-        verbose_name = "Р—Р°СЏРІРєР° РЅР° РѕР±РјРµРЅ СЃРјРµРЅР°РјРё"
-        verbose_name_plural = "Р—Р°СЏРІРєРё РЅР° РѕР±РјРµРЅ СЃРјРµРЅР°РјРё"
+        verbose_name = "Заявка на обмен сменами"
+        verbose_name_plural = "Заявки на обмен сменами"
 
     def __str__(self):
         return f"Обмен: {self.from_employee} -> {self.to_employee}"
@@ -323,14 +350,14 @@ class ShiftSwapRequest(models.Model):
 
 class SwapShift(models.Model):
     """
-    РЎРјРµРЅР°, СѓС‡Р°СЃС‚РІСѓСЋС‰Р°СЏ РІ РѕР±РјРµРЅРµ.
+    Смена, участвующая в обмене.
     """
     swap_request = models.ForeignKey(ShiftSwapRequest, on_delete=models.CASCADE, related_name='shifts')
-    shift_assignment = models.ForeignKey(ShiftAssignment, on_delete=models.CASCADE, verbose_name="РЎРјРµРЅР° РґР»СЏ РѕР±РјРµРЅР°")
+    shift_assignment = models.ForeignKey(ShiftAssignment, on_delete=models.CASCADE, verbose_name="Смена для обмена")
 
     class Meta:
-        verbose_name = "РЎРјРµРЅР° РІ РѕР±РјРµРЅРµ"
-        verbose_name_plural = "РЎРјРµРЅС‹ РІ РѕР±РјРµРЅРµ"
+        verbose_name = "Смена в обмене"
+        verbose_name_plural = "Смены в обмене"
 
     def __str__(self):
         return f"{self.shift_assignment} in {self.swap_request}"
@@ -339,7 +366,7 @@ class SwapShift(models.Model):
 
 class OptimizationRule(models.Model):
     """
-    РџСЂР°РІРёР»Рѕ РґР»СЏ Р°Р»РіРѕСЂРёС‚РјР° РѕРїС‚РёРјРёР·Р°С†РёРё.
+    Правило для алгоритма оптимизации.
     """
     RULE_TYPES = [
         ('legal', 'Законодательное'),
@@ -347,22 +374,22 @@ class OptimizationRule(models.Model):
         ('preference', 'Предпочтение'),
     ]
 
-    name = models.CharField(max_length=200, verbose_name="РќР°Р·РІР°РЅРёРµ РїСЂР°РІРёР»Р°")
+    name = models.CharField(max_length=200, verbose_name="Название правила")
     rule_type = models.CharField(max_length=20, choices=RULE_TYPES, default='business')
-    description = models.TextField(verbose_name="РћРїРёСЃР°РЅРёРµ РїСЂР°РІРёР»Р°")
+    description = models.TextField(verbose_name="Описание правила")
 
-    # РџР°СЂР°РјРµС‚СЂС‹ РїСЂР°РІРёР»Р°
-    min_employees_per_shift = models.IntegerField(null=True, blank=True, verbose_name="РњРёРЅ. СЃРѕС‚СЂСѓРґРЅРёРєРѕРІ РІ СЃРјРµРЅСѓ")
-    max_employees_per_shift = models.IntegerField(null=True, blank=True, verbose_name="РњР°РєСЃ. СЃРѕС‚СЂСѓРґРЅРёРєРѕРІ РІ СЃРјРµРЅСѓ")
-    max_consecutive_shifts = models.IntegerField(null=True, blank=True, verbose_name="РњР°РєСЃ. СЃРјРµРЅ РїРѕРґСЂСЏРґ")
-    min_rest_hours = models.IntegerField(null=True, blank=True, verbose_name="РњРёРЅ. С‡Р°СЃРѕРІ РѕС‚РґС‹С…Р° РјРµР¶РґСѓ СЃРјРµРЅР°РјРё")
+    # Параметры правила
+    min_employees_per_shift = models.IntegerField(null=True, blank=True, verbose_name="Мин. сотрудников в смену")
+    max_employees_per_shift = models.IntegerField(null=True, blank=True, verbose_name="Макс. сотрудников в смену")
+    max_consecutive_shifts = models.IntegerField(null=True, blank=True, verbose_name="Макс. смен подряд")
+    min_rest_hours = models.IntegerField(null=True, blank=True, verbose_name="Мин. часов отдыха между сменами")
 
-    is_active = models.BooleanField(default=True, verbose_name="РђРєС‚РёРІРЅРѕ")
-    priority = models.IntegerField(default=1, verbose_name="РџСЂРёРѕСЂРёС‚РµС‚")
+    is_active = models.BooleanField(default=True, verbose_name="Активно")
+    priority = models.IntegerField(default=1, verbose_name="Приоритет")
 
     class Meta:
-        verbose_name = "РџСЂР°РІРёР»Рѕ РѕРїС‚РёРјРёР·Р°С†РёРё"
-        verbose_name_plural = "РџСЂР°РІРёР»Р° РѕРїС‚РёРјРёР·Р°С†РёРё"
+        verbose_name = "Правило оптимизации"
+        verbose_name_plural = "Правила оптимизации"
         ordering = ['priority', 'rule_type']
 
     def __str__(self):
@@ -371,24 +398,24 @@ class OptimizationRule(models.Model):
 
 
 class Availability(models.Model):
-    employee = models.ForeignKey(UserProfile, on_delete=models.CASCADE, verbose_name="РЎРѕС‚СЂСѓРґРЅРёРє")
-    date = models.DateField(verbose_name="Р”Р°С‚Р°")
-    start_time = models.TimeField(verbose_name="РќР°С‡Р°Р»Рѕ СЃР»РѕС‚Р°")
-    end_time = models.TimeField(verbose_name="РћРєРѕРЅС‡Р°РЅРёРµ СЃР»РѕС‚Р°")
-    is_available = models.BooleanField(default=True, verbose_name="Р”РѕСЃС‚СѓРїРµРЅ")
-    updated_at = models.DateTimeField(auto_now=True, verbose_name="РџРѕСЃР»РµРґРЅРµРµ РѕР±РЅРѕРІР»РµРЅРёРµ")
+    employee = models.ForeignKey(UserProfile, on_delete=models.CASCADE, verbose_name="Сотрудник")
+    date = models.DateField(verbose_name="Дата")
+    start_time = models.TimeField(verbose_name="Начало слота")
+    end_time = models.TimeField(verbose_name="Окончание слота")
+    is_available = models.BooleanField(default=True, verbose_name="Доступен")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Последнее обновление")
 
     class Meta:
-        verbose_name = "Р”РѕСЃС‚СѓРїРЅРѕСЃС‚СЊ"
-        verbose_name_plural = "Р”РѕСЃС‚СѓРїРЅРѕСЃС‚СЊ"
+        verbose_name = "Доступность"
+        verbose_name_plural = "Доступность"
         unique_together = ('employee', 'date', 'start_time')
 
     def __str__(self):
-        return f"{self.employee.user.username} вЂ” {self.date} {self.start_time}вЂ“{self.end_time}"
+        return f"{self.employee.user.username} — {self.date} {self.start_time}–{self.end_time}"
 
 
 
-#СЃРѕРіР»Р°СЃРѕРІР°РЅРёРµ РіСЂР°С„РёРєР°: РјРѕРґРµР»СЊ РѕС‚Р·С‹РІР°
+#согласование графика: модель отзыва
 class ScheduleApproval(models.Model):
     schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE, related_name='approvals')
     employee = models.ForeignKey(UserProfile, on_delete=models.CASCADE)
@@ -403,15 +430,15 @@ class ScheduleApproval(models.Model):
 
 class ChatConversation(models.Model):
     """
-    Р›РёС‡РЅС‹Р№ РґРёР°Р»РѕРі РјРµР¶РґСѓ РґРІСѓРјСЏ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏРјРё.
-    participant_a Рё participant_b РІСЃРµРіРґР° С…СЂР°РЅСЏС‚СЃСЏ РІ СЃС‚Р°Р±РёР»СЊРЅРѕРј РїРѕСЂСЏРґРєРµ (РїРѕ id),
-    С‡С‚РѕР±С‹ РЅРµ СЃРѕР·РґР°РІР°С‚СЊ РґСѓР±Р»РёРєР°С‚С‹ РґРёР°Р»РѕРіРѕРІ РґР»СЏ РѕРґРЅРѕР№ РїР°СЂС‹ РїРѕР»СЊР·РѕРІР°С‚РµР»РµР№.
+    Личный диалог между двумя пользователями.
+    participant_a и participant_b всегда хранятся в стабильном порядке (по id),
+    чтобы не создавать дубликаты диалогов для одной пары пользователей.
     """
     participant_a = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         related_name='chat_conversations_as_a',
-        verbose_name='РЈС‡Р°СЃС‚РЅРёРє A',
+        verbose_name='Участник A',
         null=True,
         blank=True,
     )
@@ -419,24 +446,32 @@ class ChatConversation(models.Model):
         User,
         on_delete=models.CASCADE,
         related_name='chat_conversations_as_b',
-        verbose_name='РЈС‡Р°СЃС‚РЅРёРє B',
+        verbose_name='Участник B',
         null=True,
         blank=True,
     )
-    is_group = models.BooleanField(default=False, verbose_name='Р“СЂСѓРїРїРѕРІРѕР№ С‡Р°С‚')
-    title = models.CharField(max_length=200, blank=True, verbose_name='РќР°Р·РІР°РЅРёРµ РіСЂСѓРїРїС‹')
+    is_group = models.BooleanField(default=False, verbose_name='Групповой чат')
+    title = models.CharField(max_length=200, blank=True, verbose_name='Название группы')
     participants = models.ManyToManyField(
         User,
         related_name='chat_conversations',
         blank=True,
-        verbose_name='РЈС‡Р°СЃС‚РЅРёРєРё',
+        verbose_name='Участники',
     )
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name='РЎРѕР·РґР°РЅ')
-    updated_at = models.DateTimeField(auto_now=True, verbose_name='РћР±РЅРѕРІР»РµРЅ')
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='chat_groups_created',
+        verbose_name='Создатель группы',
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Создан')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Обновлен')
 
     class Meta:
-        verbose_name = 'Р”РёР°Р»РѕРі'
-        verbose_name_plural = 'Р”РёР°Р»РѕРіРё'
+        verbose_name = 'Диалог'
+        verbose_name_plural = 'Диалоги'
         constraints = [
             models.UniqueConstraint(
                 fields=['participant_a', 'participant_b'],
@@ -448,10 +483,10 @@ class ChatConversation(models.Model):
 
     def __str__(self):
         if self.is_group:
-            return self.title or f'Р“СЂСѓРїРїР° #{self.id}'
+            return self.title or f'Группа #{self.id}'
         if self.participant_a and self.participant_b:
-            return f'Р”РёР°Р»РѕРі: {self.participant_a.username} в†” {self.participant_b.username}'
-        return f'Р”РёР°Р»РѕРі #{self.id}'
+            return f'Диалог: {self.participant_a.username} <-> {self.participant_b.username}'
+        return f'Диалог #{self.id}'
 
     def get_other_user(self, current_user):
         return self.participant_b if self.participant_a_id == current_user.id else self.participant_a
@@ -459,25 +494,25 @@ class ChatConversation(models.Model):
 
 class ChatConversationPin(models.Model):
     """
-    Р—Р°РєСЂРµРїР»РµРЅРёРµ РґРёР°Р»РѕРіР° РєРѕРЅРєСЂРµС‚РЅС‹Рј РїРѕР»СЊР·РѕРІР°С‚РµР»РµРј.
+    Закрепление диалога конкретным пользователем.
     """
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         related_name='chat_pins',
-        verbose_name='РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ',
+        verbose_name='Пользователь',
     )
     conversation = models.ForeignKey(
         ChatConversation,
         on_delete=models.CASCADE,
         related_name='pins',
-        verbose_name='Р”РёР°Р»РѕРі',
+        verbose_name='Диалог',
     )
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Р—Р°РєСЂРµРїР»РµРЅРѕ РІ')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Закреплено в')
 
     class Meta:
-        verbose_name = 'Р—Р°РєСЂРµРїР»РµРЅРЅС‹Р№ РґРёР°Р»РѕРі'
-        verbose_name_plural = 'Р—Р°РєСЂРµРїР»РµРЅРЅС‹Рµ РґРёР°Р»РѕРіРё'
+        verbose_name = 'Закрепленный диалог'
+        verbose_name_plural = 'Закрепленные диалоги'
         constraints = [
             models.UniqueConstraint(fields=['user', 'conversation'], name='unique_chat_conversation_pin'),
         ]
@@ -489,58 +524,81 @@ class ChatConversationPin(models.Model):
 
 class ChatMessage(models.Model):
     """
-    РЎРѕРѕР±С‰РµРЅРёРµ РІ Р»РёС‡РЅРѕРј РґРёР°Р»РѕРіРµ.
+    Сообщение в личном диалоге.
     """
     conversation = models.ForeignKey(
         ChatConversation,
         on_delete=models.CASCADE,
         related_name='messages',
-        verbose_name='Р”РёР°Р»РѕРі',
+        verbose_name='Диалог',
     )
     sender = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         related_name='chat_messages_sent',
-        verbose_name='РћС‚РїСЂР°РІРёС‚РµР»СЊ',
+        verbose_name='Отправитель',
     )
-    text = models.TextField(verbose_name='РўРµРєСЃС‚ СЃРѕРѕР±С‰РµРЅРёСЏ')
-    is_read = models.BooleanField(default=False, verbose_name='РџСЂРѕС‡РёС‚Р°РЅРѕ')
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name='РћС‚РїСЂР°РІР»РµРЅРѕ')
+    text = models.TextField(verbose_name='Текст сообщения', blank=True, default='')
+    is_read = models.BooleanField(default=False, verbose_name='Прочитано')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Отправлено')
 
     class Meta:
-        verbose_name = 'РЎРѕРѕР±С‰РµРЅРёРµ С‡Р°С‚Р°'
-        verbose_name_plural = 'РЎРѕРѕР±С‰РµРЅРёСЏ С‡Р°С‚Р°'
+        verbose_name = 'Сообщение чата'
+        verbose_name_plural = 'Сообщения чата'
         ordering = ['created_at']
 
     def __str__(self):
-        return f'[{self.created_at:%d.%m.%Y %H:%M}] {self.sender.username}: {self.text[:30]}'
+        preview = (self.text or '').strip()
+        if not preview:
+            preview = '[вложение]'
+        return f'[{self.created_at:%d.%m.%Y %H:%M}] {self.sender.username}: {preview[:30]}'
+
+
+class ChatMessageAttachment(models.Model):
+    message = models.ForeignKey(
+        ChatMessage,
+        on_delete=models.CASCADE,
+        related_name='attachments',
+        verbose_name='Сообщение',
+    )
+    file = models.FileField(upload_to='chat_files/%Y/%m/%d/', verbose_name='Файл')
+    original_name = models.CharField(max_length=255, verbose_name='Имя файла')
+    size = models.PositiveIntegerField(default=0, verbose_name='Размер (байт)')
+    uploaded_at = models.DateTimeField(auto_now_add=True, verbose_name='Загружен')
+
+    class Meta:
+        verbose_name = 'Вложение сообщения'
+        verbose_name_plural = 'Вложения сообщений'
+        ordering = ['id']
+
+    def __str__(self):
+        return f'Файл {self.original_name} к сообщению #{self.message_id}'
 
 
 class ChatMessageRead(models.Model):
     """
-    РџРµСЂСЃРѕРЅР°Р»СЊРЅС‹Р№ СЃС‚Р°С‚СѓСЃ РїСЂРѕС‡С‚РµРЅРёСЏ СЃРѕРѕР±С‰РµРЅРёСЏ РєРѕРЅРєСЂРµС‚РЅС‹Рј РїРѕР»СЊР·РѕРІР°С‚РµР»РµРј.
+    Персональный статус прочтения сообщения конкретным пользователем.
     """
     message = models.ForeignKey(
         ChatMessage,
         on_delete=models.CASCADE,
         related_name='read_states',
-        verbose_name='РЎРѕРѕР±С‰РµРЅРёРµ',
+        verbose_name='Сообщение',
     )
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         related_name='chat_message_read_states',
-        verbose_name='РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ',
+        verbose_name='Пользователь',
     )
-    read_at = models.DateTimeField(null=True, blank=True, verbose_name='РџСЂРѕС‡РёС‚Р°РЅРѕ РІ')
+    read_at = models.DateTimeField(null=True, blank=True, verbose_name='Прочитано в')
 
     class Meta:
-        verbose_name = 'РЎС‚Р°С‚СѓСЃ РїСЂРѕС‡С‚РµРЅРёСЏ СЃРѕРѕР±С‰РµРЅРёСЏ'
-        verbose_name_plural = 'РЎС‚Р°С‚СѓСЃС‹ РїСЂРѕС‡С‚РµРЅРёСЏ СЃРѕРѕР±С‰РµРЅРёР№'
+        verbose_name = 'Статус прочтения сообщения'
+        verbose_name_plural = 'Статусы прочтения сообщений'
         constraints = [
             models.UniqueConstraint(fields=['message', 'user'], name='unique_message_read_state'),
         ]
 
     def __str__(self):
-        return f'Р§С‚РµРЅРёРµ СЃРѕРѕР±С‰РµРЅРёСЏ #{self.message_id} РїРѕР»СЊР·РѕРІР°С‚РµР»РµРј {self.user.username}'
-
+        return f'Чтение сообщения #{self.message_id} пользователем {self.user.username}'

@@ -29,7 +29,7 @@ def parse_time_slot(time_slot: str):
     if not time_slot or not isinstance(time_slot, str):
         raise ValueError('Не удалось определить временной слот.')
 
-    normalized = time_slot.strip().replace('вЂ“', '-').replace('–', '-').replace('—', '-')
+    normalized = time_slot.strip().replace('–', '-').replace('–', '-').replace('—', '-')
     parts = re.split(r'\s*-\s*', normalized, maxsplit=1)
     if not parts or not parts[0]:
         raise ValueError(f'Некорректный формат времени: {time_slot}')
@@ -257,7 +257,12 @@ def api_update_schedule(request, schedule_id):
     try:
         schedule = get_object_or_404(Schedule, id=schedule_id)
         data = json.loads(request.body)
+        schedule_name = (data.get('name') or '').strip()
         assignments = data.get('assignments', [])
+
+        if schedule_name:
+            schedule.name = schedule_name
+            schedule.save(update_fields=['name', 'updated_at'])
 
         old_shifts = list(ShiftAssignment.objects.filter(schedule=schedule))
         old_by_key = {}
@@ -373,7 +378,11 @@ def api_update_schedule(request, schedule_id):
                 recipient_list=emails,
             )
 
-        return JsonResponse({'success': True, 'changed_employees': list(changed_employees)})
+        return JsonResponse({
+            'success': True,
+            'changed_employees': list(changed_employees),
+            'schedule_name': schedule.name,
+        })
 
     except Exception as exc:
         return api_error_response(exc, status=400)

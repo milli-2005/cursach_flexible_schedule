@@ -20,6 +20,7 @@
     setupThemeToggle();
     setupGlobalDeleteConfirmation();
     setupChatUnreadBadge();
+    setupPasswordVisibilityToggles();
 });
 
 function setupThemeToggle() {
@@ -196,3 +197,46 @@ async function updateChatUnreadBadge() {
 }
 
 window.updateChatUnreadBadge = updateChatUnreadBadge;
+
+function setupPasswordVisibilityToggles() {
+    const passwordInputs = document.querySelectorAll('input[type="password"]');
+    if (!passwordInputs.length) {
+        return;
+    }
+
+    passwordInputs.forEach((input, index) => {
+        if (input.dataset.passwordToggleReady === '1') {
+            return;
+        }
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'password-toggle-wrap';
+        input.parentNode.insertBefore(wrapper, input);
+        wrapper.appendChild(input);
+
+        const inputId = input.id || `password-field-${index + 1}`;
+        if (!input.id) {
+            input.id = inputId;
+        }
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'password-toggle-btn';
+        btn.setAttribute('aria-label', 'Показать пароль');
+        btn.setAttribute('title', 'Показать пароль');
+        btn.setAttribute('aria-controls', inputId);
+        btn.innerHTML = '<i class="bi bi-eye"></i>';
+
+        btn.addEventListener('click', function () {
+            const isVisible = input.type === 'text';
+            input.type = isVisible ? 'password' : 'text';
+            btn.setAttribute('aria-label', isVisible ? 'Показать пароль' : 'Скрыть пароль');
+            btn.setAttribute('title', isVisible ? 'Показать пароль' : 'Скрыть пароль');
+            btn.innerHTML = isVisible ? '<i class="bi bi-eye"></i>' : '<i class="bi bi-eye-slash"></i>';
+            input.focus();
+        });
+
+        wrapper.appendChild(btn);
+        input.dataset.passwordToggleReady = '1';
+    });
+}

@@ -1,4 +1,4 @@
-# core/views.py
+﻿# core/views.py
 import secrets
 import string
 import json
@@ -59,7 +59,7 @@ def send_user_invitation(user, raw_password):
         'login_url': 'http://localhost:8000/login/',
     })
 
-    # !!! ВАЖНО: ЗАМЕНИТЕ НА ВАШ ПУБЛИЧНЫЙ URL (например, от ngrok) !!! надо спросить вместе верхнего блоква
+    # !!! ВАЖНО: замените на ваш публичный URL (например, от ngrok).
     # site_url = getattr(settings, 'PUBLIC_SITE_URL', 'http://localhost:8000')  # Используем переменную из settings
     # html_message = render_to_string('core/emails/user_invitation.html', {
     #     'user': user,
@@ -120,7 +120,7 @@ def invite_user(request):
                 # profile.position = form.cleaned_data.get('position', '')
                 profile.phone = form.cleaned_data.get('phone', '')
 
-                # УСТАНАВЛИВАЕМ ВРЕМЕННУЮ МЕТКУ
+                # Set temporary timestamp
                 profile.invitation_timestamp = timezone.now()
                 profile.save()
 
@@ -154,7 +154,7 @@ def invite_user(request):
 
 
 
-""" КРУДЫ ПОЛЬЗОВАТЕЛЕЙ"""
+""" USER CRUD """
 @login_required
 @user_passes_test(is_admin)
 def user_management(request):
@@ -175,7 +175,7 @@ def reset_user_password(request, user_id):
             user.set_password(raw_password)
             user.save()
 
-            # УСТАНАВЛИВАЕМ ВРЕМЕННУЮ МЕТКУ ДЛЯ СБРОСА
+            # Set temporary timestamp for reset
             profile = user.profile
             profile.invitation_timestamp = timezone.now()
             profile.save()
@@ -208,14 +208,9 @@ def reset_user_password(request, user_id):
 
 def index(request):
     """Главная страница сайта."""
-    # Проверяем, авторизован ли пользователь
     if request.user.is_authenticated:
-        # Если да, перенаправляем на дашборд
         return redirect('dashboard')
-    else:
-        # Если нет, показываем базовую индексную страницу
-        context = {}
-        return render(request, 'core/index.html', context)
+    return redirect('about')
 
 
 def about(request):
@@ -267,7 +262,6 @@ def custom_login(request):
 def custom_logout(request):
     """Выход из системы."""
     logout(request)
-    messages.info(request, "Вы вышли из системы.")
     return redirect('index')
 
 
@@ -360,7 +354,7 @@ def change_password(request):
     # Проверяем, не истёк ли срок действия временного пароля при доступе к странице смены пароля
     if hasattr(user, 'profile') and user.profile.is_temporary_password_expired():
         messages.error(request, "Срок действия временного пароля истёк. Пожалуйста, свяжитесь с администратором для получения нового.")
-        return redirect('login') # Или на главную, если не хочет логиниться снова
+        return redirect('login') # Рли на главную, если не хочет логиниться снова
 
     if request.method == 'POST':
         form = SetPasswordForm(user, request.POST)  # Передаём текущего пользователя
@@ -368,7 +362,7 @@ def change_password(request):
             user = form.save()
             update_session_auth_hash(request, user)  # Важно: обновляем сессию, чтобы пользователь не вышел
 
-            # СБРАСЫВАЕМ ВРЕМЕННУЮ МЕТКУ ПОСЛЕ УСПЕШНОЙ СМЕНЫ ПАРОЛЯ
+            # Clear temporary timestamp after password change
             if hasattr(user, 'profile'):
                 user.profile.invitation_timestamp = None
                 user.profile.save()
@@ -510,7 +504,7 @@ def workout_types(request):
     return render(request, 'core/workouts/workout_types.html')
 
 
-""" === РАСПИСАНИЕ === """
+""" === SCHEDULE === """
 @login_required
 def create_schedule_view(request):
     employee_models_with_workouts = Employee.objects.select_related('user_profile__user').prefetch_related('workout_types').filter(
@@ -535,7 +529,7 @@ def create_schedule_view(request):
         slots.append((start_str, end_str))
         current_time += 10
 
-    # Генерация дней (следующая неделя) — КАК СТРОКИ
+    # Build days for next week
     today = datetime.today()
     next_monday = today + timedelta(days=(7 - today.weekday()))
     current_days = [next_monday.date() + timedelta(days=i) for i in range(7)]
@@ -740,7 +734,7 @@ def schedule_detail(request, schedule_id):
         all_slots.append(f"{start}–{end}")
         current_time += 10
 
-    # === 3. Загрузка всех назначений ОДНИМ запросом ===
+    # === 3. Load all assignments in one query ===
     assignments = ShiftAssignment.objects.filter(
         schedule=schedule,
         date__in=days
@@ -801,13 +795,18 @@ def schedule_detail(request, schedule_id):
         key = f"{a.employee.id},{a.date.strftime('%Y-%m-%d')},{a.start_time.strftime('%H:%M')}"
         availability_set.add(key)
 
+    editable_employee_ids = list(
+        employee_models_with_workouts.values_list('user_profile_id', flat=True)
+    )
+
     context = {
         'schedule': schedule,
         'days': days,
         'date_strings': [d.strftime('%Y-%m-%d') for d in days],
         'employees': UserProfile.objects.filter(
-            id__in=employee_models_with_workouts.values_list('user_profile_id', flat=True)
+            id__in=editable_employee_ids
         ).select_related('user'),
+        'editable_employee_ids': editable_employee_ids,
         'workout_types': WorkoutType.objects.all(),
         'employees_with_workouts_json': json.dumps(employees_with_workouts),
         'workout_types_json': json.dumps([
@@ -868,7 +867,7 @@ def edit_schedule_view(request, schedule_id):
         time_key = a.start_time.strftime('%H:%M')
         assignment_dict[a.date][time_key] = a
 
-    # === ЗАГРУЗКА ДОСТУПНОСТИ ДЛЯ АВТОЗАПОЛНЕНИЯ ===
+    # === Load local data for rendering ===
     availabilities = Availability.objects.filter(
         employee__in=employees,
         date__in=days,
@@ -909,7 +908,7 @@ def delete_schedule_view(request, schedule_id):
 
 
 
-""" === ГРАФИК В ЛИЧНОМ КАБИНЕТЕ У ТРЕНЕРОВ === """
+""" === EMPLOYEE SCHEDULE === """
 from datetime import date, timedelta
 import calendar
 import json
@@ -1021,7 +1020,7 @@ def my_availability(request):
         messages.error(request, "Доступно только для сотрудников.")
         return redirect('dashboard')
 
-    # === ОБРАБОТКА POST: сохранение данных ===
+    # === POST handling: save data ===
     if request.method == "POST":
         week_str = request.POST.get('selected_week')
         if week_str:
@@ -1070,7 +1069,7 @@ def my_availability(request):
         for day_str in date_strings:
             for slot_start, slot_end in slots:
                 key = f"{day_str}_{slot_start}"
-                if request.POST.get(key) == 'on':  # ← ИЗМЕНЕНО
+                if request.POST.get(key) == 'on':  # <- enabled
                     date_obj = datetime.strptime(day_str, '%Y-%m-%d').date()
                     start_time = datetime.strptime(slot_start, '%H:%M').time()
                     end_time = datetime.strptime(slot_end, '%H:%M').time()
@@ -1090,7 +1089,7 @@ def my_availability(request):
 
         return redirect(f"{request.path}?week={week_start.strftime('%Y-%m-%d')}")
 
-    # === ОБРАБОТКА GET: отображение формы ===
+    # === GET handling: render form ===
     today = datetime.today()
     days_ahead = (7 - today.weekday()) % 7
     if days_ahead == 0:
@@ -1137,7 +1136,7 @@ def my_availability(request):
 
     last_updated = availabilities.order_by('-updated_at').first()
 
-    # === ДАННЫЕ С ПРОШЛОЙ НЕДЕЛИ ДЛЯ JS ===
+    # === Previous-week data for JS ===
     prev_week_start = week_start - timedelta(weeks=1)
     prev_avail = Availability.objects.filter(
         employee=user_profile,
@@ -1201,14 +1200,14 @@ from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
-from .models import ShiftAssignment, UserProfile, WorkoutType
+from .models import ShiftAssignment, UserProfile, WorkoutType, HourRateChange
 
 @login_required
 def reports_view(request):
     user = request.user
     profile = user.profile
 
-    # === ОПРЕДЕЛЯЕМ, КТО ЗАШЁЛ ===
+    # === Detect current user role ===
     is_manager = (profile.role == 'manager')
 
     # Если не менеджер — показываем только его данные
@@ -1224,38 +1223,38 @@ def reports_view(request):
         else:
             employee_filter = None  # все сотрудники
 
-    # === СТАВКА ИЗ КУКИ ===
-    hour_rate = request.COOKIES.get('hour_rate')
-    if hour_rate:
-        try:
-            hour_rate = float(hour_rate)
-        except ValueError:
-            hour_rate = None
+    latest_rate = HourRateChange.objects.order_by('-effective_from', '-id').first()
+    hour_rate = float(latest_rate.rate) if latest_rate else None
 
-    # === ОБРАБОТКА СОХРАНЕНИЯ/СБРОСА СТАВКИ ===
+    # Изменение ставки: только руководитель.
     if 'set_hour_rate' in request.GET:
-        new_rate_str = request.GET.get('hour_rate', '').strip()
-        if new_rate_str:
-            try:
-                new_rate = float(new_rate_str)
-                if new_rate >= 0:
-                    hour_rate = new_rate
-                    messages.success(request, f"Ставка сохранена: {int(hour_rate)} ₽/час")
-                else:
-                    messages.error(request, "Ставка не может быть отрицательной")
-            except ValueError:
-                messages.error(request, "Введите корректное число")
+        if not is_manager:
+            messages.error(request, "Изменять часовую ставку может только руководитель.")
         else:
-            hour_rate = None
-            messages.info(request, "Ставка сброшена")
+            new_rate_str = request.GET.get('hour_rate', '').strip()
+            if new_rate_str:
+                try:
+                    new_rate = float(new_rate_str.replace(',', '.'))
+                    if new_rate >= 0:
+                        HourRateChange.objects.create(
+                            rate=new_rate,
+                            effective_from=timezone.now(),
+                            changed_by=request.user,
+                        )
+                        hour_rate = new_rate
+                        messages.success(
+                            request,
+                            f"Ставка изменена на {int(new_rate) if new_rate.is_integer() else new_rate} ₽/час. "
+                            "Новая ставка применяется только к будущим сменам."
+                        )
+                    else:
+                        messages.error(request, "Ставка не может быть отрицательной.")
+                except ValueError:
+                    messages.error(request, "Введите корректное число.")
 
-    if 'reset_rate' in request.GET:
-        hour_rate = None
-        messages.info(request, "Ставка сброшена")
-
-    # === ПЕРИОД ===
+    # === PERIOD ===
     period = request.GET.get('period', 'month')
-    # === ОПРЕДЕЛЕНИЕ ПЕРИОДА ===
+    # === Resolve period ===
     today = date.today()
 
     # По умолчанию — текущий месяц
@@ -1270,7 +1269,7 @@ def reports_view(request):
     start_date_str = request.GET.get('start_date')
     end_date_str = request.GET.get('end_date')
 
-    # Инициализируем даты значениями по умолчанию
+    # Initialize dates with defaults
     start_date = default_start
     end_date = default_end
 
@@ -1281,19 +1280,19 @@ def reports_view(request):
             end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
             period = 'custom'
         except ValueError:
-            messages.error(request, "Неверный формат даты. Используйте ГГГГ-ММ-ДД.")
+            messages.error(request, "Неверный формат даты. Используйте формат ГГГГ-ММ-ДД.")
     elif period == 'week':
         start_date = today - timedelta(days=7)
         end_date = today
     elif period == 'year':
         start_date = today.replace(month=1, day=1)
         end_date = today.replace(month=12, day=31)
-    # else: остаётся 'month' → уже задан как default
+    # else: остаётся 'month' -> уже задан как default
 
     delta = end_date - start_date
     all_dates = [start_date + timedelta(days=i) for i in range(delta.days + 1)]
 
-    # === ПОЛУЧЕНИЕ КАСТОМНЫХ ДАТ (если есть) ===
+    # === Apply custom date range (if provided) ===
     start_date_str = request.GET.get('start_date')
     end_date_str = request.GET.get('end_date')
 
@@ -1303,7 +1302,7 @@ def reports_view(request):
             end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
             period = 'custom'  # чтобы отличать от week/month/year
         except ValueError:
-            messages.error(request, "Неверный формат даты. Используйте ГГГГ-ММ-ДД.")
+            messages.error(request, "Неверный формат даты. Используйте формат ГГГГ-ММ-ДД.")
             start_date = None
             end_date = None
     else:
@@ -1330,11 +1329,54 @@ def reports_view(request):
 
 
 
-    # === ФИЛЬТРЫ ДЛЯ МЕНЕДЖЕРА ===
+    # === Нормализация периода (фикс залипания custom-дат) ===
+    # В форме скрытые start_date/end_date отправляются всегда, даже когда выбран week/month/year.
+    # Поэтому учитываем их только если period=custom.
+    today = date.today()
+    period = request.GET.get('period', 'month')
+    start_date_str = request.GET.get('start_date')
+    end_date_str = request.GET.get('end_date')
+
+    if period == 'week':
+        start_date = today - timedelta(days=7)
+        end_date = today
+    elif period == 'year':
+        start_date = today.replace(month=1, day=1)
+        end_date = today.replace(month=12, day=31)
+    elif period == 'custom':
+        try:
+            if not start_date_str or not end_date_str:
+                raise ValueError("missing_custom_dates")
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+            if start_date > end_date:
+                start_date, end_date = end_date, start_date
+        except ValueError:
+            messages.error(request, "Для произвольного периода укажите корректные даты 'С' и 'По'.")
+            period = 'month'
+            start_date = today.replace(day=1)
+            if today.month == 12:
+                end_date = today.replace(year=today.year + 1, month=1, day=1) - timedelta(days=1)
+            else:
+                end_date = today.replace(month=today.month + 1, day=1) - timedelta(days=1)
+    else:
+        # month (по умолчанию)
+        start_date = today.replace(day=1)
+        if today.month == 12:
+            end_date = today.replace(year=today.year + 1, month=1, day=1) - timedelta(days=1)
+        else:
+            end_date = today.replace(month=today.month + 1, day=1) - timedelta(days=1)
+
+    delta = end_date - start_date
+    all_dates = [start_date + timedelta(days=i) for i in range(delta.days + 1)]
+
+    # === Manager filters ===
     workout_id = request.GET.get('workout')
     search_query = request.GET.get('search', '').strip()
+    coverage_direction = request.GET.get('coverage_direction', 'all')
+    coverage_sort = request.GET.get('coverage_sort', 'trainers_desc')
 
-    # === ВЫБОР СОТРУДНИКОВ И ФИЛЬТРАЦИЯ ===
+    # === Filter application ===
     if is_manager:
         all_employees = UserProfile.objects.filter(role='employee').order_by('user__username')
         if employee_filter:
@@ -1346,11 +1388,12 @@ def reports_view(request):
         all_employees = [profile]
         employees = [profile]
 
-    # === ЗАПРОС СМЕН ===
-    assignments = ShiftAssignment.objects.filter(
+    # === SHIFT QUERY ===
+    assignments_base = ShiftAssignment.objects.filter(
         date__gte=start_date,
         date__lte=end_date
     ).select_related('employee', 'workout_type')
+    assignments = assignments_base
 
     # Применяем фильтры
     if is_manager:
@@ -1370,23 +1413,40 @@ def reports_view(request):
             assignments = assignments.filter(workout_type_id=workout_id)
         # Поиск не нужен — только свои данные
 
-    # === АГРЕГАЦИЯ ===
+    # === Aggregation ===
+    period_end_moment = datetime.combine(end_date, datetime.max.time())
+    if timezone.is_naive(period_end_moment):
+        period_end_moment = timezone.make_aware(period_end_moment, timezone.get_current_timezone())
+    rate_changes = list(
+        HourRateChange.objects.filter(effective_from__lte=period_end_moment)
+        .order_by('-effective_from', '-id')
+        .values_list('effective_from', 'rate')
+    )
+    rate_changes = [(dt, float(rate)) for dt, rate in rate_changes]
+
     from collections import defaultdict
     data = defaultdict(lambda: defaultdict(float))
     emp_hours = defaultdict(float)
+    emp_salary = defaultdict(float)
     day_hours = [0.0] * 7
     workout_hours = defaultdict(float)
     date_hours = defaultdict(float)
+    salary_available = False
 
     for a in assignments:
         if a.start_time is None or a.end_time is None:
             continue
-        dur = (datetime.combine(date.min, a.end_time) - datetime.combine(date.min, a.start_time)).total_seconds() / 3600
+        dur_raw = (datetime.combine(date.min, a.end_time) - datetime.combine(date.min, a.start_time)).total_seconds() / 3600
+        dur = _round_half_up_to_int(dur_raw)
         data[a.employee_id][a.date] += dur
         emp_hours[a.employee.user.username] += dur
         day_hours[a.date.weekday()] += dur
         workout_hours[a.workout_type.name] += dur
         date_hours[a.date] += dur
+        rate = _resolve_hour_rate_for_shift(a.date, a.start_time, rate_changes)
+        if rate is not None:
+            emp_salary[a.employee_id] += dur * rate
+            salary_available = True
 
     total_hours = {}
     total_shifts = {}
@@ -1402,11 +1462,13 @@ def reports_view(request):
         total = sum(data[emp.id].get(d, 0) for emp in employees)
         daily_totals.append(int(total))
 
-    total_salary = 0
-    if hour_rate is not None:
-        total_salary = int(sum(total_hours.values()) * hour_rate)
+    total_salary_per_emp = {}
+    for emp in employees:
+        total_salary_per_emp[emp.id] = int(round(emp_salary.get(emp.id, 0)))
 
-    # === ГРАФИКИ ===
+    total_salary = int(round(sum(total_salary_per_emp.values())))
+
+    # === Charts ===
     chart_data = {
         'empNames': list(emp_hours.keys()) or [],
         'empValues': [round(v, 2) for v in emp_hours.values()] or [],
@@ -1417,6 +1479,101 @@ def reports_view(request):
         'dateLabels': [d.strftime('%d.%m') for d in sorted(date_hours.keys())] or [],
         'dateValues': [round(date_hours[d], 2) for d in sorted(date_hours.keys())] or [],
     }
+
+    # === Direction summary for manager ===
+    direction_rows = []
+    employees_direction_rows = []
+    direction_summary = {}
+    workout_types_all = WorkoutType.objects.all().order_by('name')
+
+    if is_manager:
+        all_employee_profiles = UserProfile.objects.filter(
+            role='employee'
+        ).select_related('user', 'employee_profile').prefetch_related('employee_profile__workout_types')
+
+        def _display_name(user_profile):
+            user_obj = user_profile.user
+            full_name = f"{user_obj.last_name} {user_obj.first_name} {user_profile.patronymic}".strip()
+            return full_name if full_name else user_obj.username
+
+        # Кто какие направления ведет
+        direction_to_trainers = {wt.id: [] for wt in workout_types_all}
+        employees_without_directions = []
+
+        for emp_profile in all_employee_profiles:
+            emp_obj = getattr(emp_profile, 'employee_profile', None)
+            if not emp_obj:
+                continue
+
+            trainer_name = _display_name(emp_profile)
+            trainer_workouts = list(emp_obj.workout_types.all())
+
+            if not trainer_workouts:
+                employees_without_directions.append(trainer_name)
+
+            employees_direction_rows.append({
+                'name': trainer_name,
+                'workout_names': [w.name for w in trainer_workouts],
+                'workout_count': len(trainer_workouts),
+            })
+
+            for wt in trainer_workouts:
+                direction_to_trainers.setdefault(wt.id, []).append(trainer_name)
+
+        # Нагрузка по направлениям за выбранный период
+        direction_assignments = assignments_base
+        if employee_filter:
+            direction_assignments = direction_assignments.filter(employee=employee_filter)
+
+        direction_hours = defaultdict(float)
+        direction_shifts = defaultdict(int)
+        for shift in direction_assignments:
+            if not shift.workout_type_id:
+                continue
+            if shift.start_time is None or shift.end_time is None:
+                continue
+            duration_raw = (
+                datetime.combine(date.min, shift.end_time) -
+                datetime.combine(date.min, shift.start_time)
+            ).total_seconds() / 3600
+            duration = _round_half_up_to_int(duration_raw)
+            direction_hours[shift.workout_type_id] += duration
+            direction_shifts[shift.workout_type_id] += 1
+
+        for wt in workout_types_all:
+            if coverage_direction != 'all' and str(wt.id) != str(coverage_direction):
+                continue
+            trainers = sorted(direction_to_trainers.get(wt.id, []))
+            direction_rows.append({
+                'id': wt.id,
+                'name': wt.name,
+                'trainers': trainers,
+                'trainers_count': len(trainers),
+                'hours': round(direction_hours.get(wt.id, 0), 2),
+                'shifts': direction_shifts.get(wt.id, 0),
+            })
+
+        if coverage_sort == 'trainers_asc':
+            direction_rows.sort(key=lambda x: (x['trainers_count'], x['name'].lower()))
+        elif coverage_sort == 'hours_desc':
+            direction_rows.sort(key=lambda x: (-x['hours'], x['name'].lower()))
+        elif coverage_sort == 'hours_asc':
+            direction_rows.sort(key=lambda x: (x['hours'], x['name'].lower()))
+        elif coverage_sort == 'name_asc':
+            direction_rows.sort(key=lambda x: x['name'].lower())
+        elif coverage_sort == 'name_desc':
+            direction_rows.sort(key=lambda x: x['name'].lower(), reverse=True)
+        else:
+            direction_rows.sort(key=lambda x: (-x['trainers_count'], x['name'].lower()))
+
+        covered_count = len([r for r in direction_rows if r['trainers_count'] > 0])
+        direction_summary = {
+            'total_directions': len(direction_rows),
+            'covered_directions': covered_count,
+            'uncovered_directions': len(direction_rows) - covered_count,
+            'employees_without_directions_count': len(employees_without_directions),
+            'employees_without_directions': employees_without_directions,
+        }
 
     context = {
         'start_date': start_date,
@@ -1438,80 +1595,116 @@ def reports_view(request):
         'active_employees': len(employees),
         'chart_data_json': json.dumps(chart_data, ensure_ascii=False),
         'hour_rate': hour_rate,
+        'rate_last_changed_at': latest_rate.effective_from if latest_rate else None,
         'total_salary': total_salary,
+        'total_salary_per_emp': total_salary_per_emp,
+        'salary_available': salary_available,
         'is_manager': is_manager,
+        'coverage_direction': coverage_direction,
+        'coverage_sort': coverage_sort,
+        'direction_rows': direction_rows,
+        'employees_direction_rows': employees_direction_rows,
+        'direction_summary': direction_summary,
     }
-
-    resp = render(request, 'core/reports/reports.html', context)
-
-    if 'set_hour_rate' in request.GET or 'reset_rate' in request.GET:
-        if hour_rate is not None:
-            resp.set_cookie('hour_rate', str(hour_rate), max_age=365*24*60*60)
-        else:
-            resp.delete_cookie('hour_rate')
-
-    return resp
+    return render(request, 'core/reports/reports.html', context)
 
 
 
-""" === ЭКСПОРТ В ЭКСЕЛЬ === """
+""" === EXPORT TO EXCEL === """
 from openpyxl import Workbook
 from openpyxl.styles import PatternFill, Font, Border, Side
 from openpyxl.utils import get_column_letter
 from django.http import HttpResponse
 from datetime import date, timedelta, datetime
-from .models import ShiftAssignment, UserProfile
+from decimal import Decimal, ROUND_HALF_UP
+from .models import ShiftAssignment, UserProfile, HourRateChange
 
 def _format_number(value):
     if isinstance(value, float) and value.is_integer():
         return int(value)
     return round(value, 1) if isinstance(value, float) else value
 
+
+def _round_half_up_to_int(value):
+    """Округление до целого по правилам half-up (2.5 -> 3)."""
+    return int(Decimal(str(value)).quantize(Decimal('1'), rounding=ROUND_HALF_UP))
+
+
+def _resolve_hour_rate_for_shift(shift_date, shift_start_time, rate_changes):
+    """
+    Возвращает часовую ставку, которая действовала на момент начала смены.
+    rate_changes: список кортежей (effective_from, rate), отсортированный по убыванию effective_from.
+    """
+    if not rate_changes:
+        return None
+
+    moment = datetime.combine(shift_date, shift_start_time or datetime.min.time())
+    if timezone.is_naive(moment):
+        moment = timezone.make_aware(moment, timezone.get_current_timezone())
+
+    for effective_from, rate in rate_changes:
+        if effective_from <= moment:
+            return float(rate)
+    return None
+
 @login_required
 def export_operational_excel(request):
-    today = date.today()  # ← ОПРЕДЕЛИ СРАЗУ
+    today = date.today()  # <- initialized
 
     period = request.GET.get('period', 'month')
     start_date_str = request.GET.get('start_date')
     end_date_str = request.GET.get('end_date')
 
-    if start_date_str and end_date_str:
+    # Логика периода = как на странице отчетов.
+    if period == 'week':
+        start_date = today - timedelta(days=7)
+        end_date = today
+    elif period == 'year':
+        start_date = today.replace(month=1, day=1)
+        end_date = today.replace(month=12, day=31)
+    elif period == 'custom':
         try:
+            if not start_date_str or not end_date_str:
+                raise ValueError("missing_custom_dates")
             start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
             end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+            if start_date > end_date:
+                start_date, end_date = end_date, start_date
         except ValueError:
-            # fallback на текущий месяц
             start_date = today.replace(day=1)
             if today.month == 12:
                 end_date = today.replace(year=today.year + 1, month=1, day=1) - timedelta(days=1)
             else:
                 end_date = today.replace(month=today.month + 1, day=1) - timedelta(days=1)
-    else:
-        if period == 'week':
-            start_date = today - timedelta(days=7)
-            end_date = today
-        elif period == 'year':
-            start_date = today.replace(month=1, day=1)
-            end_date = today.replace(month=12, day=31)
-        else:  # month
-            start_date = today.replace(day=1)
-            if today.month == 12:
-                end_date = today.replace(year=today.year + 1, month=1, day=1) - timedelta(days=1)
-            else:
-                end_date = today.replace(month=today.month + 1, day=1) - timedelta(days=1)
+    else:  # month
+        start_date = today.replace(day=1)
+        if today.month == 12:
+            end_date = today.replace(year=today.year + 1, month=1, day=1) - timedelta(days=1)
+        else:
+            end_date = today.replace(month=today.month + 1, day=1) - timedelta(days=1)
 
 
-    # === ГЕНЕРИРУЕМ ВСЕ ДАТЫ ===
+    # === Build full date range ===
     all_dates = []
     d = start_date
     while d <= end_date:
         all_dates.append(d)
         d += timedelta(days=1)
 
-    # Если сотрудник — только он сам
-    if request.user.profile.role == 'manager':
-        employees = UserProfile.objects.filter(role='employee').order_by('user__username')
+    is_manager = request.user.profile.role == 'manager'
+    employee_id = request.GET.get('employee')
+    workout_id = request.GET.get('workout')
+    search_query = request.GET.get('search', '').strip()
+
+    # Список сотрудников (как в отчете на странице)
+    if is_manager:
+        all_employees_qs = UserProfile.objects.filter(role='employee').order_by('user__username')
+        employee_filter = None
+        if employee_id and employee_id != 'all':
+            employee_filter = all_employees_qs.filter(id=employee_id).first()
+        employees = [employee_filter] if employee_filter else list(all_employees_qs)
     else:
+        employee_filter = request.user.profile
         employees = [request.user.profile]
 
     assignments = ShiftAssignment.objects.filter(
@@ -1519,36 +1712,59 @@ def export_operational_excel(request):
         date__lte=end_date
     ).select_related('employee')
 
-    # Фильтр по сотруднику (если не менеджер)
-    if request.user.profile.role != 'manager':
+    # Фильтрация назначений = как на странице отчетов.
+    if is_manager:
+        if employee_filter:
+            assignments = assignments.filter(employee=employee_filter)
+        if workout_id and workout_id != 'all':
+            assignments = assignments.filter(workout_type_id=workout_id)
+        if search_query:
+            assignments = assignments.filter(
+                Q(employee__user__username__icontains=search_query) |
+                Q(workout_type__name__icontains=search_query)
+            )
+    else:
         assignments = assignments.filter(employee=request.user.profile)
+        if workout_id and workout_id != 'all':
+            assignments = assignments.filter(workout_type_id=workout_id)
 
     from collections import defaultdict
     data = defaultdict(lambda: defaultdict(float))
     for a in assignments:
         if a.start_time is None or a.end_time is None:
             continue  # пропускаем смены без времени
-        dur = (datetime.combine(date.min, a.end_time) - datetime.combine(date.min, a.start_time)).total_seconds() / 3600
+        dur_raw = (datetime.combine(date.min, a.end_time) - datetime.combine(date.min, a.start_time)).total_seconds() / 3600
+        dur = _round_half_up_to_int(dur_raw)
         data[a.employee_id][a.date] += dur
 
-    # Ставка из куки
-    hour_rate = request.COOKIES.get('hour_rate')
-    if hour_rate:
-        try:
-            hour_rate = float(hour_rate)
-        except:
-            hour_rate = None
-    else:
-        hour_rate = None
+    period_end_moment = datetime.combine(end_date, datetime.max.time())
+    if timezone.is_naive(period_end_moment):
+        period_end_moment = timezone.make_aware(period_end_moment, timezone.get_current_timezone())
+    rate_changes = list(
+        HourRateChange.objects.filter(effective_from__lte=period_end_moment)
+        .order_by('-effective_from', '-id')
+        .values_list('effective_from', 'rate')
+    )
+    rate_changes = [(dt, float(rate)) for dt, rate in rate_changes]
 
     # Подсчёт
     total_hours_per_emp = {}
     total_salary_per_emp = {}
+    salary_by_emp = defaultdict(float)
+    for a in assignments:
+        if a.start_time is None or a.end_time is None:
+            continue
+        dur_raw = (datetime.combine(date.min, a.end_time) - datetime.combine(date.min, a.start_time)).total_seconds() / 3600
+        dur = _round_half_up_to_int(dur_raw)
+        rate = _resolve_hour_rate_for_shift(a.date, a.start_time, rate_changes)
+        if rate is not None:
+            salary_by_emp[a.employee_id] += dur * rate
+
     for emp in employees:
         emp_id = emp.id
         hours = sum(data[emp_id].values())
         total_hours_per_emp[emp.id] = _format_number(hours)
-        salary = hours * hour_rate if hour_rate else 0
+        salary = salary_by_emp.get(emp.id, 0)
         total_salary_per_emp[emp.id] = _format_number(salary)
 
     # === EXCEL ===
@@ -1566,7 +1782,7 @@ def export_operational_excel(request):
 
     # Ширина столбцов
     ws.column_dimensions['A'].width = 25          # Сотрудник — широкий
-    ws.column_dimensions['B'].width = 14          # Период
+    ws.column_dimensions['B'].width = 26          # Период
     ws.column_dimensions['C'].width = 10          # ЗП
     for i in range(len(all_dates)):
         col_letter = get_column_letter(4 + i)      # D = 4
@@ -1582,7 +1798,7 @@ def export_operational_excel(request):
     for i, d in enumerate(all_dates, start=4):  # D = 4
         ws.cell(row=1, column=i, value=f"{d.day:02d}.{d.month:02d}")
 
-    # ЖИРНЫЙ шрифт для всей первой строки
+    # Жирный шрифт для всей первой строки
     bold_font = Font(bold=True)
     for col in range(1, 4 + len(all_dates)):
         cell = ws.cell(row=1, column=col)
@@ -1594,9 +1810,14 @@ def export_operational_excel(request):
     for col in [2, 3]:
         ws.cell(row=1, column=col).fill = green_fill
 
+    def _display_name(profile: UserProfile) -> str:
+        user_obj = profile.user
+        full_name = f"{user_obj.last_name} {user_obj.first_name} {profile.patronymic or ''}".strip()
+        return full_name if full_name else user_obj.username
+
     # Данные по сотрудникам
     for row_idx, emp in enumerate(employees, start=2):
-        ws.cell(row=row_idx, column=1, value=emp.user.username)
+        ws.cell(row=row_idx, column=1, value=_display_name(emp))
         ws.cell(row=row_idx, column=2, value=total_hours_per_emp[emp.id])
         ws.cell(row=row_idx, column=3, value=total_salary_per_emp[emp.id])
 
@@ -1613,7 +1834,7 @@ def export_operational_excel(request):
             cell = ws.cell(row=row_idx, column=i, value=val)
             cell.border = thin_border
 
-    # ИТОГОВАЯ СТРОКА
+    # Summary row
     last_row = len(employees) + 2
     ws.cell(row=last_row, column=1, value="Итого кол-часов")
 
@@ -1648,6 +1869,8 @@ def export_operational_excel(request):
             cell = ws.cell(row=row, column=col)
             if not cell.border:
                 cell.border = thin_border
+
+    ws.freeze_panes = "D2"
 
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     filename = f"tabel_{start_date.strftime('%Y%m%d')}-{end_date.strftime('%Y%m%d')}.xlsx"
