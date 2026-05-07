@@ -76,6 +76,7 @@ path('api/employee-workout-types/<int:user_id>/', api_get_employee_workout_types
 
     # Графики и планирование
     path('schedules/', views.schedule_view, name='schedule_view'),
+    path('schedules/rules/', views.distribution_rules_page, name='distribution_rules'),
     path('schedules/create/', views.create_schedule_view, name='create_schedule'),
     path('api/schedule/save/', api_schedule_views.api_save_schedule, name='api_save_schedule'),
     path('api/schedule/substitute-candidates/', api_schedule_views.api_substitute_candidates, name='api_substitute_candidates'),
@@ -86,6 +87,12 @@ path('api/employee-workout-types/<int:user_id>/', api_get_employee_workout_types
 
     # согласование графика окошко
     path('api/schedule/<int:schedule_id>/approve/', api_schedule_views.api_approve_schedule, name='api_approve_schedule'),
+    path('api/distribution-rules/parse/', views.api_parse_distribution_rule, name='api_parse_distribution_rule'),
+    path('api/distribution-rules/save/', views.api_save_distribution_rule, name='api_save_distribution_rule'),
+    path('api/distribution-rules/<int:rule_id>/update/', views.api_update_distribution_rule, name='api_update_distribution_rule'),
+    path('api/distribution-rules/<int:rule_id>/toggle/', views.api_toggle_distribution_rule, name='api_toggle_distribution_rule'),
+    path('api/distribution-rules/<int:rule_id>/delete/', views.api_delete_distribution_rule, name='api_delete_distribution_rule'),
+    path('api/distribution-rules/test/', views.api_test_distribution_rules, name='api_test_distribution_rules'),
 
 #для отправки напоминаний о доступности
 path('remind/availability/', views.send_availability_reminder_manual, name='send_availability_reminder'),

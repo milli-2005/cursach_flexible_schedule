@@ -2,6 +2,7 @@
 import secrets
 import string
 import json
+import re
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth import login, logout
@@ -13,6 +14,7 @@ from django.utils.html import strip_tags
 from django.conf import settings
 from django.http import JsonResponse
 from .error_utils import humanize_exception
+from .services.rule_ai_parser import try_parse_rule_with_ai
 from .models import *
 from .forms import UserInvitationForm, UserProfileEditForm
 from django.contrib.auth.models import User
@@ -505,6 +507,479 @@ def workout_types(request):
 
 
 """ === SCHEDULE === """
+STUDIO_DAY_START_MIN = 9 * 60
+STUDIO_DAY_END_MIN = 21 * 60
+SLOT_WORK_MIN = 50
+SLOT_BREAK_MIN = 10
+STUDIO_LUNCH_START_MIN = 14 * 60
+STUDIO_LUNCH_END_MIN = 16 * 60
+
+
+def _generate_studio_slots():
+    """Returns studio slots excluding lunch break 14:00-16:00."""
+    slots = []
+    current_time = STUDIO_DAY_START_MIN
+    while current_time + SLOT_WORK_MIN <= STUDIO_DAY_END_MIN:
+        start_min = current_time
+        end_min = current_time + SLOT_WORK_MIN
+        intersects_lunch = start_min < STUDIO_LUNCH_END_MIN and end_min > STUDIO_LUNCH_START_MIN
+        if not intersects_lunch:
+            start_str = f"{start_min // 60:02d}:{start_min % 60:02d}"
+            end_str = f"{end_min // 60:02d}:{end_min % 60:02d}"
+            slots.append((start_str, end_str))
+        current_time = end_min + SLOT_BREAK_MIN
+    return slots
+
+
+DAY_NAME_TO_INDEX = {
+    'понедельник': 0, 'пн': 0,
+    'вторник': 1, 'вт': 1,
+    'среда': 2, 'ср': 2,
+    'четверг': 3, 'чт': 3,
+    'пятница': 4, 'пт': 4,
+    'суббота': 5, 'сб': 5,
+    'воскресенье': 6, 'вс': 6,
+}
+
+
+def _normalize_rule_text(text: str) -> str:
+    return re.sub(r'\s+', ' ', (text or '').strip().lower())
+
+
+def _parse_distribution_rule_text(text: str):
+    src = _normalize_rule_text(text)
+    if not src:
+        return None, 'Введите текст правила.'
+
+    # 1) "Табата не более 1 раза утром и 1 раза вечером в неделю"
+    weekly_pattern = re.search(
+        r'(?P<workout>[а-яa-z0-9 \-_]+?)\s+.*?не более\s+(?P<morning>\d+)\s+раз.*?утр.*?(?P<evening>\d+)\s+раз.*?вечер.*?недел',
+        src
+    )
+    if weekly_pattern:
+        workout_name = weekly_pattern.group('workout').strip(' "«»')
+        morning_max = int(weekly_pattern.group('morning'))
+        evening_max = int(weekly_pattern.group('evening'))
+        payload = {
+            'rule_type': 'weekly_limit',
+            'severity': 'hard',
+            'name': f'Лимит "{workout_name}" по неделе',
+            'params_json': {
+                'workout_name': workout_name,
+                'buckets': [
+                    {'name': 'morning', 'start': '09:00', 'end': '14:00', 'max': morning_max},
+                    {'name': 'evening', 'start': '16:00', 'end': '21:00', 'max': evening_max},
+                ],
+                'period': 'week',
+            }
+        }
+        return payload, None
+
+    # 1.1) "табата только 2 раза в неделю" / "не более 2 раз в неделю"
+    total_week_pattern = re.search(
+        r'(?P<workout>[а-яa-z0-9 \-_]+?)\s+.*?(?:только|не более)\s+(?P<count>\d+)\s+раз\w*\s+.*?недел',
+        src
+    )
+    if total_week_pattern:
+        workout_name = total_week_pattern.group('workout').strip(' "«»')
+        total_max = int(total_week_pattern.group('count'))
+        payload = {
+            'rule_type': 'weekly_limit',
+            'severity': 'hard',
+            'name': f'Лимит "{workout_name}" за неделю',
+            'params_json': {
+                'workout_name': workout_name,
+                'period': 'week',
+                'max_total': total_max,
+            }
+        }
+        return payload, None
+
+    # 1.2) "две одинаковые тренировки в один день утром/вечером нельзя"
+    duplicate_day_pattern = (
+        ('одинаков' in src or 'дубликат' in src) and
+        ('один день' in src or 'в один день' in src or 'за день' in src) and
+        ('нельзя' in src or 'запрет' in src or 'не став' in src)
+    )
+    if duplicate_day_pattern:
+        payload = {
+            'rule_type': 'daily_duplicate_limit',
+            'severity': 'hard',
+            'name': 'Запрет одинаковых тренировок в день (утро/вечер)',
+            'params_json': {
+                'scope': 'bucket',
+                'max_per_bucket_per_day': 1,
+                'buckets': [
+                    {'name': 'morning', 'start': '09:00', 'end': '14:00'},
+                    {'name': 'evening', 'start': '16:00', 'end': '21:00'},
+                ],
+            }
+        }
+        return payload, None
+
+    # 2) "по понедельникам и средам допускаются две спокойные тренировки подряд"
+    if 'спокойн' in src and 'подряд' in src and ('понедель' in src or 'сред' in src):
+        weekdays = []
+        for key, value in DAY_NAME_TO_INDEX.items():
+            if key in src and value not in weekdays:
+                weekdays.append(value)
+        if not weekdays:
+            weekdays = [0, 2]
+        payload = {
+            'rule_type': 'calm_consecutive',
+            'severity': 'hard',
+            'name': 'Спокойные подряд в выбранные дни',
+            'params_json': {
+                'weekdays': sorted(set(weekdays)),
+                'max_consecutive': 2,
+                'category': 'calm',
+            }
+        }
+        return payload, None
+
+    # 2.1) "не нужно ставить несколько силовых тренировок подряд"
+    if 'силов' in src and 'подряд' in src:
+        payload = {
+            'rule_type': 'calm_consecutive',
+            'severity': 'hard',
+            'name': 'Запрет нескольких силовых подряд',
+            'params_json': {
+                'weekdays': [0, 1, 2, 3, 4, 5, 6],
+                'max_consecutive': 1,
+                'category': 'strength',
+            }
+        }
+        return payload, None
+
+    # 3) "силовые и кардио должны чередоваться"
+    if 'силов' in src and 'кардио' in src and ('черед' in src):
+        other_days = [1, 3, 4, 5, 6]
+        payload = {
+            'rule_type': 'alternation',
+            'severity': 'hard',
+            'name': 'Чередование силовых и кардио',
+            'params_json': {
+                'weekdays': other_days,
+                'categories': ['strength', 'cardio'],
+                'mode': 'strict_alternate',
+            }
+        }
+        return payload, None
+
+    return None, 'Не удалось распознать правило. Сейчас поддерживаются 4 шаблона из примеров.'
+
+
+def _serialize_active_distribution_rules():
+    rules = DistributionRule.objects.filter(is_active=True).order_by('priority', 'id')
+    serialized = []
+    for rule in rules:
+        serialized.append({
+            'id': rule.id,
+            'name': rule.name,
+            'rule_type': rule.rule_type,
+            'severity': rule.severity,
+            'params': rule.params_json or {},
+        })
+    return serialized
+
+
+@login_required
+@user_passes_test(is_manager)
+def distribution_rules_page(request):
+    rules = DistributionRule.objects.all().select_related('created_by').order_by('priority', 'id')
+    return render(request, 'core/schedules/distribution_rules.html', {'rules': rules})
+
+
+@login_required
+@user_passes_test(is_manager)
+def api_parse_distribution_rule(request):
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Метод не поддерживается.'}, status=405)
+    try:
+        payload = json.loads(request.body.decode('utf-8'))
+    except Exception:
+        payload = {}
+    text = (payload.get('text') or '').strip()
+    if not text:
+        return JsonResponse({'success': False, 'error': 'Введите текст правила.'}, status=400)
+
+    ai_result = try_parse_rule_with_ai(text)
+    if ai_result.get('success'):
+        return JsonResponse({
+            'success': True,
+            'parsed': ai_result['parsed'],
+            'source': 'ai',
+            'explanation': ai_result.get('explanation') or 'Распознано с помощью ИИ.',
+            'confidence': ai_result.get('confidence', 0.85),
+        })
+
+    parsed, error = _parse_distribution_rule_text(text)
+    if error:
+        ai_error = ai_result.get('error')
+        suffix = f" AI: {ai_error}" if ai_error else ""
+        return JsonResponse({'success': False, 'error': f'{error}{suffix}'}, status=400)
+    return JsonResponse({
+        'success': True,
+        'parsed': parsed,
+        'source': 'fallback_regex',
+        'explanation': 'Распознано резервным шаблонным парсером.',
+        'confidence': 0.72,
+    })
+
+
+@login_required
+@user_passes_test(is_manager)
+def api_save_distribution_rule(request):
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Метод не поддерживается.'}, status=405)
+    try:
+        payload = json.loads(request.body.decode('utf-8'))
+    except Exception:
+        payload = {}
+    source_text = (payload.get('source_text') or '').strip()
+    parsed = payload.get('parsed') or {}
+    if not source_text:
+        return JsonResponse({'success': False, 'error': 'Пустой текст правила.'}, status=400)
+    if not parsed or not parsed.get('rule_type'):
+        return JsonResponse({'success': False, 'error': 'Нет распознанных данных правила.'}, status=400)
+
+    rule = DistributionRule.objects.create(
+        name=(payload.get('name') or parsed.get('name') or source_text[:180]).strip()[:200],
+        source_text=source_text,
+        rule_type=parsed.get('rule_type'),
+        severity=parsed.get('severity') if parsed.get('severity') in {'hard', 'soft'} else 'hard',
+        params_json=parsed.get('params_json') or {},
+        is_active=bool(payload.get('is_active', True)),
+        priority=int(payload.get('priority', 100) or 100),
+        created_by=request.user,
+    )
+    return JsonResponse({'success': True, 'rule_id': rule.id})
+
+
+@login_required
+@user_passes_test(is_manager)
+def api_toggle_distribution_rule(request, rule_id):
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Метод не поддерживается.'}, status=405)
+    rule = get_object_or_404(DistributionRule, id=rule_id)
+    rule.is_active = not rule.is_active
+    rule.save(update_fields=['is_active', 'updated_at'])
+    return JsonResponse({'success': True, 'is_active': rule.is_active})
+
+
+@login_required
+@user_passes_test(is_manager)
+def api_delete_distribution_rule(request, rule_id):
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Метод не поддерживается.'}, status=405)
+    rule = get_object_or_404(DistributionRule, id=rule_id)
+    rule.delete()
+    return JsonResponse({'success': True})
+
+
+@login_required
+@user_passes_test(is_manager)
+def api_update_distribution_rule(request, rule_id):
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Метод не поддерживается.'}, status=405)
+    rule = get_object_or_404(DistributionRule, id=rule_id)
+    try:
+        payload = json.loads(request.body.decode('utf-8'))
+    except Exception:
+        payload = {}
+
+    name = (payload.get('name') or '').strip()
+    severity = (payload.get('severity') or '').strip()
+    priority_raw = payload.get('priority', rule.priority)
+
+    if name:
+        rule.name = name[:200]
+    if severity in {'hard', 'soft'}:
+        rule.severity = severity
+    try:
+        rule.priority = max(1, int(priority_raw))
+    except Exception:
+        pass
+
+    rule.save(update_fields=['name', 'severity', 'priority', 'updated_at'])
+    return JsonResponse({
+        'success': True,
+        'rule': {
+            'id': rule.id,
+            'name': rule.name,
+            'severity': rule.severity,
+            'priority': rule.priority,
+        }
+    })
+
+
+def _infer_category_from_name(workout_name: str) -> str:
+    n = (workout_name or '').lower()
+    if any(x in n for x in ['табата', 'кардио', 'cardio', 'hiit']):
+        return 'cardio'
+    if any(x in n for x in ['сил', 'strength', 'power']):
+        return 'strength'
+    if any(x in n for x in ['stretch', 'растяж', 'йог', 'calm', 'спокой']):
+        return 'calm'
+    return 'other'
+
+
+def _normalize_workout_name_for_rule(name: str) -> str:
+    n = (name or '').strip().lower()
+    aliases = {
+        'табата': 'tabata',
+        'стретчинг': 'stretching',
+        'растяжка': 'stretching',
+        'бачата': 'bachata',
+        'силовые': 'strength',
+        'кардио': 'cardio',
+    }
+    return aliases.get(n, n)
+
+
+def _time_in_bucket(start_time, bucket):
+    st = start_time.strftime('%H:%M')
+    return (bucket.get('start') or '00:00') <= st < (bucket.get('end') or '23:59')
+
+
+@login_required
+@user_passes_test(is_manager)
+def api_test_distribution_rules(request):
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Метод не поддерживается.'}, status=405)
+    try:
+        payload = json.loads(request.body.decode('utf-8'))
+    except Exception:
+        payload = {}
+
+    start_raw = (payload.get('start_date') or '').strip()
+    end_raw = (payload.get('end_date') or '').strip()
+    if not start_raw or not end_raw:
+        return JsonResponse({'success': False, 'error': 'Укажите период.'}, status=400)
+    try:
+        start_date = datetime.strptime(start_raw, '%Y-%m-%d').date()
+        end_date = datetime.strptime(end_raw, '%Y-%m-%d').date()
+    except Exception:
+        return JsonResponse({'success': False, 'error': 'Некорректный формат даты.'}, status=400)
+    if start_date > end_date:
+        start_date, end_date = end_date, start_date
+
+    rules = list(DistributionRule.objects.filter(is_active=True).order_by('priority', 'id'))
+    assignments = list(
+        ShiftAssignment.objects.filter(
+            date__gte=start_date,
+            date__lte=end_date,
+            workout_type__isnull=False,
+        ).select_related('workout_type', 'employee__user')
+    )
+    assignments.sort(key=lambda a: (a.date, a.start_time))
+
+    violations = []
+    weekly_counts = {}
+    weekly_total_counts = {}
+    daily_bucket_workout_counts = {}
+    calm_streaks = {}
+    prev_category = {}
+
+    for a in assignments:
+        workout_name = a.workout_type.name if a.workout_type_id else ''
+        category = _infer_category_from_name(workout_name)
+        weekday = a.date.weekday()
+        day_key = a.date.isoformat()
+        week_key = f"{a.date.isocalendar().year}-{a.date.isocalendar().week}"
+
+        for rule in rules:
+            params = rule.params_json or {}
+            if rule.rule_type == 'weekly_limit':
+                target = _normalize_workout_name_for_rule(params.get('workout_name') or '')
+                workout_norm = _normalize_workout_name_for_rule(workout_name)
+                if target and target in workout_norm:
+                    total_key = f"{rule.id}|{week_key}|total"
+                    weekly_total_counts[total_key] = weekly_total_counts.get(total_key, 0) + 1
+                    if params.get('max_total') is not None and weekly_total_counts[total_key] > int(params.get('max_total', 0)):
+                        violations.append({
+                            'rule': rule.name,
+                            'date': a.date.strftime('%d.%m.%Y'),
+                            'time': a.start_time.strftime('%H:%M'),
+                            'workout': workout_name,
+                            'employee': a.employee.user.username,
+                            'reason': 'Превышен общий недельный лимит',
+                        })
+                    for b in (params.get('buckets') or []):
+                        if _time_in_bucket(a.start_time, b):
+                            key = f"{rule.id}|{week_key}|{b.get('name','bucket')}"
+                            weekly_counts[key] = weekly_counts.get(key, 0) + 1
+                            if weekly_counts[key] > int(b.get('max', 0)):
+                                violations.append({
+                                    'rule': rule.name,
+                                    'date': a.date.strftime('%d.%m.%Y'),
+                                    'time': a.start_time.strftime('%H:%M'),
+                                    'workout': workout_name,
+                                    'employee': a.employee.user.username,
+                                    'reason': f'Превышен лимит "{b.get("name", "bucket")}" за неделю',
+                                })
+            elif rule.rule_type == 'calm_consecutive':
+                weekdays = params.get('weekdays') or []
+                max_consecutive = int(params.get('max_consecutive', 2))
+                expected = params.get('category', 'calm')
+                if weekday in weekdays:
+                    if category == expected:
+                        calm_streaks[day_key] = calm_streaks.get(day_key, 0) + 1
+                        if calm_streaks[day_key] > max_consecutive:
+                            violations.append({
+                                'rule': rule.name,
+                                'date': a.date.strftime('%d.%m.%Y'),
+                                'time': a.start_time.strftime('%H:%M'),
+                                'workout': workout_name,
+                                'employee': a.employee.user.username,
+                                'reason': 'Слишком много спокойных подряд',
+                            })
+                    else:
+                        calm_streaks[day_key] = 0
+            elif rule.rule_type == 'alternation':
+                weekdays = params.get('weekdays') or []
+                categories = params.get('categories') or ['strength', 'cardio']
+                if weekday in weekdays and category in categories:
+                    if prev_category.get(day_key) == category:
+                        violations.append({
+                            'rule': rule.name,
+                            'date': a.date.strftime('%d.%m.%Y'),
+                            'time': a.start_time.strftime('%H:%M'),
+                            'workout': workout_name,
+                            'employee': a.employee.user.username,
+                            'reason': 'Нарушено чередование категорий',
+                        })
+                    prev_category[day_key] = category
+            elif rule.rule_type == 'daily_duplicate_limit':
+                buckets = params.get('buckets') or []
+                max_per_bucket_per_day = int(params.get('max_per_bucket_per_day', 1))
+                workout_norm = _normalize_workout_name_for_rule(workout_name)
+                for b in buckets:
+                    if _time_in_bucket(a.start_time, b):
+                        key = f"{rule.id}|{day_key}|{b.get('name','bucket')}|{workout_norm}"
+                        daily_bucket_workout_counts[key] = daily_bucket_workout_counts.get(key, 0) + 1
+                        if daily_bucket_workout_counts[key] > max_per_bucket_per_day:
+                            violations.append({
+                                'rule': rule.name,
+                                'date': a.date.strftime('%d.%m.%Y'),
+                                'time': a.start_time.strftime('%H:%M'),
+                                'workout': workout_name,
+                                'employee': a.employee.user.username,
+                                'reason': 'Одинаковая тренировка повторяется в одном окне дня',
+                            })
+
+    return JsonResponse({
+        'success': True,
+        'period': {
+            'start': start_date.isoformat(),
+            'end': end_date.isoformat(),
+        },
+        'rules_count': len(rules),
+        'violations_count': len(violations),
+        'violations': violations[:150],
+    })
+
+
 @login_required
 def create_schedule_view(request):
     employee_models_with_workouts = Employee.objects.select_related('user_profile__user').prefetch_related('workout_types').filter(
@@ -517,17 +992,8 @@ def create_schedule_view(request):
     ).select_related('user')
     workout_types = WorkoutType.objects.all()
 
-    # Генерация слотов
-    start_hour, end_hour = 9, 21
-    slots = []  # Временные слоты
-    current_time = start_hour * 60  # Даты недели
-
-    while current_time + 50 <= end_hour * 60:
-        start_str = f"{current_time // 60:02d}:{current_time % 60:02d}"
-        current_time += 50
-        end_str = f"{current_time // 60:02d}:{current_time % 60:02d}"
-        slots.append((start_str, end_str))
-        current_time += 10
+    # Генерация слотов (с учетом обеда 14:00-16:00)
+    slots = _generate_studio_slots()
 
     # Build days for next week
     today = datetime.today()
@@ -581,6 +1047,7 @@ def create_schedule_view(request):
         'missing_workout_employees': [
             p.user.get_full_name().strip() or p.user.username for p in missing_workout_profiles
         ],
+        'distribution_rules_json': json.dumps(_serialize_active_distribution_rules(), ensure_ascii=False),
     }
     
     return render(request, 'core/schedules/create_schedule.html', context)
@@ -720,19 +1187,8 @@ def schedule_detail(request, schedule_id):
         days.append(current_date)
         current_date += timedelta(days=1)
 
-    # === 2. Генерация временных слотов (9:00–21:00) ===
-    all_slots = []
-    start_hour = 9
-    end_hour = 21
-    current_time = start_hour * 60  # в минутах
-    end_time_total = end_hour * 60
-
-    while current_time + 50 <= end_time_total:
-        start = f"{current_time // 60:02d}:{current_time % 60:02d}"
-        current_time += 50
-        end = f"{current_time // 60:02d}:{current_time % 60:02d}"
-        all_slots.append(f"{start}–{end}")
-        current_time += 10
+    # === 2. Генерация временных слотов (9:00–21:00, без обеда 14:00-16:00) ===
+    all_slots = [f"{start}–{end}" for start, end in _generate_studio_slots()]
 
     # === 3. Load all assignments in one query ===
     assignments = ShiftAssignment.objects.filter(
@@ -827,18 +1283,8 @@ from collections import defaultdict
 def edit_schedule_view(request, schedule_id):
     schedule = get_object_or_404(Schedule, id=schedule_id)
 
-    # Генерация слотов (9:00–21:00)
-    start_hour = 9
-    end_hour = 21
-    slots = []
-    current_time = start_hour * 60
-    end_time_total = end_hour * 60
-    while current_time + 50 <= end_time_total:
-        start = f"{current_time // 60:02d}:{current_time % 60:02d}"
-        current_time += 50
-        end = f"{current_time // 60:02d}:{current_time % 60:02d}"
-        slots.append(f"{start} – {end}")
-        current_time += 10
+    # Генерация слотов (9:00–21:00, без обеда 14:00-16:00)
+    slots = [f"{start} – {end}" for start, end in _generate_studio_slots()]
 
     # Генерация дней из графика
     from datetime import timedelta
@@ -1042,16 +1488,8 @@ def my_availability(request):
         current_days = [week_start + timedelta(days=i) for i in range(7)]
         date_strings = [d.strftime('%Y-%m-%d') for d in current_days]
 
-        # Слоты
-        start_hour, end_hour = 9, 21
-        slots = []
-        current_time = start_hour * 60
-        while current_time + 50 <= end_hour * 60:
-            start_str = f"{current_time // 60:02d}:{current_time % 60:02d}"
-            current_time += 50
-            end_str = f"{current_time // 60:02d}:{current_time % 60:02d}"
-            slots.append((start_str, end_str))
-            current_time += 10
+        # Слоты (с учетом обеда 14:00-16:00)
+        slots = _generate_studio_slots()
 
         print("=== POST KEYS ===")
         print(list(request.POST.keys()))
@@ -1111,18 +1549,8 @@ def my_availability(request):
         current_days.append(week_start + timedelta(days=i))
     date_strings = [d.strftime('%Y-%m-%d') for d in current_days]
 
-    # Слоты
-    start_hour, end_hour = 9, 21
-    slots = []
-    current_time = start_hour * 60
-    while current_time + 50 <= end_hour * 60:
-        hour = current_time // 60
-        minute = current_time % 60
-        start_str = f"{hour:02d}:{minute:02d}"
-        current_time += 50
-        end_str = f"{current_time // 60:02d}:{current_time % 60:02d}"
-        slots.append((start_str, end_str))
-        current_time += 10
+    # Слоты (с учетом обеда 14:00-16:00)
+    slots = _generate_studio_slots()
 
     # Загрузка данных
     availabilities = Availability.objects.filter(

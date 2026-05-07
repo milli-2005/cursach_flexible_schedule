@@ -21,6 +21,8 @@
     setupGlobalDeleteConfirmation();
     setupChatUnreadBadge();
     setupPasswordVisibilityToggles();
+    setupModalLayoutStability();
+    disableModalFadeAnimations();
 });
 
 function setupThemeToggle() {
@@ -238,5 +240,35 @@ function setupPasswordVisibilityToggles() {
 
         wrapper.appendChild(btn);
         input.dataset.passwordToggleReady = '1';
+    });
+}
+
+function setupModalLayoutStability() {
+    // Bootstrap can inject body padding-right while opening modal,
+    // which visually shifts content when a fixed sidebar is used.
+    const resetShift = () => {
+        document.body.style.paddingRight = '0px';
+        document.body.style.marginRight = '0px';
+        document.body.style.overflowY = 'scroll';
+        document.body.style.setProperty('--bs-scrollbar-width', '0px');
+    };
+
+    document.addEventListener('show.bs.modal', resetShift);
+    document.addEventListener('shown.bs.modal', resetShift);
+    document.addEventListener('hide.bs.modal', resetShift);
+    document.addEventListener('hidden.bs.modal', resetShift);
+
+    // Backup watcher for any late inline style writes by Bootstrap.
+    const observer = new MutationObserver(() => {
+        if (document.querySelector('.modal.show')) {
+            resetShift();
+        }
+    });
+    observer.observe(document.body, { attributes: true, attributeFilter: ['style', 'class'] });
+}
+
+function disableModalFadeAnimations() {
+    document.querySelectorAll('.modal.fade').forEach((modalEl) => {
+        modalEl.classList.remove('fade');
     });
 }

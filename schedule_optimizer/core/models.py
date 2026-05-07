@@ -396,6 +396,47 @@ class OptimizationRule(models.Model):
         return f"{self.name} ({self.get_rule_type_display()})"
 
 
+class DistributionRule(models.Model):
+    """
+    Настраиваемые правила распределения направлений для автозаполнения графика.
+    """
+    RULE_TYPE_CHOICES = [
+        ('weekly_limit', 'Лимит в неделю'),
+        ('calm_consecutive', 'Ограничение спокойных подряд'),
+        ('alternation', 'Чередование категорий'),
+        ('daily_duplicate_limit', 'Запрет дублей в день'),
+    ]
+    SEVERITY_CHOICES = [
+        ('hard', 'Жесткое'),
+        ('soft', 'Мягкое'),
+    ]
+
+    name = models.CharField(max_length=200, verbose_name='Название правила')
+    source_text = models.TextField(verbose_name='Текст правила')
+    rule_type = models.CharField(max_length=32, choices=RULE_TYPE_CHOICES, verbose_name='Тип правила')
+    severity = models.CharField(max_length=10, choices=SEVERITY_CHOICES, default='hard', verbose_name='Жесткость')
+    params_json = models.JSONField(default=dict, blank=True, verbose_name='Параметры (JSON)')
+    is_active = models.BooleanField(default=True, verbose_name='Активно')
+    priority = models.PositiveIntegerField(default=100, verbose_name='Приоритет')
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='distribution_rules_created',
+        verbose_name='Создатель',
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Создано')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Обновлено')
+
+    class Meta:
+        verbose_name = 'Правило распределения'
+        verbose_name_plural = 'Правила распределения'
+        ordering = ['priority', 'id']
+
+    def __str__(self):
+        return self.name
+
 
 class Availability(models.Model):
     employee = models.ForeignKey(UserProfile, on_delete=models.CASCADE, verbose_name="Сотрудник")

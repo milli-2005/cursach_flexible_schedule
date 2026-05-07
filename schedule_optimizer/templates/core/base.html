@@ -74,6 +74,7 @@
                         {% elif user.profile.role == 'manager' %}
                             <li><a href="{% url 'profile_view' %}" class="nav-link text-white"><i class="bi bi-person-circle"></i> Профиль</a></li>
                             <li><a href="{% url 'schedule_view' %}" class="nav-link text-white"><i class="bi bi-calendar-week"></i> Управление графиками</a></li>
+                            <li><a href="{% url 'distribution_rules' %}" class="nav-link text-white"><i class="bi bi-sliders"></i> Правила распределения</a></li>
                             <li><a href="{% url 'user_management' %}" class="nav-link text-white"><i class="bi bi-people"></i> Управление пользователями</a></li>
                             <li><a href="{% url 'workout_types' %}" class="nav-link"><i class="bi bi-journal-bookmark"></i> Типы занятий</a></li>
                             <li><a href="{% url 'reports' %}" class="nav-link text-white"><i class="bi bi-file-earmark-bar-graph"></i> Отчеты</a></li>
