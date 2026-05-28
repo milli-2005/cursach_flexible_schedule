@@ -19,7 +19,8 @@ from .api_views.swap_views import (
     api_employees_for_swap,
     api_create_swap_request,
 api_approve_swap_request,
-api_reject_swap_request
+api_reject_swap_request,
+    api_swap_request_candidates,
 )
 from .api_views.chat_views import (
     api_chat_users,
@@ -90,6 +91,8 @@ path('api/employee-workout-types/<int:user_id>/', api_get_employee_workout_types
 
     # согласование графика окошко
     path('api/schedule/<int:schedule_id>/approve/', api_schedule_views.api_approve_schedule, name='api_approve_schedule'),
+    path('api/schedule/<int:schedule_id>/simulate-variants/', api_schedule_views.api_simulate_schedule_variants, name='api_simulate_schedule_variants'),
+    path('api/schedule/<int:schedule_id>/status/', api_schedule_views.api_set_schedule_status, name='api_set_schedule_status'),
     path('api/distribution-rules/parse/', views.api_parse_distribution_rule, name='api_parse_distribution_rule'),
     path('api/distribution-rules/save/', views.api_save_distribution_rule, name='api_save_distribution_rule'),
     path('api/distribution-rules/<int:rule_id>/update/', views.api_update_distribution_rule, name='api_update_distribution_rule'),
@@ -130,6 +133,7 @@ path('remind/availability/', views.send_availability_reminder_manual, name='send
     path('manager-swaps/', views.manager_swap_requests, name='manager_swap_requests'),
     path('api/swap-request/<int:swap_id>/approve/', api_approve_swap_request, name='api_approve_swap_request'),
     path('api/swap-request/<int:swap_id>/reject/', api_reject_swap_request, name='api_reject_swap_request'),
+    path('api/swap-request/<int:swap_id>/candidates/', api_swap_request_candidates, name='api_swap_request_candidates'),
 
     # path('optimization/', views.optimization_view, name='optimization'),
 ]

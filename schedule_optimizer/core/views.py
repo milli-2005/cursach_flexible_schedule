@@ -451,18 +451,10 @@ def shift_swaps(request):
 
     context = {
         'selected_shifts': selected_shifts,
-        'available_employees': [],
         'my_requests': my_requests,
     }
 
-    # Если есть выбранные смены — формируем available_employees
     if selected_shifts:
-        available_employees = []
-        for emp in Employee.objects.select_related('user_profile__user').exclude(user_profile__user=request.user):
-            user = emp.user_profile.user
-            full_name = f"{user.last_name} {user.first_name}".strip() or user.username
-            available_employees.append({'id': emp.id, 'name': full_name})
-        context['available_employees'] = available_employees
         context['shift_ids_json'] = json.dumps([s.id for s in selected_shifts])
 
     return render(request, 'core/swaps/shift_swaps.html', context)
@@ -1300,6 +1292,7 @@ def schedule_detail(request, schedule_id):
 
     # === 6. Данные для утверждения (только для сотрудников) ===
     approval_for_user = None
+    approval_slots_for_user = []
     if request.user.is_authenticated and hasattr(request.user, 'profile'):
         if request.user.profile.role == 'employee':
             try:
@@ -1309,6 +1302,20 @@ def schedule_detail(request, schedule_id):
                 )
             except ScheduleApproval.DoesNotExist:
                 approval_for_user = None
+            user_shifts = ShiftAssignment.objects.filter(
+                schedule=schedule,
+                employee=request.user.profile,
+            ).select_related('workout_type').order_by('date', 'start_time')
+            approval_slots_for_user = [
+                {
+                    'date': sh.date.strftime('%Y-%m-%d'),
+                    'date_label': sh.date.strftime('%d.%m.%Y'),
+                    'start_time': sh.start_time.strftime('%H:%M'),
+                    'time_slot': f"{sh.start_time.strftime('%H:%M')}-{sh.end_time.strftime('%H:%M')}",
+                    'workout_name': sh.workout_type.name if sh.workout_type else 'Занятие',
+                }
+                for sh in user_shifts
+            ]
 
     employee_models_with_workouts = Employee.objects.select_related('user_profile__user').prefetch_related('workout_types').filter(
         user_profile__role='employee',
@@ -1338,6 +1345,31 @@ def schedule_detail(request, schedule_id):
         employee_models_with_workouts.values_list('user_profile_id', flat=True)
     )
 
+    schedule_edit_locked = False
+    can_edit_schedule = (
+        hasattr(request.user, 'profile')
+        and request.user.profile.role in ['manager', 'studio_admin']
+    )
+
+    manager_rejections = []
+    if hasattr(request.user, 'profile') and request.user.profile.role in ['manager', 'studio_admin']:
+        rejected_approvals = (
+            ScheduleApproval.objects
+            .filter(schedule=schedule, approved=False)
+            .select_related('employee__user')
+            .order_by('-responded_at', '-id')
+        )
+        for appr in rejected_approvals:
+            slots = appr.rejection_slots_json or []
+            manager_rejections.append({
+                'approval_id': appr.id,
+                'employee_id': appr.employee_id,
+                'employee_name': appr.employee.user.get_full_name() or appr.employee.user.username,
+                'responded_at': appr.responded_at,
+                'comment': appr.comment or '',
+                'slots': slots,
+            })
+
     context = {
         'schedule': schedule,
         'schedule_versions': schedule_versions,
@@ -1355,6 +1387,10 @@ def schedule_detail(request, schedule_id):
         'availability_set_json': json.dumps(list(availability_set)),
         'table_data': table_data,
         'approval_for_user': approval_for_user,
+        'approval_slots_for_user_json': json.dumps(approval_slots_for_user, ensure_ascii=False),
+        'manager_rejections': manager_rejections,
+        'schedule_edit_locked': schedule_edit_locked,
+        'can_edit_schedule': can_edit_schedule,
     }
     return render(request, 'core/schedules/view_schedule.html', context)
 

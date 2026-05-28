@@ -165,13 +165,20 @@
                 <tbody id="swap-table-body">
                     {% for req in swap_requests %}
                     <tr class="swap-row"
+                        data-swap-id="{{ req.id }}"
                         data-status="{{ req.status }}"
                         data-from="{{ req.from_employee.user_profile.user.get_full_name|default:req.from_employee.user_profile.user.username|lower }}"
-                        data-to="{{ req.to_employee.user_profile.user.get_full_name|default:req.to_employee.user_profile.user.username|lower }}"
+                        data-to="{% if req.to_employee %}{{ req.to_employee.user_profile.user.get_full_name|default:req.to_employee.user_profile.user.username|lower }}{% endif %}"
                         data-reason="{{ req.reason|default:''|lower }}"
                         data-created="{{ req.created_at|date:'c' }}">
                         <td>{{ req.from_employee.user_profile.user.get_full_name }}</td>
-                        <td>{{ req.to_employee.user_profile.user.get_full_name }}</td>
+                        <td>
+                            {% if req.to_employee %}
+                                {{ req.to_employee.user_profile.user.get_full_name }}
+                            {% else %}
+                                <span class="text-muted">Выбирает руководитель</span>
+                            {% endif %}
+                        </td>
                         <td>
                             <div class="swap-slots">
                                 {% for s in req.shifts.all %}
@@ -203,7 +210,13 @@
                         <td>
                             {% if req.status == 'pending' or req.status == 'approved_by_employee' %}
                                 <div class="swap-actions">
-                                    <button class="btn btn-sm btn-success" onclick="approveSwap({{ req.id }})">
+                                    <button class="btn btn-sm btn-outline-light" onclick="loadSwapCandidates({{ req.id }}, this)">
+                                        Подобрать
+                                    </button>
+                                    <select class="form-select form-select-sm candidate-select" data-swap-id="{{ req.id }}" style="min-width: 220px;">
+                                        <option value="">Сначала нажмите «Подобрать»</option>
+                                    </select>
+                                    <button class="btn btn-sm btn-success" onclick="approveSwap({{ req.id }}, this)">
                                         Утвердить
                                     </button>
                                     <button class="btn btn-sm btn-danger" onclick="rejectSwap({{ req.id }})">
@@ -357,12 +370,19 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 function approveSwap(swapId) {
+    const select = document.querySelector(`.candidate-select[data-swap-id="${swapId}"]`);
+    const selectedEmployeeId = select?.value || '';
+    if (!selectedEmployeeId) {
+        showGlobalNotification('Сначала подберите и выберите сотрудника на замену.', 'error');
+        return;
+    }
     fetch(`/api/swap-request/${swapId}/approve/`, {
         method: 'POST',
         headers: {
             'X-CSRFToken': csrftoken,
             'Content-Type': 'application/json'
-        }
+        },
+        body: JSON.stringify({ to_employee_id: Number(selectedEmployeeId) })
     })
     .then(r => r.json())
     .then(data => {
@@ -374,6 +394,40 @@ function approveSwap(swapId) {
         }
     })
     .catch(() => showGlobalNotification('Не удалось выполнить запрос.', 'error'));
+}
+
+function loadSwapCandidates(swapId, triggerBtn) {
+    const select = document.querySelector(`.candidate-select[data-swap-id="${swapId}"]`);
+    if (!select) return;
+    if (triggerBtn) triggerBtn.disabled = true;
+    select.innerHTML = '<option value="">Подбираем...</option>';
+
+    fetch(`/api/swap-request/${swapId}/candidates/`)
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) {
+                throw new Error(data.error || 'Не удалось получить кандидатов');
+            }
+            select.innerHTML = '';
+            if (!Array.isArray(data.candidates) || data.candidates.length === 0) {
+                select.innerHTML = '<option value="">Подходящих кандидатов нет</option>';
+                return;
+            }
+            data.candidates.forEach((item, idx) => {
+                const option = document.createElement('option');
+                option.value = String(item.employee_id);
+                option.textContent = `${item.display_name} — покрытие ${item.coverage}/${data.slots_count} (${item.coverage_pct}%)`;
+                if (idx === 0) option.selected = true;
+                select.appendChild(option);
+            });
+        })
+        .catch(err => {
+            select.innerHTML = '<option value="">Ошибка подбора</option>';
+            showGlobalNotification(err.message || 'Ошибка подбора кандидатов', 'error');
+        })
+        .finally(() => {
+            if (triggerBtn) triggerBtn.disabled = false;
+        });
 }
 
 function rejectSwap(swapId) {

@@ -425,7 +425,13 @@ class ShiftSwapRequest(models.Model):
     Заявка на обмен сменами между сотрудниками.
     """
     from_employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='swap_requests_sent')
-    to_employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='swap_requests_received')
+    to_employee = models.ForeignKey(
+        Employee,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='swap_requests_received',
+    )
     reason = models.TextField(verbose_name="Причина обмена")
 
     STATUS_CHOICES = [
@@ -443,7 +449,7 @@ class ShiftSwapRequest(models.Model):
         verbose_name_plural = "Заявки на обмен сменами"
 
     def __str__(self):
-        return f"Обмен: {self.from_employee} -> {self.to_employee}"
+        return f"Обмен: {self.from_employee} -> {self.to_employee or 'кандидат не выбран'}"
 
 
 class SwapShift(models.Model):
@@ -560,6 +566,7 @@ class ScheduleApproval(models.Model):
     employee = models.ForeignKey(UserProfile, on_delete=models.CASCADE)
     approved = models.BooleanField(null=True)  # True/False/None
     comment = models.TextField(blank=True)
+    rejection_slots_json = models.JSONField(default=list, blank=True)
     responded_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

@@ -74,6 +74,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'core.context_processors.pending_schedule_approval_notice',
+                'core.context_processors.manager_schedule_feedback_notice',
             ],
         },
     },

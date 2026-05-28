@@ -130,22 +130,13 @@
             <input type="hidden" name="shift_ids" value="{{ shift_ids_json }}">
 
             <div class="row g-3">
-                <div class="col-md-6">
-                    <label class="form-label fw-semibold">Сотрудник для обмена</label>
-                    <select name="to_employee_id" class="form-select" required>
-                        <option value="">Выберите сотрудника...</option>
-                        {% for emp in available_employees %}
-                            <option value="{{ emp.id }}">{{ emp.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
                 <div class="col-md-12">
                     <label class="form-label fw-semibold">Причина</label>
                     <textarea
                         name="reason"
                         class="form-control"
                         rows="3"
-                        placeholder="Например: не смогу выйти по личным обстоятельствам."
+                        placeholder="Например: не смогу выйти по личным обстоятельствам. Укажите дату и время проблемных смен."
                         required
                     ></textarea>
                 </div>
@@ -182,7 +173,13 @@
                                     {% endfor %}
                                 </div>
                             </td>
-                            <td>{{ req.to_employee.user_profile.user.get_full_name|default:req.to_employee.user_profile.user.username }}</td>
+                            <td>
+                                {% if req.to_employee %}
+                                    {{ req.to_employee.user_profile.user.get_full_name|default:req.to_employee.user_profile.user.username }}
+                                {% else %}
+                                    <span class="text-muted">Выбирает руководитель</span>
+                                {% endif %}
+                            </td>
                             <td>{{ req.reason|default:"—"|truncatewords:16 }}</td>
                             <td>
                                 {% if req.status == 'pending' %}
@@ -237,4 +234,3 @@ document.getElementById('swapForm')?.addEventListener('submit', async (e) => {
 });
 </script>
 {% endblock %}
-

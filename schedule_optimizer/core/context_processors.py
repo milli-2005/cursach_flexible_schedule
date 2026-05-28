@@ -47,3 +47,47 @@ def pending_schedule_approval_notice(request):
         ),
     }
 
+
+def manager_schedule_feedback_notice(request):
+    if not request.user.is_authenticated:
+        return {}
+
+    profile = getattr(request.user, "profile", None)
+    if not profile or profile.role not in {"manager", "studio_admin"}:
+        return {}
+
+    today = timezone.localdate()
+    window_start = today - timedelta(days=14)
+
+    approvals_qs = (
+        ScheduleApproval.objects.filter(
+            schedule__status="pending",
+            responded_at__isnull=False,
+            schedule__end_date__gte=window_start,
+            approved__isnull=False,
+        )
+        .select_related("schedule", "employee__user")
+        .order_by("-responded_at")
+    )
+
+    rejected_qs = approvals_qs.filter(approved=False)
+    approved_qs = approvals_qs.filter(approved=True)
+
+    target = rejected_qs.first() or approvals_qs.first()
+    target_url = reverse("schedule_detail", args=[target.schedule_id]) if target else ""
+
+    latest_items = []
+    for row in approvals_qs[:5]:
+        latest_items.append({
+            "employee_name": row.employee.user.get_full_name() or row.employee.user.username,
+            "schedule_name": row.schedule.name,
+            "approved": bool(row.approved),
+        })
+
+    return {
+        "manager_feedback_rejected_count": rejected_qs.count(),
+        "manager_feedback_approved_count": approved_qs.count(),
+        "manager_feedback_total_count": approvals_qs.count(),
+        "manager_feedback_latest_items": latest_items,
+        "manager_feedback_target_url": target_url,
+    }

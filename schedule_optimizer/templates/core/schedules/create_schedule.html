@@ -747,35 +747,45 @@ function buildAutoFillPlan(seed = 1) {
             const day = cell.dataset.day;
             const startTime = cell.dataset.time;
             const candidates = [];
+            const relaxedCandidates = [];
 
             for (const emp of employees) {
-                const availKey = `${emp.id},${day},${startTime}`;
+                const empId = String(emp.id);
+                const availKey = `${empId},${day},${startTime}`;
                 if (!AVAILABILITY_SET.has(availKey)) continue;
 
-                const allowedIds = EMPLOYEE_WORKOUT_MAP[emp.id] || [];
+                const allowedIds = EMPLOYEE_WORKOUT_MAP[empId]
+                    || EMPLOYEE_WORKOUT_MAP[Number(empId)]
+                    || [];
                 if (!allowedIds.length) continue;
 
                 for (const wtId of allowedIds) {
-                    const workoutObj = WORKOUT_BY_ID[wtId];
+                    const wtKey = String(wtId);
+                    const workoutObj = WORKOUT_BY_ID[wtKey]
+                        || WORKOUT_BY_ID[Number(wtKey)];
                     if (!workoutObj) continue;
-                    const blockedBy = checkRules(day, startTime, workoutObj);
-                    if (blockedBy.length) continue;
-
-                    const base = workoutScore(emp.id, wtId);
-                    const empLoad = Number(state.employeeWorkoutUsageCount[`${emp.id}|total`] || 0);
-                    const cellNoise = createSeededRng(hashString(`${seed}|${day}|${startTime}|${emp.id}|${wtId}`))();
-                    const sameTrainerBonus = (state.prevEmployeeByDay[day] && String(state.prevEmployeeByDay[day]) === String(emp.id)) ? -6 : 0;
+                    const base = workoutScore(empId, wtKey);
+                    const empLoad = Number(state.employeeWorkoutUsageCount[`${empId}|total`] || 0);
+                    const cellNoise = createSeededRng(hashString(`${seed}|${day}|${startTime}|${empId}|${wtKey}`))();
+                    const sameTrainerBonus = (state.prevEmployeeByDay[day] && String(state.prevEmployeeByDay[day]) === empId) ? -6 : 0;
                     const score = base + (empLoad * 0.25) + cellNoise + sameTrainerBonus;
-                    candidates.push({ empId: emp.id, wtId, score, workoutObj });
+                    const candidateRow = { empId, wtId: wtKey, score, workoutObj };
+                    const blockedBy = checkRules(day, startTime, workoutObj);
+                    if (blockedBy.length) {
+                        relaxedCandidates.push(candidateRow);
+                        continue;
+                    }
+                    candidates.push(candidateRow);
                 }
             }
 
-            if (candidates.length) {
-                candidates.sort((a, b) => a.score - b.score);
+            const activeCandidates = candidates.length ? candidates : relaxedCandidates;
+            if (activeCandidates.length) {
+                activeCandidates.sort((a, b) => a.score - b.score);
                 let pick = null;
                 const prevEmp = state.prevEmployeeByDay[day] ? String(state.prevEmployeeByDay[day]) : null;
                 if (prevEmp) {
-                    const sameTrainerCandidates = candidates.filter(c => String(c.empId) === prevEmp);
+                    const sameTrainerCandidates = activeCandidates.filter(c => String(c.empId) === prevEmp);
                     // Предпочитаем того же тренера подряд, но не блокируем варианты полностью:
                     // в симуляции должны существовать разные планы с разными сменами.
                     if (sameTrainerCandidates.length && rng() < 0.75) {
@@ -784,11 +794,11 @@ function buildAutoFillPlan(seed = 1) {
                     }
                 }
                 if (!pick) {
-                    const pickIndex = Math.min(candidates.length - 1, Math.floor(rng() * Math.min(3, candidates.length)));
-                    pick = candidates[pickIndex];
+                    const pickIndex = Math.min(activeCandidates.length - 1, Math.floor(rng() * Math.min(3, activeCandidates.length)));
+                    pick = activeCandidates[pickIndex];
                 }
                 const key = `${day}|${startTime}`;
-                plan[key] = { employee_id: pick.empId, workout_type_id: pick.wtId };
+                plan[key] = { employee_id: String(pick.empId), workout_type_id: String(pick.wtId) };
                 commitRules(day, startTime, pick.workoutObj, pick.empId);
                 const totalKey = `${pick.empId}|total`;
                 state.employeeWorkoutUsageCount[totalKey] = (state.employeeWorkoutUsageCount[totalKey] || 0) + 1;

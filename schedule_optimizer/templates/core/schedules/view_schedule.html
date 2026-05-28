@@ -618,6 +618,115 @@ html[data-theme='light'] .schedule-top-panel {
     background-image: none !important;
     box-shadow: none !important;
 }
+
+.approved-edit-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(11, 7, 24, 0.62);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    padding: 1rem;
+}
+
+.approved-edit-modal.show { display: flex; }
+
+.approved-edit-dialog {
+    width: min(560px, 100%);
+    border-radius: 18px;
+    border: 1px solid rgba(171, 136, 245, 0.4);
+    background: linear-gradient(180deg, #1d1635 0%, #17112c 100%);
+    box-shadow: 0 24px 48px rgba(10, 7, 24, 0.48);
+    overflow: hidden;
+}
+
+.approved-edit-header {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 1rem 1.15rem;
+    background: rgba(138, 107, 190, 0.22);
+    border-bottom: 1px solid rgba(171, 136, 245, 0.3);
+    color: #f3eaff;
+    font-weight: 700;
+}
+
+.approved-edit-body {
+    padding: 1rem 1.15rem 0.8rem;
+    color: #e8ddff;
+    line-height: 1.45;
+}
+
+.approved-edit-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.6rem;
+    padding: 0.9rem 1.15rem 1.1rem;
+}
+
+html[data-theme='light'] .approved-edit-dialog {
+    background: #fff;
+    border-color: rgba(138, 107, 190, 0.35);
+    box-shadow: 0 18px 36px rgba(66, 40, 122, 0.2);
+}
+
+html[data-theme='light'] .approved-edit-header { background: rgba(138, 107, 190, 0.14); color: #2f1d5d; }
+html[data-theme='light'] .approved-edit-body { color: #2f1d5d; }
+
+.reject-mode-tabs {
+    display: inline-flex;
+    border: 1px solid rgba(149, 114, 214, 0.4);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 0.75rem;
+}
+
+.reject-mode-tab {
+    border: 0;
+    background: rgba(138, 107, 190, 0.15);
+    color: #2f1d5d;
+    padding: 0.45rem 0.8rem;
+    font-weight: 700;
+}
+
+.reject-mode-tab.active {
+    background: #8a6bbe;
+    color: #fff;
+}
+
+.reject-slots-list {
+    max-height: 220px;
+    overflow: auto;
+    border: 1px solid rgba(149, 114, 214, 0.25);
+    border-radius: 10px;
+    padding: 0.5rem;
+    background: #fff;
+}
+
+
+.manager-comment-card {
+    border: 1px solid rgba(149, 114, 214, 0.28);
+    border-radius: 10px;
+    background: #fff;
+    padding: 0.7rem 0.8rem;
+    margin-bottom: 0.55rem;
+}
+
+.manager-comment-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    font-weight: 700;
+    color: #2d1d57;
+    margin-bottom: 0.35rem;
+}
+
+.manager-comment-text {
+    white-space: pre-line;
+    color: #3a2c69;
+    line-height: 1.45;
+}
 </style>
 {% endblock %}
 
@@ -627,7 +736,7 @@ html[data-theme='light'] .schedule-top-panel {
         <div class="schedule-headline">
             <h2 class="schedule-title">Управление графиком</h2>
             <div class="schedule-header-grid">
-                {% if user.profile.role == 'manager' or user.profile.role == 'studio_admin' %}
+                {% if can_edit_schedule %}
                     <label class="schedule-title-wrap">
                         <span class="d-block mb-1 small schedule-name-label">Название графика</span>
                         <input id="schedule-name-input"
@@ -643,23 +752,41 @@ html[data-theme='light'] .schedule-top-panel {
                     </div>
                 {% endif %}
                 <div class="schedule-status-block">
-                    <span class="meta-chip"><strong>Статус</strong> {{ schedule.get_status_display }}</span>
+                    <span class="meta-chip"><strong>Статус</strong> <span id="schedule-status-text">{{ schedule.get_status_display }}</span></span>
                 </div>
             </div>
         </div>
         {% if user.profile.role == 'manager' or user.profile.role == 'studio_admin' %}
+            <div class="mt-3 d-flex flex-wrap align-items-center gap-2">
+                <label for="schedule-status-select" class="small fw-semibold mb-0">Сменить статус:</label>
+                <select id="schedule-status-select" class="form-select form-select-sm" style="max-width: 220px;">
+                    <option value="draft" {% if schedule.status == 'draft' %}selected{% endif %}>Черновик</option>
+                    <option value="pending" {% if schedule.status == 'pending' %}selected{% endif %}>На согласовании</option>
+                    <option value="approved" {% if schedule.status == 'approved' %}selected{% endif %}>Утвержден</option>
+                </select>
+                <button id="save-status-btn" type="button" class="btn btn-sm btn-outline-light">Применить статус</button>
+            </div>
+        {% endif %}
+        {% if can_edit_schedule %}
             <div class="schedule-actions-panel">
                 <div class="panel-header">
                     <div class="panel-header-inline">
                         <h3 class="panel-title">Действия</h3>
                         <div class="schedule-actions">
                             <button id="auto-fill-schedule-btn" class="btn btn-outline-light">Заполнить автоматически</button>
+                            <button id="simulate-variants-btn" class="btn btn-outline-light">Прогон 3 вариантов</button>
                             <button id="toggle-multi-select-btn" class="btn btn-outline-warning">Мультивыбор: выкл</button>
                             <button id="cancel-multi-select-btn" class="btn btn-outline-secondary d-none">Отменить мультивыделение</button>
                             <button id="save-schedule-btn" class="btn btn-primary">Сохранить изменения</button>
                         </div>
                     </div>
                 </div>
+            </div>
+            <div id="schedule-variants-panel" class="schedule-versions-panel d-none">
+                <div class="panel-header">
+                    <h3 class="panel-title">Варианты с учетом замечаний тренеров</h3>
+                </div>
+                <div id="schedule-variants-body" class="panel-body"></div>
             </div>
             <div id="bulk-actions-panel" class="bulk-actions-panel d-none">
                 <div class="panel-header">
@@ -799,6 +926,11 @@ html[data-theme='light'] .schedule-top-panel {
                 </div>
             </div>
             </div>
+        {% elif user.profile.role == 'manager' or user.profile.role == 'studio_admin' %}
+            <div class="alert alert-warning mt-3 mb-0">
+                <i class="bi bi-lock-fill me-1"></i>
+                Редактирование отключено: период этого графика уже завершился.
+            </div>
         {% endif %}
     </div>
 
@@ -818,7 +950,7 @@ html[data-theme='light'] .schedule-top-panel {
                     <td>{{ row.time_slot }}</td>
                     {% for cell in row.cells %}
                     <td class="schedule-cell" data-day="{{ cell.date|date:'Y-m-d' }}" data-time="{{ row.time_slot|slice:':5' }}">
-                        {% if user.profile.role == 'manager' or user.profile.role == 'studio_admin' %}
+                        {% if can_edit_schedule %}
                             <div class="cell-preview">
                                 {% if cell.assignment and cell.assignment.employee %}
                                     <span class="trainer-pill" data-employee-id="{{ cell.assignment.employee.id }}">{{ cell.assignment.employee.user.username }}</span><br>
@@ -871,24 +1003,61 @@ html[data-theme='light'] .schedule-top-panel {
 
 </div>
 
-{% if schedule.status == 'pending' and user.profile.role == 'manager' %}
+{% if schedule.status == 'pending' and user.profile.role == 'manager' or schedule.status == 'pending' and user.profile.role == 'studio_admin' %}
     <div class="mt-4">
-        <h4>Замечания сотрудников:</h4>
-        {% with approvals=schedule.approvals.all %}
-            {% if approvals %}
-                <ul class="list-group">
-                    {% for approval in approvals %}
-                        {% if approval.comment %}
-                            <li class="list-group-item">
-                                <strong>{{ approval.employee.user.username }}:</strong> {{ approval.comment }}
-                            </li>
-                        {% endif %}
-                    {% endfor %}
-                </ul>
-            {% else %}
-                <p class="text-muted">Нет замечаний.</p>
-            {% endif %}
-        {% endwith %}
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+            <h4 class="mb-0">Замечания сотрудников и быстрые замены:</h4>
+            <button type="button" id="manager-apply-all-best-btn" class="btn btn-sm btn-outline-warning">
+                Применить все лучшие замены
+            </button>
+        </div>
+        {% if manager_rejections %}
+            {% for item in manager_rejections %}
+                <div class="manager-comment-card">
+                    <div class="manager-comment-header">
+                        <span>{{ item.employee_name }}</span>
+                        {% if item.responded_at %}<span class="small text-muted">{{ item.responded_at|date:"d.m.Y H:i" }}</span>{% endif %}
+                    </div>
+                    {% if item.comment %}
+                        <div class="manager-comment-text mb-2">{{ item.comment }}</div>
+                    {% endif %}
+                    {% if item.slots %}
+                        <div class="d-flex flex-column gap-2">
+                            {% for slot in item.slots %}
+                                <div class="border rounded p-2">
+                                    <div class="small fw-semibold mb-1">
+                                        {{ slot.date }} {{ slot.time_slot }} — {{ slot.workout_type }}
+                                    </div>
+                                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                                        <button type="button"
+                                                class="btn btn-sm btn-outline-light manager-load-candidates-btn"
+                                                data-employee-id="{{ item.employee_id }}"
+                                                data-date="{{ slot.date }}"
+                                                data-time-slot="{{ slot.time_slot }}"
+                                                data-workout-name="{{ slot.workout_type }}">
+                                            Подобрать кандидатов
+                                        </button>
+                                        <select class="form-select form-select-sm manager-candidates-select" style="max-width: 360px;">
+                                            <option value="">Сначала нажмите «Подобрать кандидатов»</option>
+                                        </select>
+                                        <button type="button"
+                                                class="btn btn-sm btn-primary manager-apply-candidate-btn"
+                                                data-date="{{ slot.date }}"
+                                                data-time-slot="{{ slot.time_slot }}">
+                                            Применить в график
+                                        </button>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="small text-muted">Слоты не указаны, только комментарий.</div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        {% else %}
+            <p class="text-muted">Нет отклонений сотрудников.</p>
+        {% endif %}
     </div>
 {% endif %}
 
@@ -912,6 +1081,28 @@ html[data-theme='light'] .schedule-top-panel {
                         <div class="mb-3 d-none" id="comment-group">
                             <label for="comment">Комментарий (обязателен при отклонении)</label>
                             <textarea class="form-control form-control-sm" id="comment" rows="2" placeholder="Например: не могу работать в выходные"></textarea>
+
+                            <div id="reject-mode-area" class="mt-3 d-none">
+                                <div class="small fw-semibold mb-2">Как указать проблемные смены</div>
+                                <div class="reject-mode-tabs" role="tablist" aria-label="Режим отклонения">
+                                    <button type="button" class="reject-mode-tab active" id="reject-mode-manual-btn" data-mode="manual">Выбор слотов</button>
+                                    <button type="button" class="reject-mode-tab" id="reject-mode-ai-btn" data-mode="ai">Только текст (AI)</button>
+                                </div>
+
+                                <div id="reject-mode-manual-panel">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <div class="small text-muted">Отметьте смены, на которые вы не сможете выйти</div>
+                                        <button type="button" id="reject-select-all-btn" class="btn btn-sm btn-outline-secondary">Выбрать все</button>
+                                    </div>
+                                    <div id="reject-slots-list" class="reject-slots-list"></div>
+                                </div>
+
+                                <div id="reject-mode-ai-panel" class="d-none">
+                                    <label for="reject-ai-text" class="form-label form-label-sm">Опишите текстом (пример: «во вторник вечером не смогу»)</label>
+                                    <textarea id="reject-ai-text" class="form-control form-control-sm" rows="2" placeholder="Напишите, когда вы не сможете работать"></textarea>
+                                </div>
+
+                            </div>
                         </div>
                         <button type="submit" class="btn btn-primary btn-sm">Отправить решение</button>
                     </form>
@@ -924,11 +1115,27 @@ html[data-theme='light'] .schedule-top-panel {
         {% elif approval and approval.approved == False %}
             <div class="alert alert-danger mb-4">
                 <i class="bi bi-x-circle"></i> Вы отклонили этот график.<br>
-                <small>Комментарий: "{{ approval.comment }}"</small>
+                <small style="white-space: pre-line;">Комментарий: {{ approval.comment }}</small>
             </div>
         {% endif %}
     {% endwith %}
 {% endif %}
+
+<div id="approved-edit-modal" class="approved-edit-modal" role="dialog" aria-modal="true" aria-labelledby="approved-edit-title">
+    <div class="approved-edit-dialog">
+        <div class="approved-edit-header">
+            <i class="bi bi-shield-exclamation"></i>
+            <span id="approved-edit-title">Подтвердите редактирование</span>
+        </div>
+        <div class="approved-edit-body">
+            График уже утвержден. Точно хотите редактировать? 
+        </div>
+        <div class="approved-edit-footer">
+            <button type="button" id="approved-edit-cancel" class="btn btn-outline-light">Отмена</button>
+            <button type="button" id="approved-edit-confirm" class="btn btn-primary">Редактировать</button>
+        </div>
+    </div>
+</div>
 
 <script>
 const TRAINER_COLORS = [
@@ -942,15 +1149,25 @@ const TRAINER_COLORS = [
     { bg: '#7c5a47', border: '#9c7964', tint: 'rgba(124, 90, 71, 0.16)' }
 ];
 
-const CAN_EDIT = {% if user.profile.role == 'manager' or user.profile.role == 'studio_admin' %}true{% else %}false{% endif %};
+const CAN_EDIT = {% if can_edit_schedule %}true{% else %}false{% endif %};
+let SCHEDULE_STATUS = '{{ schedule.status }}';
+let APPROVED_EDIT_CONFIRMED = false;
 const DATE_STRINGS = {{ date_strings|safe }};
 const SCHEDULE_ID = {{ schedule.id }};
 const SUBSTITUTE_API_URL = '/api/schedule/substitute-candidates/';
 const COMPARE_VERSIONS_API_URL = `/api/schedule/${SCHEDULE_ID}/versions/compare/`;
 const RESTORE_VERSION_API_BASE = `/api/schedule/${SCHEDULE_ID}/versions/`;
+const SET_STATUS_API_URL = `/api/schedule/${SCHEDULE_ID}/status/`;
+const SIMULATE_VARIANTS_API_URL = `/api/schedule/${SCHEDULE_ID}/simulate-variants/`;
+const STATUS_DISPLAY = {
+    draft: 'Черновик',
+    pending: 'На согласовании',
+    approved: 'Утвержден'
+};
 const EMPLOYEES_WITH_WORKOUTS = {{ employees_with_workouts_json|safe }};
 const WORKOUT_TYPES = {{ workout_types_json|safe }};
 const AVAILABILITY_SET = new Set({{ availability_set_json|safe }});
+const APPROVAL_OWN_SLOTS = {{ approval_slots_for_user_json|safe|default:'[]' }};
 const DAY_LABELS = [{% for day in days %}'{{ day|date:"D, d M" }}'{% if not forloop.last %},{% endif %}{% endfor %}];
 const EMPLOYEE_WORKOUT_MAP = {};
 EMPLOYEES_WITH_WORKOUTS.forEach(emp => {
@@ -958,6 +1175,8 @@ EMPLOYEES_WITH_WORKOUTS.forEach(emp => {
 });
 let IS_MULTI_SELECT_MODE = false;
 const SELECTED_CELLS = new Set();
+let REJECT_MODE = 'manual';
+let SCHEDULE_VARIANTS_CACHE = [];
 
 function colorForTrainer(employeeId) {
     const n = parseInt(employeeId, 10);
@@ -1126,6 +1345,60 @@ async function suggestSubstituteForCell(cell, options = {}) {
     }
 }
 
+function findScheduleCellByDateAndSlot(dateStr, timeSlot) {
+    const start = String(timeSlot || '').split(/[–-]/)[0].trim();
+    return document.querySelector(`.schedule-cell[data-day="${dateStr}"][data-time="${start}"]`);
+}
+
+function workoutIdByName(workoutName) {
+    const normalized = String(workoutName || '').trim().toLowerCase();
+    const found = WORKOUT_TYPES.find(w => String(w.name || '').trim().toLowerCase() === normalized);
+    return found ? parseInt(found.id, 10) : null;
+}
+
+async function loadCandidatesForManagerButton(button, select) {
+    const date = button.dataset.date || '';
+    const timeSlot = button.dataset.timeSlot || '';
+    const workoutName = button.dataset.workoutName || '';
+    const excludeEmployeeId = parseInt(button.dataset.employeeId || '0', 10) || null;
+    const workoutTypeId = workoutIdByName(workoutName);
+
+    select.innerHTML = '<option value="">Ищу кандидатов...</option>';
+    const response = await fetch(SUBSTITUTE_API_URL, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+        },
+        body: JSON.stringify({
+            schedule_id: SCHEDULE_ID,
+            date: date,
+            time_slot: String(timeSlot).split(/[–-]/)[0].trim(),
+            workout_type_id: workoutTypeId,
+            exclude_employee_id: excludeEmployeeId,
+            limit: 5
+        })
+    });
+    const data = await response.json();
+    if (!response.ok || data.success === false) {
+        throw new Error(data.error || 'Не удалось подобрать кандидатов.');
+    }
+    const candidates = Array.isArray(data.candidates) ? data.candidates : [];
+    if (!candidates.length) {
+        select.innerHTML = '<option value="">Подходящих кандидатов нет</option>';
+        return 0;
+    }
+    select.innerHTML = '<option value="">Выберите кандидата...</option>';
+    candidates.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = String(c.employee_id);
+        opt.textContent = c.display_name;
+        opt.dataset.workoutTypeId = c.suggested_workout_type_id ? String(c.suggested_workout_type_id) : '';
+        select.appendChild(opt);
+    });
+    return candidates.length;
+}
+
 function syncBulkWorkoutOptions() {
     const employeeSelect = document.getElementById('bulk-employee-select');
     const workoutSelect = document.getElementById('bulk-workout-select');
@@ -1184,7 +1457,8 @@ function toggleCellSelection(cell) {
     updateBulkPanel();
 }
 
-function applyBulkAssignment() {
+async function applyBulkAssignment() {
+    if (!await ensureApprovedEditConfirmation()) return;
     if (SELECTED_CELLS.size === 0) {
         showGlobalNotification('Сначала выберите ячейки.', 'error');
         return;
@@ -1221,6 +1495,7 @@ function applyBulkAssignment() {
 }
 
 async function applyBulkSubstitute() {
+    if (!await ensureApprovedEditConfirmation()) return;
     if (SELECTED_CELLS.size === 0) {
         showGlobalNotification('Сначала выберите ячейки.', 'error');
         return;
@@ -1289,6 +1564,68 @@ function updateCellPreview(cell) {
     }
 
     colorizeTrainerPill(trainerPill);
+}
+
+function applyPlanToTable(plan) {
+    if (!plan || typeof plan !== 'object') return;
+    document.querySelectorAll('#view-schedule-table tbody tr').forEach(row => {
+        const timeSlot = row.querySelector('td:first-child')?.textContent?.trim() || '';
+        row.querySelectorAll('.schedule-cell').forEach((cell, colIndex) => {
+            const date = DATE_STRINGS[colIndex];
+            const key = `${date}|${timeSlot}`;
+            const item = plan[key];
+            if (!item) return;
+            const employeeSelect = cell.querySelector('.employee-select');
+            const workoutSelect = cell.querySelector('.workout-select');
+            if (!employeeSelect || !workoutSelect) return;
+            employeeSelect.value = item.employee_id || '';
+            constrainCellWorkoutByTrainer(cell);
+            workoutSelect.value = item.workout_type_id || '';
+            updateCellPreview(cell);
+        });
+    });
+}
+
+function renderScheduleVariants(variants) {
+    const panel = document.getElementById('schedule-variants-panel');
+    const body = document.getElementById('schedule-variants-body');
+    if (!panel || !body) return;
+
+    if (!Array.isArray(variants) || !variants.length) {
+        panel.classList.remove('d-none');
+        body.innerHTML = '<div class="text-muted">Варианты не найдены.</div>';
+        return;
+    }
+
+    body.innerHTML = `
+        <div class="row g-2">
+            ${variants.map(v => `
+                <div class="col-md-4">
+                    <div class="border rounded-3 p-3 h-100">
+                        <div class="fw-semibold mb-2">${v.title}</div>
+                        <div class="small mb-1">Заполнено: <strong>${v.metrics.filled}</strong></div>
+                        <div class="small mb-1">Замен по замечаниям: <strong>${v.metrics.replaced_due_to_remarks}</strong></div>
+                        <div class="small mb-1">Не решено: <strong>${v.metrics.unresolved_remarks}</strong></div>
+                        <div class="small mb-1">Средняя нагрузка: <strong>${v.metrics.avg_load}</strong></div>
+                        <div class="small mb-3">Баланс (σ): <strong>${v.metrics.balance_std}</strong></div>
+                        <button class="btn btn-sm btn-primary apply-variant-btn" data-variant-id="${v.id}">Применить вариант</button>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+    panel.classList.remove('d-none');
+
+    body.querySelectorAll('.apply-variant-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            if (!await ensureApprovedEditConfirmation()) return;
+            const variantId = parseInt(btn.dataset.variantId || '0', 10);
+            const variant = SCHEDULE_VARIANTS_CACHE.find(v => v.id === variantId);
+            if (!variant) return;
+            applyPlanToTable(variant.plan);
+            showGlobalNotification(`Применен ${variant.title}. Проверьте и сохраните.`, 'success');
+        });
+    });
 }
 
 function renderVersionCompareResult(payload) {
@@ -1386,13 +1723,87 @@ function togglePanelBody(bodyEl, toggleBtn) {
     toggleBtn.setAttribute('aria-expanded', String(!collapsed));
 }
 
+function openApprovedEditModal() {
+    return new Promise(resolve => {
+        const modal = document.getElementById('approved-edit-modal');
+        const confirmBtn = document.getElementById('approved-edit-confirm');
+        const cancelBtn = document.getElementById('approved-edit-cancel');
+        if (!modal || !confirmBtn || !cancelBtn) return resolve(false);
+
+        const close = (result) => {
+            modal.classList.remove('show');
+            confirmBtn.removeEventListener('click', onConfirm);
+            cancelBtn.removeEventListener('click', onCancel);
+            modal.removeEventListener('click', onBackdrop);
+            document.removeEventListener('keydown', onEsc);
+            resolve(result);
+        };
+        const onConfirm = () => close(true);
+        const onCancel = () => close(false);
+        const onBackdrop = (e) => { if (e.target === modal) close(false); };
+        const onEsc = (e) => { if (e.key === 'Escape') close(false); };
+
+        confirmBtn.addEventListener('click', onConfirm);
+        cancelBtn.addEventListener('click', onCancel);
+        modal.addEventListener('click', onBackdrop);
+        document.addEventListener('keydown', onEsc);
+        modal.classList.add('show');
+    });
+}
+
+async function ensureApprovedEditConfirmation() {
+    if (!CAN_EDIT) return false;
+    if (SCHEDULE_STATUS !== 'approved') return true;
+    if (APPROVED_EDIT_CONFIRMED) return true;
+    const ok = await openApprovedEditModal();
+    if (ok) {
+        APPROVED_EDIT_CONFIRMED = true;
+    }
+    return ok;
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.trainer-pill').forEach(colorizeTrainerPill);
+    const saveStatusBtn = document.getElementById('save-status-btn');
+    const statusSelect = document.getElementById('schedule-status-select');
+    const statusText = document.getElementById('schedule-status-text');
+    if (saveStatusBtn && statusSelect) {
+        saveStatusBtn.addEventListener('click', async function () {
+            const nextStatus = statusSelect.value;
+            if (!nextStatus) return;
+            saveStatusBtn.disabled = true;
+            try {
+                const response = await fetch(SET_STATUS_API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify({ status: nextStatus })
+                });
+                const data = await response.json();
+                if (!response.ok || !data.success) {
+                    throw new Error(data.error || 'Не удалось изменить статус.');
+                }
+                SCHEDULE_STATUS = data.status || nextStatus;
+                if (statusText) {
+                    statusText.textContent = data.status_display || STATUS_DISPLAY[SCHEDULE_STATUS] || SCHEDULE_STATUS;
+                }
+                APPROVED_EDIT_CONFIRMED = false;
+                showGlobalNotification(`Статус обновлен: ${data.status_display || STATUS_DISPLAY[SCHEDULE_STATUS]}`, 'success');
+            } catch (err) {
+                showGlobalNotification(err.message || 'Ошибка обновления статуса.', 'error');
+            } finally {
+                saveStatusBtn.disabled = false;
+            }
+        });
+    }
 
     if (CAN_EDIT) {
         document.querySelectorAll('.schedule-cell').forEach(cell => {
-            cell.addEventListener('click', function(event) {
+            cell.addEventListener('click', async function(event) {
                 if (event.target.closest('select, button')) return;
+                if (!await ensureApprovedEditConfirmation()) return;
                 if (IS_MULTI_SELECT_MODE) {
                     toggleCellSelection(this);
                     return;
@@ -1429,6 +1840,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const saveButton = document.getElementById('save-schedule-btn');
         const autoFillButton = document.getElementById('auto-fill-schedule-btn');
+        const simulateVariantsBtn = document.getElementById('simulate-variants-btn');
         const toggleMultiBtn = document.getElementById('toggle-multi-select-btn');
         const cancelMultiBtn = document.getElementById('cancel-multi-select-btn');
         const bulkAssignBtn = document.getElementById('bulk-assign-btn');
@@ -1448,9 +1860,30 @@ document.addEventListener('DOMContentLoaded', function() {
         const versionsToggleBtn = document.getElementById('versions-toggle-btn');
         const versionsPanelBody = document.getElementById('versions-panel-body');
         if (autoFillButton) {
-            autoFillButton.addEventListener('click', function () {
+            autoFillButton.addEventListener('click', async function () {
+                if (!await ensureApprovedEditConfirmation()) return;
                 autoFillEmptyCells();
                 showGlobalNotification('Пустые слоты заполнены автоматически.', 'success');
+            });
+        }
+        if (simulateVariantsBtn) {
+            simulateVariantsBtn.addEventListener('click', async function () {
+                if (!await ensureApprovedEditConfirmation()) return;
+                simulateVariantsBtn.disabled = true;
+                try {
+                    const response = await fetch(SIMULATE_VARIANTS_API_URL);
+                    const data = await response.json();
+                    if (!response.ok || !data.success) {
+                        throw new Error(data.error || 'Не удалось построить варианты.');
+                    }
+                    SCHEDULE_VARIANTS_CACHE = Array.isArray(data.variants) ? data.variants : [];
+                    renderScheduleVariants(SCHEDULE_VARIANTS_CACHE);
+                    showGlobalNotification('Варианты построены. Выберите подходящий.', 'success');
+                } catch (err) {
+                    showGlobalNotification(err.message || 'Ошибка построения вариантов.', 'error');
+                } finally {
+                    simulateVariantsBtn.disabled = false;
+                }
             });
         }
         if (toggleMultiBtn) toggleMultiBtn.addEventListener('click', toggleMultiSelectMode);
@@ -1516,6 +1949,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         document.querySelectorAll('.restore-version-btn').forEach(btn => {
             btn.addEventListener('click', async function () {
+                if (!await ensureApprovedEditConfirmation()) return;
                 const versionId = this.dataset.versionId;
                 const versionNumber = this.dataset.versionNumber;
                 if (!versionId) return;
@@ -1544,7 +1978,8 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
         if (saveButton) {
-            saveButton.addEventListener('click', function () {
+            saveButton.addEventListener('click', async function () {
+                if (!await ensureApprovedEditConfirmation()) return;
                 const scheduleName = scheduleNameInput ? scheduleNameInput.value.trim() : '';
                 if (scheduleNameInput && !scheduleName) {
                     showGlobalNotification('Укажите название графика.', 'error');
@@ -1595,36 +2030,178 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    document.querySelectorAll('.manager-load-candidates-btn').forEach(btn => {
+        btn.addEventListener('click', async function () {
+            const rowWrap = this.closest('.d-flex');
+            const select = rowWrap ? rowWrap.querySelector('.manager-candidates-select') : null;
+            if (!select) return;
+            this.disabled = true;
+            try {
+                await loadCandidatesForManagerButton(this, select);
+                showGlobalNotification('Кандидаты подобраны.', 'success');
+            } catch (err) {
+                select.innerHTML = '<option value="">Ошибка подбора</option>';
+                showGlobalNotification(err.message || 'Ошибка подбора кандидатов.', 'error');
+            } finally {
+                this.disabled = false;
+            }
+        });
+    });
+
+    const applyAllBestBtn = document.getElementById('manager-apply-all-best-btn');
+    if (applyAllBestBtn) {
+        applyAllBestBtn.addEventListener('click', async function () {
+            if (!await ensureApprovedEditConfirmation()) return;
+            this.disabled = true;
+            let applied = 0;
+            let skipped = 0;
+            const rows = Array.from(document.querySelectorAll('.manager-load-candidates-btn'));
+            for (const loadBtn of rows) {
+                const rowWrap = loadBtn.closest('.d-flex');
+                const select = rowWrap ? rowWrap.querySelector('.manager-candidates-select') : null;
+                const applyBtn = rowWrap ? rowWrap.querySelector('.manager-apply-candidate-btn') : null;
+                if (!select || !applyBtn) { skipped += 1; continue; }
+                try {
+                    await loadCandidatesForManagerButton(loadBtn, select);
+                    if (!select.options || select.options.length < 2) { skipped += 1; continue; }
+                    select.selectedIndex = 1; // лучший кандидат
+                    applyBtn.click();
+                    applied += 1;
+                } catch (_) {
+                    skipped += 1;
+                }
+            }
+            showGlobalNotification(`Готово: применено ${applied}, пропущено ${skipped}. Проверьте и сохраните график.`, applied > 0 ? 'success' : 'info');
+            this.disabled = false;
+        });
+    }
+
+    document.querySelectorAll('.manager-apply-candidate-btn').forEach(btn => {
+        btn.addEventListener('click', async function () {
+            if (!await ensureApprovedEditConfirmation()) return;
+            const rowWrap = this.closest('.d-flex');
+            const select = rowWrap ? rowWrap.querySelector('.manager-candidates-select') : null;
+            if (!select || !select.value) {
+                showGlobalNotification('Сначала выберите кандидата.', 'error');
+                return;
+            }
+            const date = this.dataset.date || '';
+            const timeSlot = this.dataset.timeSlot || '';
+            const cell = findScheduleCellByDateAndSlot(date, timeSlot);
+            if (!cell) {
+                showGlobalNotification('Не найден соответствующий слот в таблице.', 'error');
+                return;
+            }
+            const employeeSelect = cell.querySelector('.employee-select');
+            const workoutSelect = cell.querySelector('.workout-select');
+            if (!employeeSelect || !workoutSelect) {
+                showGlobalNotification('Этот слот нельзя изменить.', 'error');
+                return;
+            }
+
+            employeeSelect.value = select.value;
+            constrainCellWorkoutByTrainer(cell);
+            const suggestedWorkoutId = select.options[select.selectedIndex]?.dataset?.workoutTypeId || '';
+            if (suggestedWorkoutId) workoutSelect.value = suggestedWorkoutId;
+            updateCellPreview(cell);
+            showGlobalNotification('Замена применена в таблицу. Нажмите «Сохранить изменения».', 'success');
+        });
+    });
+
     const approveRadio = document.getElementById('approve');
     const rejectRadio = document.getElementById('reject');
     const commentGroup = document.getElementById('comment-group');
+    const rejectModeArea = document.getElementById('reject-mode-area');
+    const manualBtn = document.getElementById('reject-mode-manual-btn');
+    const aiBtn = document.getElementById('reject-mode-ai-btn');
+    const manualPanel = document.getElementById('reject-mode-manual-panel');
+    const aiPanel = document.getElementById('reject-mode-ai-panel');
+    const slotsList = document.getElementById('reject-slots-list');
+    const selectAllBtn = document.getElementById('reject-select-all-btn');
+    const rejectAiText = document.getElementById('reject-ai-text');
+
+    function renderRejectSlots() {
+        if (!slotsList) return;
+        if (!APPROVAL_OWN_SLOTS || APPROVAL_OWN_SLOTS.length === 0) {
+            slotsList.innerHTML = '<div class="small text-muted">Ваших смен в этом графике не найдено.</div>';
+            return;
+        }
+        slotsList.innerHTML = APPROVAL_OWN_SLOTS.map((slot, idx) => `
+            <label class="form-check mb-2 d-block">
+                <input class="form-check-input reject-slot-checkbox" type="checkbox"
+                       value="${slot.date}|${slot.start_time}" ${idx < 2 ? 'checked' : ''}>
+                <span class="form-check-label">
+                    ${slot.date_label} ${slot.time_slot} — ${slot.workout_name}
+                </span>
+            </label>
+        `).join('');
+    }
+
+    function getSelectedRejectSlots() {
+        return Array.from(document.querySelectorAll('.reject-slot-checkbox:checked')).map(cb => {
+            const [date, start_time] = cb.value.split('|');
+            return { date, start_time };
+        });
+    }
+
+    function setRejectMode(mode) {
+        REJECT_MODE = mode === 'ai' ? 'ai' : 'manual';
+        if (manualBtn) manualBtn.classList.toggle('active', REJECT_MODE === 'manual');
+        if (aiBtn) aiBtn.classList.toggle('active', REJECT_MODE === 'ai');
+        if (manualPanel) manualPanel.classList.toggle('d-none', REJECT_MODE !== 'manual');
+        if (aiPanel) aiPanel.classList.toggle('d-none', REJECT_MODE !== 'ai');
+    }
 
     if (approveRadio && rejectRadio) {
+        renderRejectSlots();
+        setRejectMode('manual');
+
+        if (manualBtn) manualBtn.addEventListener('click', () => setRejectMode('manual'));
+        if (aiBtn) aiBtn.addEventListener('click', () => setRejectMode('ai'));
+        if (selectAllBtn) {
+            selectAllBtn.addEventListener('click', () => {
+                const boxes = Array.from(document.querySelectorAll('.reject-slot-checkbox'));
+                const allChecked = boxes.length > 0 && boxes.every(x => x.checked);
+                boxes.forEach(x => { x.checked = !allChecked; });
+                selectAllBtn.textContent = allChecked ? 'Выбрать все' : 'Снять все';
+            });
+        }
+
         [approveRadio, rejectRadio].forEach(radio => {
             radio.addEventListener('change', function() {
-                if (this.value === 'reject') {
+                const isReject = this.value === 'reject';
+                if (isReject) {
                     commentGroup.classList.remove('d-none');
                     commentGroup.querySelector('textarea').required = true;
+                    if (rejectModeArea) rejectModeArea.classList.remove('d-none');
                 } else {
                     commentGroup.classList.add('d-none');
                     commentGroup.querySelector('textarea').required = false;
+                    if (rejectModeArea) rejectModeArea.classList.add('d-none');
                 }
             });
         });
 
         const form = document.getElementById('approval-form');
         if (form) {
-            form.addEventListener('submit', function(e) {
+            form.addEventListener('submit', async function(e) {
                 e.preventDefault();
                 const decision = form.querySelector('input[name="decision"]:checked')?.value;
                 const comment = document.getElementById('comment')?.value || '';
                 const scheduleId = form.querySelector('input[name="schedule_id"]').value;
-
                 if (!decision) return;
 
                 const approved = decision === 'approve';
                 if (!approved && !comment.trim()) {
-                    alert('Пожалуйста, укажите причину отклонения.');
+                    showGlobalNotification('Пожалуйста, укажите причину отклонения.', 'error');
+                    return;
+                }
+                if (!approved && REJECT_MODE === 'manual' && getSelectedRejectSlots().length === 0) {
+                    showGlobalNotification('Выберите хотя бы один слот.', 'error');
+                    return;
+                }
+                if (!approved && REJECT_MODE === 'ai' && !(rejectAiText?.value || '').trim()) {
+                    showGlobalNotification('Опишите проблему текстом для AI-режима.', 'error');
                     return;
                 }
 
@@ -1634,7 +2211,13 @@ document.addEventListener('DOMContentLoaded', function() {
                         'Content-Type': 'application/json',
                         'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
                     },
-                    body: JSON.stringify({ approved, comment })
+                    body: JSON.stringify({
+                        approved,
+                        comment,
+                        reject_mode: approved ? null : REJECT_MODE,
+                        selected_slots: approved ? [] : getSelectedRejectSlots(),
+                        ai_text: approved ? '' : (rejectAiText?.value || '')
+                    })
                 })
                 .then(r => r.json())
                 .then(data => {
