@@ -83,6 +83,9 @@ path('api/employee-workout-types/<int:user_id>/', api_get_employee_workout_types
     path('schedules/<int:schedule_id>/', views.schedule_detail, name='schedule_detail'),
     path('schedules/<int:schedule_id>/edit/', views.edit_schedule_view, name='edit_schedule'),
     path('api/schedule/<int:schedule_id>/update/', api_schedule_views.api_update_schedule, name='api_update_schedule'),
+    path('api/schedule/<int:schedule_id>/versions/', api_schedule_views.api_schedule_versions, name='api_schedule_versions'),
+    path('api/schedule/<int:schedule_id>/versions/compare/', api_schedule_views.api_compare_schedule_versions, name='api_compare_schedule_versions'),
+    path('api/schedule/<int:schedule_id>/versions/<int:version_id>/restore/', api_schedule_views.api_restore_schedule_version, name='api_restore_schedule_version'),
     path('schedules/<int:schedule_id>/delete/', views.delete_schedule_view, name='delete_schedule'),
 
     # согласование графика окошко

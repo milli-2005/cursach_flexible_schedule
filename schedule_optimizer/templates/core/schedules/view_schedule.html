@@ -1,4 +1,4 @@
-<!-- templates/core/schedules/view_schedule.html -->
+﻿<!-- templates/core/schedules/view_schedule.html -->
 {% extends "core/base.html" %}
 
 {% block title %}График {{ schedule.name }} - {{ block.super }}{% endblock %}
@@ -72,61 +72,551 @@
 
 .schedule-top-panel {
     margin-bottom: 1.35rem;
-    padding: 1.1rem 1.15rem;
-    border-radius: 16px;
-    border: 1px solid rgba(146, 111, 220, 0.75);
-    background:
-        radial-gradient(1200px 200px at -5% -40%, rgba(173, 130, 255, 0.2), transparent 60%),
-        linear-gradient(135deg, rgba(111, 66, 193, 0.32) 0%, rgba(111, 66, 193, 0.08) 100%);
-    box-shadow: 0 10px 30px rgba(111, 66, 193, 0.18);
+    padding: 0;
+    border-radius: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
 }
 
 .schedule-title {
     margin: 0;
     font-weight: 700;
+    text-align: center;
+    width: 100%;
 }
 
 .schedule-headline {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    flex-wrap: wrap;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+
+.schedule-title-wrap {
+    width: 100%;
+}
+
+.schedule-name-label {
+    color: #6a4ca8;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    margin-bottom: 0.4rem !important;
+}
+
+#schedule-name-input {
+    border-color: rgba(178, 145, 255, 0.5);
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+#schedule-name-input:focus {
+    border-color: #c7a5ff;
+    box-shadow: 0 0 0 0.2rem rgba(169, 121, 255, 0.28);
 }
 
 .meta-chip {
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
-    padding: 0.35rem 0.65rem;
+    padding: 0.44rem 0.82rem;
     border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    background: rgba(255, 255, 255, 0.08);
-    font-size: 0.92rem;
+    border: 1px solid rgba(215, 188, 255, 0.45);
+    background: rgba(215, 188, 255, 0.14);
+    color: #4a327f;
+    font-size: 0.93rem;
+    font-weight: 600;
 }
 
 .meta-chip strong {
-    color: #fff;
+    color: #3f296f;
     font-weight: 700;
 }
 
 .schedule-actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.6rem;
-    margin-top: 0.95rem;
+    gap: 0.7rem;
+    margin-top: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+}
+
+.schedule-header-grid {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 1rem;
+    align-items: end;
+}
+
+.schedule-status-block {
+    min-width: 190px;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+.schedule-actions-panel,
+.schedule-versions-panel {
+    margin-top: 1.2rem;
+    border: 1px solid rgba(171, 136, 245, 0.35);
+    border-radius: 14px;
+    padding: 1.25rem;
+    background: #fff;
+}
+
+.schedule-actions-panel .panel-header {
+    margin-bottom: 0;
+}
+
+.schedule-actions-panel .panel-header-inline {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.85rem;
+    flex-wrap: wrap;
+}
+
+.availability-quick-panel {
+    margin-top: 1.2rem;
+    border: 1px solid rgba(171, 136, 245, 0.35);
+    border-radius: 14px;
+    padding: 1.25rem;
+    background: #fff;
+}
+
+.availability-quick-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 0.6rem;
+}
+
+.availability-quick-title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #f1e7ff;
+}
+
+.availability-quick-subtitle {
+    margin: 0;
+    font-size: 0.82rem;
+    color: #cab6eb;
+}
+
+.availability-day-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 0.45rem;
+}
+
+.availability-day-chip {
+    border-radius: 10px;
+    border: 1px solid rgba(160, 131, 232, 0.45);
+    padding: 0.45rem 0.55rem;
+    background: rgba(255, 255, 255, 0.05);
+    color: #efe7ff;
+}
+
+.availability-day-chip strong {
+    display: block;
+    font-size: 0.78rem;
+    margin-bottom: 0.2rem;
+}
+
+.availability-day-chip span {
+    font-size: 0.85rem;
+}
+
+.schedule-cell.availability-match {
+    box-shadow: inset 0 0 0 9999px rgba(138, 107, 190, 0.18);
+    outline: 1px solid rgba(138, 107, 190, 0.55);
+    outline-offset: -1px;
+}
+
+.panel-title {
+    margin: 0 0 0.75rem;
+    font-weight: 700;
+    color: #f1e7ff;
+    font-size: 1rem;
+}
+
+.panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.panel-title-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.panel-header .panel-title,
+.panel-header .availability-quick-title {
+    margin: 0;
+}
+
+.panel-arrow-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(196, 172, 255, 0.6);
+    background: rgba(255, 255, 255, 0.06);
+    color: #efe7ff;
+}
+
+.panel-arrow-btn:hover,
+.panel-arrow-btn:focus {
+    border-color: rgba(173, 130, 255, 0.95);
+    background: rgba(173, 130, 255, 0.2);
+    color: #fff;
+}
+
+.panel-body.is-collapsed {
+    display: none;
+}
+
+.schedule-actions .btn {
+    min-height: 40px;
+    font-weight: 700;
+}
+
+.schedule-actions .btn-outline-light {
+    border-color: rgba(196, 172, 255, 0.8);
+    color: #eadbff;
+}
+
+.schedule-actions .btn-outline-light:hover,
+.schedule-actions .btn-outline-light:focus {
+    background: rgba(180, 136, 255, 0.2);
+    color: #fff;
+}
+
+.schedule-actions .btn-primary {
+    border-color: transparent;
+    background: linear-gradient(135deg, #8a6bbe 0%, #a27cdf 100%);
+    color: #fff;
+}
+
+.schedule-actions .btn-primary:hover,
+.schedule-actions .btn-primary:focus {
+    background: linear-gradient(135deg, #946fcd 0%, #b38ded 100%);
+}
+
+.schedule-actions .btn-outline-warning {
+    border-color: #d5aa2f;
+    color: #6b4d00;
+    background: #f0c84e;
+}
+
+.schedule-actions .btn-outline-warning:hover,
+.schedule-actions .btn-outline-warning:focus {
+    background: #e5bc3f;
+    color: #5f4300;
+    border-color: #cfa126;
 }
 
 .schedule-table-wrap {
-    margin-top: 0.35rem;
+    margin-top: 1.5rem;
 }
 
 .bulk-actions-panel {
-    margin-top: 0.85rem;
-    padding: 0.85rem;
+    margin-top: 0.2rem;
+    padding: 0.95rem;
+    border-radius: 14px;
+    border: 1px solid rgba(173, 130, 255, 0.45);
+    background: rgba(18, 13, 32, 0.7);
+}
+
+.version-panel {
+    margin-top: 0.25rem;
+    padding: 0;
+    border-radius: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+.version-table td, .version-table th {
+    vertical-align: middle;
+}
+
+.version-panel .form-label {
+    color: #e5d6ff;
+    font-weight: 600;
+}
+
+.version-panel .form-select {
+    border-color: rgba(172, 139, 245, 0.45);
+    background-color: rgba(255, 255, 255, 0.08);
+    color: #f4eeff;
+}
+
+.version-panel .form-select:focus {
+    border-color: #b894ff;
+    box-shadow: 0 0 0 0.2rem rgba(173, 130, 255, 0.25);
+}
+
+.version-panel .badge.text-bg-secondary {
+    background: rgba(173, 130, 255, 0.28) !important;
+    color: #efe7ff !important;
+    border: 1px solid rgba(188, 157, 255, 0.5);
+}
+
+.version-panel .badge.text-bg-primary {
+    background: #8a6bbe !important;
+    color: #fff !important;
+    border: 1px solid #7d5eb3;
+}
+
+.version-table-wrap {
+    border: 1px solid rgba(169, 137, 241, 0.4);
     border-radius: 12px;
+    overflow: hidden;
+}
+
+.version-table {
+    margin-bottom: 0;
+}
+
+.version-table thead th {
+    background: rgba(146, 109, 214, 0.34) !important;
+    color: #f9f5ff !important;
+    border-color: rgba(170, 139, 240, 0.28) !important;
+    font-weight: 700;
+}
+
+.version-table tbody td {
+    border-color: rgba(170, 139, 240, 0.2) !important;
+    color: #ebe3ff;
+}
+
+.version-table tbody tr:nth-child(odd) td {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.version-table tbody tr:nth-child(even) td {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.version-table .btn-outline-warning {
+    border-color: rgba(255, 206, 107, 0.65);
+    color: #ffd774;
+}
+
+.version-table .btn-outline-warning:hover {
+    background: rgba(255, 206, 107, 0.15);
+    color: #ffeaaf;
+}
+
+.compare-result-box {
+    margin-top: 0.65rem;
     border: 1px solid rgba(173, 130, 255, 0.5);
-    background: rgba(14, 10, 25, 0.55);
+    border-radius: 10px;
+    padding: 0.75rem 0.85rem;
+    background: rgba(173, 130, 255, 0.12);
+    color: #f3ebff;
+}
+
+html[data-theme='light'] .schedule-top-panel {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+html[data-theme='light'] .schedule-name-label {
+    color: #4a327f;
+}
+
+html[data-theme='light'] #schedule-name-input {
+    color: #2b1b59;
+    border-color: rgba(136, 100, 201, 0.45);
+    background: #fff;
+}
+
+html[data-theme='light'] .meta-chip {
+    background: rgba(138, 107, 190, 0.14);
+    border-color: rgba(138, 107, 190, 0.35);
+    color: #3d2b6d;
+}
+
+html[data-theme='light'] .meta-chip strong {
+    color: #2f1d5d;
+}
+
+html[data-theme='light'] .schedule-actions {
+    background: transparent;
+    border: 0;
+}
+
+html[data-theme='light'] .schedule-actions-panel,
+html[data-theme='light'] .schedule-versions-panel {
+    background: #fff;
+    border-color: rgba(138, 107, 190, 0.24);
+}
+
+html[data-theme='light'] .availability-quick-panel {
+    background: #fff;
+    border-color: rgba(149, 114, 214, 0.35);
+}
+
+html[data-theme='light'] .availability-quick-title {
+    color: #261548;
+}
+
+html[data-theme='light'] .availability-quick-subtitle {
+    color: #5f4c8b;
+}
+
+html[data-theme='light'] .availability-day-chip {
+    background: #f9f5ff;
+    color: #2d1e55;
+    border-color: rgba(149, 114, 214, 0.35);
+}
+
+html[data-theme='light'] .panel-title {
+    color: #3d2b6d;
+}
+
+html[data-theme='light'] .panel-arrow-btn {
+    border-color: rgba(149, 114, 214, 0.45);
+    background: #fff;
+    color: #4a327f;
+}
+
+html[data-theme='light'] .schedule-actions .btn-outline-light {
+    border-color: rgba(138, 107, 190, 0.5);
+    color: #5a3c96;
+    background: #fff;
+}
+
+html[data-theme='light'] .schedule-actions .btn-outline-light:hover,
+html[data-theme='light'] .schedule-actions .btn-outline-light:focus {
+    background: rgba(138, 107, 190, 0.12);
+    color: #452d7e;
+}
+
+html[data-theme='light'] .schedule-actions .btn-outline-warning {
+    border-color: #d5aa2f;
+    background: #f0c84e;
+    color: #614500;
+}
+
+html[data-theme='light'] .schedule-actions .btn-outline-warning:hover,
+html[data-theme='light'] .schedule-actions .btn-outline-warning:focus {
+    background: #e6be44;
+    color: #563d00;
+    border-color: #cb9f25;
+}
+
+html[data-theme='light'] .bulk-actions-panel {
+    background: #fff;
+    border-color: rgba(138, 107, 190, 0.28);
+}
+
+html[data-theme='light'] .bulk-actions-panel .text-light {
+    color: #2f1d5d !important;
+}
+
+html[data-theme='light'] .version-panel {
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+html[data-theme='light'] .version-panel .text-light,
+html[data-theme='light'] .version-panel .fw-semibold {
+    color: #2f1d5d !important;
+}
+
+html[data-theme='light'] .version-panel .form-label {
+    color: #5d429a;
+}
+
+html[data-theme='light'] .version-panel .form-select {
+    color: #2f1d5d;
+    border-color: rgba(138, 107, 190, 0.36);
+    background-color: #fff;
+}
+
+html[data-theme='light'] .version-panel .badge.text-bg-secondary {
+    background: rgba(138, 107, 190, 0.15) !important;
+    color: #5a3c96 !important;
+    border-color: rgba(138, 107, 190, 0.35);
+}
+
+html[data-theme='light'] .version-panel .badge.text-bg-primary {
+    background: #8a6bbe !important;
+    color: #fff !important;
+    border-color: #7d5eb3 !important;
+}
+
+html[data-theme='light'] .version-table-wrap {
+    border-color: rgba(138, 107, 190, 0.3);
+}
+
+html[data-theme='light'] .version-table thead th {
+    background: rgba(138, 107, 190, 0.9) !important;
+    color: #fff !important;
+}
+
+html[data-theme='light'] .version-table tbody td {
+    color: #2c1b57;
+    border-color: rgba(138, 107, 190, 0.14) !important;
+}
+
+html[data-theme='light'] .version-table tbody tr:nth-child(odd) td {
+    background: #ffffff;
+}
+
+html[data-theme='light'] .version-table tbody tr:nth-child(even) td {
+    background: #f8f3ff;
+}
+
+html[data-theme='light'] .compare-result-box {
+    color: #2f1d5d;
+    background: rgba(138, 107, 190, 0.1);
+    border-color: rgba(138, 107, 190, 0.35);
+}
+
+@media (max-width: 992px) {
+    .schedule-actions .btn {
+        width: 100%;
+    }
+
+    .schedule-header-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .schedule-status-block {
+        justify-content: flex-start;
+    }
+}
+
+/* Hard override: this page should not have a single background block above the table */
+.schedule-top-panel,
+html[data-theme='light'] .schedule-top-panel {
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    background-image: none !important;
+    box-shadow: none !important;
 }
 </style>
 {% endblock %}
@@ -135,28 +625,52 @@
 <div class="management-container">
     <div class="schedule-top-panel">
         <div class="schedule-headline">
-            {% if user.profile.role == 'manager' or user.profile.role == 'studio_admin' %}
-                <label class="w-100">
-                    <span class="d-block mb-1 text-muted small">Название графика</span>
-                    <input id="schedule-name-input"
-                           type="text"
-                           class="form-control"
-                           maxlength="200"
-                           value="{{ schedule.name }}">
-                </label>
-            {% else %}
-                <h2 class="schedule-title">График "{{ schedule.name }}"</h2>
-            {% endif %}
-            <span class="meta-chip"><strong>Статус</strong> {{ schedule.get_status_display }}</span>
+            <h2 class="schedule-title">Управление графиком</h2>
+            <div class="schedule-header-grid">
+                {% if user.profile.role == 'manager' or user.profile.role == 'studio_admin' %}
+                    <label class="schedule-title-wrap">
+                        <span class="d-block mb-1 small schedule-name-label">Название графика</span>
+                        <input id="schedule-name-input"
+                               type="text"
+                               class="form-control"
+                               maxlength="200"
+                               value="{{ schedule.name }}">
+                    </label>
+                {% else %}
+                    <div class="schedule-title-wrap">
+                        <span class="d-block mb-1 small schedule-name-label">Название графика</span>
+                        <div class="form-control">{{ schedule.name }}</div>
+                    </div>
+                {% endif %}
+                <div class="schedule-status-block">
+                    <span class="meta-chip"><strong>Статус</strong> {{ schedule.get_status_display }}</span>
+                </div>
+            </div>
         </div>
         {% if user.profile.role == 'manager' or user.profile.role == 'studio_admin' %}
-            <div class="schedule-actions">
-                <button id="auto-fill-schedule-btn" class="btn btn-outline-light">Заполнить автоматически</button>
-                <button id="toggle-multi-select-btn" class="btn btn-outline-warning">Мультивыбор: выкл</button>
-                <button id="cancel-multi-select-btn" class="btn btn-outline-secondary d-none">Отменить мультивыделение</button>
-                <button id="save-schedule-btn" class="btn btn-primary">Сохранить изменения</button>
+            <div class="schedule-actions-panel">
+                <div class="panel-header">
+                    <div class="panel-header-inline">
+                        <h3 class="panel-title">Действия</h3>
+                        <div class="schedule-actions">
+                            <button id="auto-fill-schedule-btn" class="btn btn-outline-light">Заполнить автоматически</button>
+                            <button id="toggle-multi-select-btn" class="btn btn-outline-warning">Мультивыбор: выкл</button>
+                            <button id="cancel-multi-select-btn" class="btn btn-outline-secondary d-none">Отменить мультивыделение</button>
+                            <button id="save-schedule-btn" class="btn btn-primary">Сохранить изменения</button>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div id="bulk-actions-panel" class="bulk-actions-panel d-none">
+                <div class="panel-header">
+                    <div class="panel-title-wrap">
+                        <h3 class="panel-title">Массовые операции</h3>
+                        <button id="bulk-toggle-btn" type="button" class="panel-arrow-btn" aria-label="Свернуть блок массовых операций">
+                            <i class="bi bi-chevron-up"></i>
+                        </button>
+                    </div>
+                </div>
+                <div id="bulk-panel-body" class="panel-body">
                 <div class="d-flex flex-column flex-lg-row gap-2 align-items-lg-center">
                     <div class="text-light">Выбрано ячеек: <strong id="bulk-selected-count">0</strong></div>
                     <select id="bulk-employee-select" class="form-select form-select-sm" style="max-width:220px;">
@@ -175,6 +689,115 @@
                     <button id="bulk-substitute-btn" class="btn btn-sm btn-outline-warning">Автоподмена выбранных</button>
                     <button id="bulk-clear-btn" class="btn btn-sm btn-outline-secondary">Снять выделение</button>
                 </div>
+                </div>
+            </div>
+
+            <div class="availability-quick-panel">
+                <div class="availability-quick-head">
+                    <div>
+                        <div class="panel-title-wrap">
+                            <h3 class="availability-quick-title">Быстрый просмотр доступности</h3>
+                            <button id="availability-toggle-btn" type="button" class="panel-arrow-btn" aria-label="Свернуть блок доступности">
+                                <i class="bi bi-chevron-up"></i>
+                            </button>
+                        </div>
+                        <p class="availability-quick-subtitle">Выберите сотрудника и посмотрите его доступные слоты прямо в таблице.</p>
+                    </div>
+                    <div class="d-flex gap-2 align-items-center">
+                        <select id="availability-employee-select" class="form-select form-select-sm" style="min-width:220px;">
+                            <option value="">Сотрудник...</option>
+                            {% for emp in employees %}
+                                <option value="{{ emp.id }}">{{ emp.user.get_full_name|default:emp.user.username }}</option>
+                            {% endfor %}
+                        </select>
+                        <button id="availability-clear-btn" type="button" class="btn btn-sm btn-outline-light">Сбросить</button>
+                    </div>
+                </div>
+                <div id="availability-panel-body" class="panel-body">
+                    <div id="availability-day-grid" class="availability-day-grid"></div>
+                </div>
+            </div>
+
+            <div class="schedule-versions-panel">
+                <div class="panel-header">
+                    <div class="panel-title-wrap">
+                        <h3 class="panel-title">Версии и откат</h3>
+                        <button id="versions-toggle-btn" type="button" class="panel-arrow-btn" aria-label="Свернуть блок версий">
+                            <i class="bi bi-chevron-up"></i>
+                        </button>
+                    </div>
+                    <span class="badge text-bg-secondary">Всего: {{ schedule_versions|length }}</span>
+                </div>
+                <div id="versions-panel-body" class="panel-body">
+                <div class="version-panel">
+                <div class="row g-2 align-items-end mb-2">
+                    <div class="col-md-4">
+                        <label class="form-label small mb-1">Версия 1</label>
+                        <select id="version-left-select" class="form-select form-select-sm">
+                            {% for v in schedule_versions %}
+                                <option value="{{ v.id }}">
+                                    v{{ v.version_number }} • {{ v.created_at|date:"d.m.Y H:i" }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small mb-1">Версия 2</label>
+                        <select id="version-right-select" class="form-select form-select-sm">
+                            {% for v in schedule_versions %}
+                                <option value="{{ v.id }}" {% if forloop.first %}{% elif forloop.counter == 2 %}selected{% endif %}>
+                                    v{{ v.version_number }} • {{ v.created_at|date:"d.m.Y H:i" }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4 d-flex gap-2">
+                        <button id="compare-versions-btn" type="button" class="btn btn-sm btn-outline-light w-100">Сравнить версии</button>
+                    </div>
+                </div>
+                <div id="version-compare-result" class="compare-result-box d-none"></div>
+
+                <div class="table-responsive mt-2 version-table-wrap">
+                    <table class="table table-sm table-dark version-table mb-0">
+                        <thead>
+                            <tr>
+                                <th>Версия</th>
+                                <th>Дата</th>
+                                <th>Кто сохранил</th>
+                                <th>Комментарий</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for v in schedule_versions %}
+                            <tr>
+                                <td><span class="badge text-bg-primary">v{{ v.version_number }}</span></td>
+                                <td>{{ v.created_at|date:"d.m.Y H:i" }}</td>
+                                <td>
+                                    {% if v.created_by %}
+                                        {{ v.created_by.get_full_name|default:v.created_by.username }}
+                                    {% else %}
+                                        system
+                                    {% endif %}
+                                </td>
+                                <td>{{ v.change_note|default:"—" }}</td>
+                                <td>
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-warning restore-version-btn"
+                                            data-version-id="{{ v.id }}"
+                                            data-version-number="{{ v.version_number }}">
+                                        Откатить к v{{ v.version_number }}
+                                    </button>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr><td colspan="5" class="text-center text-muted">Версий пока нет</td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                </div>
+            </div>
             </div>
         {% endif %}
     </div>
@@ -323,9 +946,12 @@ const CAN_EDIT = {% if user.profile.role == 'manager' or user.profile.role == 's
 const DATE_STRINGS = {{ date_strings|safe }};
 const SCHEDULE_ID = {{ schedule.id }};
 const SUBSTITUTE_API_URL = '/api/schedule/substitute-candidates/';
+const COMPARE_VERSIONS_API_URL = `/api/schedule/${SCHEDULE_ID}/versions/compare/`;
+const RESTORE_VERSION_API_BASE = `/api/schedule/${SCHEDULE_ID}/versions/`;
 const EMPLOYEES_WITH_WORKOUTS = {{ employees_with_workouts_json|safe }};
 const WORKOUT_TYPES = {{ workout_types_json|safe }};
 const AVAILABILITY_SET = new Set({{ availability_set_json|safe }});
+const DAY_LABELS = [{% for day in days %}'{{ day|date:"D, d M" }}'{% if not forloop.last %},{% endif %}{% endfor %}];
 const EMPLOYEE_WORKOUT_MAP = {};
 EMPLOYEES_WITH_WORKOUTS.forEach(emp => {
     EMPLOYEE_WORKOUT_MAP[emp.id] = emp.workout_types.map(wt => wt.id);
@@ -665,6 +1291,101 @@ function updateCellPreview(cell) {
     colorizeTrainerPill(trainerPill);
 }
 
+function renderVersionCompareResult(payload) {
+    const box = document.getElementById('version-compare-result');
+    if (!box) return;
+    const changes = Array.isArray(payload?.changes) ? payload.changes : [];
+    const header = `
+        <div class="mb-2 text-light">
+            Сравнение <strong>v${payload.left_version.number}</strong> и <strong>v${payload.right_version.number}</strong>.
+            Изменений: <strong>${payload.changes_count}</strong>
+        </div>
+    `;
+    if (!changes.length) {
+        box.innerHTML = header + '<div class="text-success">Различий нет.</div>';
+        box.classList.remove('d-none');
+        return;
+    }
+
+    const rows = changes.slice(0, 200).map(item => {
+        const before = item.left ? `${item.left.employee_name} • ${item.left.workout_name}` : '—';
+        const after = item.right ? `${item.right.employee_name} • ${item.right.workout_name}` : '—';
+        const typeLabel = item.change_type === 'added'
+            ? 'Добавлено'
+            : item.change_type === 'removed'
+                ? 'Удалено'
+                : 'Изменено';
+        return `
+            <tr>
+                <td>${item.date}</td>
+                <td>${item.time}</td>
+                <td>${typeLabel}</td>
+                <td>${before}</td>
+                <td>${after}</td>
+            </tr>
+        `;
+    }).join('');
+
+    box.innerHTML = `
+        ${header}
+        <div class="table-responsive">
+            <table class="table table-sm table-dark mb-0">
+                <thead>
+                    <tr>
+                        <th>Дата</th>
+                        <th>Время</th>
+                        <th>Тип</th>
+                        <th>Было</th>
+                        <th>Стало</th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+        </div>
+    `;
+    box.classList.remove('d-none');
+}
+
+function renderAvailabilityDayGrid(employeeId = '') {
+    const grid = document.getElementById('availability-day-grid');
+    if (!grid) return;
+    grid.innerHTML = DAY_LABELS.map((label, idx) => {
+        const day = DATE_STRINGS[idx];
+        if (!employeeId) {
+            return `<div class="availability-day-chip"><strong>${label}</strong><span>Выберите сотрудника</span></div>`;
+        }
+        let count = 0;
+        document.querySelectorAll(`#view-schedule-table .schedule-cell[data-day="${day}"]`).forEach(cell => {
+            const key = `${employeeId},${day},${cell.dataset.time}`;
+            if (AVAILABILITY_SET.has(key)) count += 1;
+        });
+        return `<div class="availability-day-chip"><strong>${label}</strong><span>Доступно слотов: <b>${count}</b></span></div>`;
+    }).join('');
+}
+
+function applyAvailabilityHighlight(employeeId = '') {
+    document.querySelectorAll('#view-schedule-table .schedule-cell').forEach(cell => {
+        cell.classList.remove('availability-match');
+        if (!employeeId) return;
+        const key = `${employeeId},${cell.dataset.day},${cell.dataset.time}`;
+        if (AVAILABILITY_SET.has(key)) {
+            cell.classList.add('availability-match');
+        }
+    });
+    renderAvailabilityDayGrid(employeeId);
+}
+
+function togglePanelBody(bodyEl, toggleBtn) {
+    if (!bodyEl || !toggleBtn) return;
+    const collapsed = bodyEl.classList.toggle('is-collapsed');
+    const icon = toggleBtn.querySelector('i');
+    if (icon) {
+        icon.classList.toggle('bi-chevron-down', collapsed);
+        icon.classList.toggle('bi-chevron-up', !collapsed);
+    }
+    toggleBtn.setAttribute('aria-expanded', String(!collapsed));
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.trainer-pill').forEach(colorizeTrainerPill);
 
@@ -715,6 +1436,17 @@ document.addEventListener('DOMContentLoaded', function() {
         const bulkClearBtn = document.getElementById('bulk-clear-btn');
         const bulkEmployeeSelect = document.getElementById('bulk-employee-select');
         const scheduleNameInput = document.getElementById('schedule-name-input');
+        const compareVersionsBtn = document.getElementById('compare-versions-btn');
+        const leftVersionSelect = document.getElementById('version-left-select');
+        const rightVersionSelect = document.getElementById('version-right-select');
+        const availabilityEmployeeSelect = document.getElementById('availability-employee-select');
+        const availabilityClearBtn = document.getElementById('availability-clear-btn');
+        const bulkToggleBtn = document.getElementById('bulk-toggle-btn');
+        const bulkPanelBody = document.getElementById('bulk-panel-body');
+        const availabilityToggleBtn = document.getElementById('availability-toggle-btn');
+        const availabilityPanelBody = document.getElementById('availability-panel-body');
+        const versionsToggleBtn = document.getElementById('versions-toggle-btn');
+        const versionsPanelBody = document.getElementById('versions-panel-body');
         if (autoFillButton) {
             autoFillButton.addEventListener('click', function () {
                 autoFillEmptyCells();
@@ -727,6 +1459,90 @@ document.addEventListener('DOMContentLoaded', function() {
         if (bulkSubstituteBtn) bulkSubstituteBtn.addEventListener('click', applyBulkSubstitute);
         if (bulkClearBtn) bulkClearBtn.addEventListener('click', clearCellSelection);
         if (bulkEmployeeSelect) bulkEmployeeSelect.addEventListener('change', syncBulkWorkoutOptions);
+        if (bulkToggleBtn && bulkPanelBody) {
+            bulkToggleBtn.addEventListener('click', function () {
+                togglePanelBody(bulkPanelBody, bulkToggleBtn);
+            });
+        }
+        if (availabilityToggleBtn && availabilityPanelBody) {
+            availabilityToggleBtn.addEventListener('click', function () {
+                togglePanelBody(availabilityPanelBody, availabilityToggleBtn);
+            });
+        }
+        if (versionsToggleBtn && versionsPanelBody) {
+            versionsToggleBtn.addEventListener('click', function () {
+                togglePanelBody(versionsPanelBody, versionsToggleBtn);
+            });
+        }
+        if (availabilityEmployeeSelect) {
+            availabilityEmployeeSelect.addEventListener('change', function () {
+                applyAvailabilityHighlight(this.value || '');
+            });
+            renderAvailabilityDayGrid('');
+        }
+        if (availabilityClearBtn && availabilityEmployeeSelect) {
+            availabilityClearBtn.addEventListener('click', function () {
+                availabilityEmployeeSelect.value = '';
+                applyAvailabilityHighlight('');
+            });
+        }
+                if (compareVersionsBtn && leftVersionSelect && rightVersionSelect) {
+            compareVersionsBtn.addEventListener('click', async function () {
+                const leftId = leftVersionSelect.value;
+                const rightId = rightVersionSelect.value;
+                if (!leftId || !rightId) {
+                    showGlobalNotification('Выберите две версии для сравнения.', 'error');
+                    return;
+                }
+                if (leftId === rightId) {
+                    showGlobalNotification('Выберите разные версии.', 'error');
+                    return;
+                }
+                compareVersionsBtn.disabled = true;
+                try {
+                    const response = await fetch(`${COMPARE_VERSIONS_API_URL}?left_version_id=${leftId}&right_version_id=${rightId}`);
+                    const data = await response.json();
+                    if (!response.ok || !data.success) {
+                        throw new Error(data.error || 'Не удалось сравнить версии.');
+                    }
+                    renderVersionCompareResult(data);
+                } catch (err) {
+                    showGlobalNotification(err.message || 'Ошибка сравнения версий.', 'error');
+                } finally {
+                    compareVersionsBtn.disabled = false;
+                }
+            });
+        }
+
+        document.querySelectorAll('.restore-version-btn').forEach(btn => {
+            btn.addEventListener('click', async function () {
+                const versionId = this.dataset.versionId;
+                const versionNumber = this.dataset.versionNumber;
+                if (!versionId) return;
+                if (!confirm(`Откатить график к версии v${versionNumber}? Будет создана новая версия-откат.`)) {
+                    return;
+                }
+                this.disabled = true;
+                try {
+                    const response = await fetch(`${RESTORE_VERSION_API_BASE}${versionId}/restore/`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+                        }
+                    });
+                    const data = await response.json();
+                    if (!response.ok || !data.success) {
+                        throw new Error(data.error || 'Откат не выполнен.');
+                    }
+                    showGlobalNotification(`График откатан к v${data.restored_to}. Создана версия v${data.new_version}.`, 'success');
+                    setTimeout(() => location.reload(), 700);
+                } catch (err) {
+                    showGlobalNotification(err.message || 'Ошибка отката версии.', 'error');
+                    this.disabled = false;
+                }
+            });
+        });
         if (saveButton) {
             saveButton.addEventListener('click', function () {
                 const scheduleName = scheduleNameInput ? scheduleNameInput.value.trim() : '';
@@ -765,7 +1581,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 .then(r => r.json())
                 .then(data => {
                     if (data.success) {
-                        showGlobalNotification('График успешно сохранён!');
+                        const versionInfo = data.version_created && data.version_number
+                            ? ` Создана версия v${data.version_number}.`
+                            : '';
+                        showGlobalNotification(`График успешно сохранён!${versionInfo}`);
                         location.reload();
                     } else {
                         showGlobalNotification('Ошибка: ' + (data.error || 'Неизвестная ошибка'));

@@ -1,12 +1,13 @@
-import os
+﻿import os
 from pathlib import Path
+from celery.schedules import crontab
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
+# Базовая директория проекта
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 def _load_env_file(path: Path) -> None:
-    """Simple .env loader to support local runserver without extra deps."""
+    """Простой загрузчик .env для локального запуска без дополнительных библиотек."""
     if not path.exists():
         return
     for raw_line in path.read_text(encoding='utf-8').splitlines():
@@ -14,28 +15,26 @@ def _load_env_file(path: Path) -> None:
         if not line or line.startswith('#') or '=' not in line:
             continue
         key, value = line.split('=', 1)
-        key = key.strip()
-        value = value.strip().strip('"').strip("'")
+        # Защита от BOM в начале файла и от пробелов.
+        key = key.strip().lstrip('\ufeff')
+        # Убираем inline-комментарий вида "KEY=value # comment", если он не в кавычках.
+        value = value.strip()
+        if '#' in value and not (value.startswith('"') or value.startswith("'")):
+            value = value.split('#', 1)[0].rstrip()
+        value = value.strip('"').strip("'")
         os.environ.setdefault(key, value)
 
 
 _load_env_file(BASE_DIR / '.env')
 
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
-
-# SECURITY WARNING: keep the secret key used in production secret!
+# Настройки для разработки (не для production)
 SECRET_KEY = 'django-insecure-6^86^l($y=q_)sj8+5^&i(vsupzj8npwvk-))!xqe)e&3iu=f^'
-
-# SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
-
 ALLOWED_HOSTS = []
 
 
-# Application definition
-
+# Приложения
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -46,6 +45,8 @@ INSTALLED_APPS = [
     'core.apps.CoreConfig',
 ]
 
+
+# Промежуточные обработчики (middleware)
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -60,6 +61,8 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'schedule_optimizer.urls'
 
+
+# Шаблоны
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -70,6 +73,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'core.context_processors.pending_schedule_approval_notice',
             ],
         },
     },
@@ -78,20 +82,18 @@ TEMPLATES = [
 WSGI_APPLICATION = 'schedule_optimizer.wsgi.application'
 
 
-# Database
-# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-
 def _env_bool(name: str, default: bool = False) -> bool:
     raw = os.getenv(name)
     if raw is None:
         return default
-    return raw.strip().lower() in {"1", "true", "yes", "on"}
+    return raw.strip().lower() in {'1', 'true', 'yes', 'on'}
 
 
-USE_POSTGRES = _env_bool("USE_POSTGRES", default=False)
-RULE_AI_ENABLED = _env_bool("RULE_AI_ENABLED", default=False)
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5.4-mini").strip() or "gpt-5.4-mini"
+# База данных
+USE_POSTGRES = _env_bool('USE_POSTGRES', default=False)
+RULE_AI_ENABLED = _env_bool('RULE_AI_ENABLED', default=False)
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '').strip()
+OPENAI_MODEL = os.getenv('OPENAI_MODEL', 'gpt-5.4-mini').strip() or 'gpt-5.4-mini'
 
 if USE_POSTGRES:
     DATABASES = {
@@ -114,60 +116,49 @@ else:
     }
 
 
-# Password validation
-# https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
-
+# Валидация паролей
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
 
-# Internationalization
+# Локализация
 LANGUAGE_CODE = 'ru-ru'
 TIME_ZONE = 'Europe/Moscow'
 USE_I18N = True
 USE_TZ = True
 
-# Static files (CSS, JavaScript, Images)
+
+# Статика
 STATIC_URL = 'static/'
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static'),  # добавляем папку static
-]
+STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-STATIC_ROOT = BASE_DIR / 'staticfiles' # Папка для собранной статики (для production)
 
-# Media files (загружаемые пользователями)
+# Медиа-файлы
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-# Default primary key field type
+
+# Первичный ключ по умолчанию
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Login redirect
+
+# Редиректы авторизации
 LOGIN_REDIRECT_URL = 'dashboard'
 LOGOUT_REDIRECT_URL = 'index'
 LOGIN_URL = 'login'
 
-# === ЛОГИРОВАНИЕ (ставим ДО любых сторонних импортов) ===
+
+# Логирование
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'formatters': {
-        'simple': {
-            'format': '{levelname} {message}',
-            'style': '{',
-        },
+        'simple': {'format': '{levelname} {message}', 'style': '{'},
     },
     'handlers': {
         'console': {
@@ -176,47 +167,35 @@ LOGGING = {
             'formatter': 'simple',
         },
     },
-    'root': {
-        'handlers': ['console'],
-        'level': 'INFO',
-    },
+    'root': {'handlers': ['console'], 'level': 'INFO'},
     'loggers': {
-        'core': {
-            'handlers': ['console'],
-            'level': 'INFO',
-            'propagate': True,
-        },
+        'core': {'handlers': ['console'], 'level': 'INFO', 'propagate': True},
     },
 }
 
-# Настройки email для разработки
-EMAIL_HOST = 'smtp.gmail.com'    #адрес почтового сервера - gmail, yandex, mail
-EMAIL_PORT = 587       #587 - стандартный порт для защищенной отправки почты (TLS) или 465
-EMAIL_USE_TLS = True   #Включает шифрование соединения (как HTTPS для почты), чтобы пароли и письма нельзя было перехватить
-EMAIL_HOST_USER = 'milena9470st@gmail.com'
-EMAIL_HOST_PASSWORD = 'dmwfojpsrxzrrtft'  # Пароль приложения (не пароль от почты!)
-DEFAULT_FROM_EMAIL = 'schedule.system@gmail.com'  #Имя отправителя, которое увидят пользователи
+
+# Настройки почты (значения берутся из .env) 
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend' #Django будет отправлять письма через SMTP
+EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com') #Берет EMAIL_HOST из .env; если пусто, подставит smtp.gmail.com.
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', '465')) #Берет порт из .env, по умолчанию 465
+EMAIL_USE_SSL = EMAIL_PORT == 465 #Если порт 465, включается SSL.
+EMAIL_USE_TLS = not EMAIL_USE_SSL #Если SSL выключен, включается TLS (обычно для порта 587)
+EMAIL_TIMEOUT = 25 #Таймаут соединения 25 секунд.
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '').strip() #Логин SMTP (почта) из .env
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '').strip()
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER or 'no-reply@localhost') #Отправитель из .env, иначе EMAIL_HOST_USER, иначе запасной no-reply@localhost.
 
 
-# Email-напоминание в среду
-# ✅ Что нужно: Задача Celery (или простой cron), которая каждый вторник вечером проверяет:
-#         Есть ли графики со статусом draft,
-#         Если да — отправляет email всем сотрудникам:
-#         «Укажите вашу доступность до [день]!»
-# Если не хочешь Celery — можно сделать через management command + cron, но Celery проще.
-# settings.py
-
-from celery.schedules import crontab
+# Расписание задач Celery Beat
 CELERY_BEAT_SCHEDULE = {
     'send-availability-reminder': {
         'task': 'core.tasks.send_availability_reminder',
-        'schedule': crontab(day_of_week=1, hour=18, minute=0),  # Вторник 18:00
+        'schedule': crontab(day_of_week=1, hour=18, minute=0),  # Вторник, 18:00
     },
     'auto-approve-schedules': {
         'task': 'core.tasks.auto_approve_schedules',
-        'schedule': 600.0,  # Каждые 10 минут (600 секунд)
+        'schedule': 600.0,  # Каждые 10 минут
     },
 }
 
-# В самом конце settings.py
-print("LOGGING загружен")
+print('LOGGING загружен')

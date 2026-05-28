@@ -46,6 +46,21 @@ class ScheduleAdmin(admin.ModelAdmin):
     list_display = ('name', 'start_date', 'end_date', 'status', 'created_by', 'created_at')
     list_filter = ('status', 'created_by', 'created_at')
 
+
+@admin.register(ScheduleVersion)
+class ScheduleVersionAdmin(admin.ModelAdmin):
+    list_display = ('schedule', 'version_number', 'schedule_name', 'change_source', 'created_by', 'created_at')
+    list_filter = ('change_source', 'created_at')
+    search_fields = ('schedule__name', 'schedule_name', 'change_note')
+    ordering = ('-created_at',)
+
+
+@admin.register(ScheduleVersionAssignment)
+class ScheduleVersionAssignmentAdmin(admin.ModelAdmin):
+    list_display = ('schedule_version', 'date', 'start_time', 'employee', 'workout_type')
+    list_filter = ('date', 'workout_type')
+    search_fields = ('schedule_version__schedule__name', 'employee__user__username')
+
 @admin.register(TimeOffRequest)
 class TimeOffRequestAdmin(admin.ModelAdmin):
     list_display = ('employee', 'request_type', 'start_date', 'end_date', 'status')

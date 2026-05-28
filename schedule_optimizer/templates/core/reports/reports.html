@@ -132,6 +132,84 @@
         white-space: nowrap;
     }
 
+    .staff-analytics {
+        border: 1px solid var(--app-border);
+        border-radius: 14px;
+        background: linear-gradient(180deg, var(--app-surface-soft) 0%, var(--app-surface) 100%);
+        box-shadow: var(--app-shadow);
+        margin-bottom: 1rem;
+        overflow: hidden;
+    }
+
+    .staff-analytics-head {
+        padding: 0.9rem 1rem;
+        border-bottom: 1px solid var(--app-border);
+    }
+
+    .staff-analytics-title {
+        margin: 0;
+        font-size: 1.05rem;
+        font-weight: 800;
+    }
+
+    .staff-analytics-subtitle {
+        margin: 0.25rem 0 0;
+        color: var(--app-text-muted);
+        font-size: 0.92rem;
+    }
+
+    .staff-analytics-body {
+        padding: 1rem;
+    }
+
+    .staff-filters-grid {
+        display: grid;
+        grid-template-columns: 1.5fr repeat(3, minmax(160px, 1fr)) auto;
+        gap: 10px;
+        margin-bottom: 0.9rem;
+    }
+
+    .staff-kpis {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 10px;
+        margin-bottom: 0.9rem;
+    }
+
+    .staff-kpi-card {
+        border: 1px solid var(--app-border);
+        border-radius: 12px;
+        padding: 0.75rem 0.8rem;
+        background: rgba(111, 66, 193, 0.08);
+    }
+
+    .staff-kpi-value {
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: var(--app-heading);
+        line-height: 1.1;
+    }
+
+    .staff-kpi-label {
+        margin-top: 0.22rem;
+        font-size: 0.86rem;
+        color: var(--app-text-muted);
+    }
+
+    .staff-chart-wrap {
+        height: 290px;
+        border: 1px solid var(--app-border);
+        border-radius: 12px;
+        padding: 0.6rem;
+        background: rgba(111, 66, 193, 0.05);
+        margin-bottom: 0.9rem;
+    }
+
+    .staff-chart-wrap canvas {
+        width: 100% !important;
+        height: 100% !important;
+    }
+
     .report-actions {
         display: flex;
         align-items: center;
@@ -236,6 +314,14 @@
         .report-panels {
             grid-template-columns: 1fr;
         }
+
+        .staff-filters-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .staff-kpis {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
     }
 
     @media (max-width: 768px) {
@@ -245,6 +331,11 @@
 
         .rate-inline {
             flex-wrap: wrap;
+        }
+
+        .staff-filters-grid,
+        .staff-kpis {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
         }
     }
 </style>
@@ -392,6 +483,122 @@
     </section>
 
     {% if is_manager %}
+    <section class="staff-analytics">
+        <div class="staff-analytics-head">
+            <h3 class="staff-analytics-title">Расширенная аналитика по персоналу</h3>
+            <p class="staff-analytics-subtitle">Часы, равномерность нагрузки, отказы согласования, частота подмен и пиковые дни по каждому тренеру.</p>
+        </div>
+        <div class="staff-analytics-body">
+            <form method="get">
+                {% for key, value in request.GET.items %}
+                    {% if key != 'staff_search' and key != 'staff_sort' and key != 'staff_peak_day' and key != 'staff_swap_level' %}
+                        <input type="hidden" name="{{ key }}" value="{{ value }}">
+                    {% endif %}
+                {% endfor %}
+                <div class="staff-filters-grid">
+                    <input type="text" class="form-control" name="staff_search" value="{{ staff_search }}" placeholder="Поиск по ФИО или логину">
+                    <select name="staff_sort" class="form-select" onchange="this.form.submit()">
+                        <option value="hours_desc" {% if staff_sort == 'hours_desc' %}selected{% endif %}>Сортировка: часы (убыв.)</option>
+                        <option value="hours_asc" {% if staff_sort == 'hours_asc' %}selected{% endif %}>Сортировка: часы (возр.)</option>
+                        <option value="uniformity_desc" {% if staff_sort == 'uniformity_desc' %}selected{% endif %}>Равномерность (лучшие)</option>
+                        <option value="uniformity_asc" {% if staff_sort == 'uniformity_asc' %}selected{% endif %}>Равномерность (худшие)</option>
+                        <option value="reject_desc" {% if staff_sort == 'reject_desc' %}selected{% endif %}>Отказы (больше)</option>
+                        <option value="swap_desc" {% if staff_sort == 'swap_desc' %}selected{% endif %}>Подмены (больше)</option>
+                        <option value="name_asc" {% if staff_sort == 'name_asc' %}selected{% endif %}>ФИО (А-Я)</option>
+                    </select>
+                    <select name="staff_peak_day" class="form-select" onchange="this.form.submit()">
+                        <option value="all" {% if staff_peak_filter == 'all' %}selected{% endif %}>Пиковый день: любой</option>
+                        <option value="Пн" {% if staff_peak_filter == 'Пн' %}selected{% endif %}>Пик: Пн</option>
+                        <option value="Вт" {% if staff_peak_filter == 'Вт' %}selected{% endif %}>Пик: Вт</option>
+                        <option value="Ср" {% if staff_peak_filter == 'Ср' %}selected{% endif %}>Пик: Ср</option>
+                        <option value="Чт" {% if staff_peak_filter == 'Чт' %}selected{% endif %}>Пик: Чт</option>
+                        <option value="Пт" {% if staff_peak_filter == 'Пт' %}selected{% endif %}>Пик: Пт</option>
+                        <option value="Сб" {% if staff_peak_filter == 'Сб' %}selected{% endif %}>Пик: Сб</option>
+                        <option value="Вс" {% if staff_peak_filter == 'Вс' %}selected{% endif %}>Пик: Вс</option>
+                    </select>
+                    <select name="staff_swap_level" class="form-select" onchange="this.form.submit()">
+                        <option value="all" {% if staff_swap_filter == 'all' %}selected{% endif %}>Подмены: все</option>
+                        <option value="none" {% if staff_swap_filter == 'none' %}selected{% endif %}>Без подмен</option>
+                        <option value="low" {% if staff_swap_filter == 'low' %}selected{% endif %}>Низкая частота (до 20%)</option>
+                        <option value="high" {% if staff_swap_filter == 'high' %}selected{% endif %}>Высокая частота (20%+)</option>
+                    </select>
+                    <button type="submit" class="btn btn-primary">Применить</button>
+                </div>
+            </form>
+
+            <div class="staff-kpis">
+                <div class="staff-kpi-card">
+                    <div class="staff-kpi-value">{{ staff_summary.trainers_count }}</div>
+                    <div class="staff-kpi-label">Тренеров в выборке</div>
+                </div>
+                <div class="staff-kpi-card">
+                    <div class="staff-kpi-value">{{ staff_summary.total_hours|floatformat:0 }} ч</div>
+                    <div class="staff-kpi-label">Суммарная нагрузка (часы)</div>
+                </div>
+                <div class="staff-kpi-card">
+                    <div class="staff-kpi-value">{{ staff_summary.avg_uniformity|floatformat:0 }}%</div>
+                    <div class="staff-kpi-label">Средняя равномерность</div>
+                </div>
+                <div class="staff-kpi-card">
+                    <div class="staff-kpi-value">{{ staff_summary.total_swaps }}</div>
+                    <div class="staff-kpi-label">Подмен за период</div>
+                </div>
+                <div class="staff-kpi-card">
+                    <div class="staff-kpi-value">{{ staff_summary.avg_rejection_pct|floatformat:0 }}%</div>
+                    <div class="staff-kpi-label">Средний % отказов</div>
+                </div>
+            </div>
+
+            <div class="staff-chart-wrap">
+                <canvas id="chart-staff-metrics"></canvas>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-dark table-striped align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Тренер</th>
+                            <th>Часы</th>
+                            <th>Смены</th>
+                            <th>Рабочих дней</th>
+                            <th>Среднее в день</th>
+                            <th>Равномерность</th>
+                            <th>% отказов</th>
+                            <th>Подмены</th>
+                            <th>Частота подмен</th>
+                            <th>Пиковый день</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in staff_rows %}
+                        <tr>
+                            <td>
+                                <div class="fw-semibold">{{ row.name }}</div>
+                                <small class="text-muted">{{ row.username }}</small>
+                            </td>
+                            <td>{{ row.hours|floatformat:0 }} ч</td>
+                            <td>{{ row.shifts }}</td>
+                            <td>{{ row.worked_days }}</td>
+                            <td>{{ row.avg_per_day|floatformat:1 }} ч</td>
+                            <td>{{ row.uniformity|floatformat:0 }}%</td>
+                            <td>{{ row.rejection_pct|floatformat:0 }}% <small class="text-muted">({{ row.rejected_count }}/{{ row.responded_count }})</small></td>
+                            <td>{{ row.swap_count }} <small class="text-muted">↑{{ row.swap_sent }}/↓{{ row.swap_received }}</small></td>
+                            <td>{{ row.swap_frequency|floatformat:0 }}%</td>
+                            <td>{{ row.peak_day }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="10" class="text-center text-muted">Нет данных по выбранным фильтрам.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+    {% endif %}
+
+    {% if is_manager %}
     <section class="report-table-wrap">
         <div class="report-table-head">
             <h3>Направления: кто ведет и фактическая нагрузка</h3>
@@ -515,6 +722,7 @@
 </div>
 
 <script id="report-data" type="application/json">{{ chart_data_json|safe }}</script>
+<script id="staff-data" type="application/json">{{ staff_chart_json|safe }}</script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
@@ -627,6 +835,34 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
     });
+
+    const staffDataEl = document.getElementById('staff-data');
+    if (staffDataEl) {
+        try {
+            const staffData = JSON.parse(staffDataEl.textContent);
+            mountChart('chart-staff-metrics', {
+                type: 'bar',
+                data: {
+                    labels: staffData.labels || [],
+                    datasets: [
+                        { label: 'Часы', data: staffData.hours || [], backgroundColor: '#8a6bbe', yAxisID: 'y' },
+                        { label: 'Равномерность (%)', data: staffData.uniformity || [], backgroundColor: '#46a17d', yAxisID: 'y1' },
+                        { label: '% отказов', data: staffData.rejection || [], backgroundColor: '#d9796d', yAxisID: 'y1' },
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, position: 'left', title: { display: true, text: 'Часы' } },
+                        y1: { beginAtZero: true, position: 'right', max: 100, grid: { drawOnChartArea: false }, title: { display: true, text: 'Проценты' } }
+                    }
+                }
+            });
+        } catch (e) {
+            console.error('Ошибка данных аналитики персонала', e);
+        }
+    }
 });
 
 function toggleCustomDateFields(value) {

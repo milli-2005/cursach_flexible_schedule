@@ -1,4 +1,4 @@
-import json
+﻿import json
 import logging
 from typing import Any, Dict, Tuple
 
@@ -7,85 +7,83 @@ from django.conf import settings
 logger = logging.getLogger(__name__)
 
 
+SUPPORTED_RULE_TYPES = {"weekly_limit", "calm_consecutive", "alternation", "daily_duplicate_limit"}
+SUPPORTED_SEVERITY = {"hard", "soft"}
+SUPPORTED_CATEGORIES = {"calm", "cardio", "strength", "dance", "other"}
+
+
 def _build_prompt(rule_text: str) -> str:
     schema = {
         "rule_type": "weekly_limit | calm_consecutive | alternation | daily_duplicate_limit",
         "severity": "hard | soft",
-        "name": "Короткое название правила",
-        "params_json": {"depends_on_rule_type": "см. примеры ниже"},
-        "explanation": "Почему ИИ выбрал именно такой тип и параметры",
+        "name": "Короткое понятное название правила",
+        "params_json": {
+            "depends_on_rule_type": "см. примеры",
+            "target_mode": "workout | category (для weekly_limit)"
+        },
+        "explanation": "Почему выбран такой тип и параметры",
         "confidence": "Число от 0 до 1",
     }
+
     examples = [
         {
             "text": "Табата не более 1 раза утром и 1 раза вечером в неделю",
             "json": {
                 "rule_type": "weekly_limit",
                 "severity": "hard",
-                "name": 'Лимит "табата" по неделе',
+                "name": "Лимит tabata по неделе",
                 "params_json": {
-                    "workout_name": "табата",
+                    "target_mode": "workout",
+                    "workout_name": "tabata",
                     "period": "week",
                     "buckets": [
                         {"name": "morning", "start": "09:00", "end": "14:00", "max": 1},
                         {"name": "evening", "start": "16:00", "end": "21:00", "max": 1},
                     ],
                 },
-                "explanation": "Обнаружен недельный лимит по одному направлению с двумя временными окнами.",
+                "explanation": "Недельный лимит для конкретного направления с окнами утро/вечер.",
                 "confidence": 0.98,
             },
         },
         {
-            "text": "По понедельникам и средам допускаются две спокойные тренировки подряд",
+            "text": "Кардио не более 5 раз в неделю",
             "json": {
-                "rule_type": "calm_consecutive",
+                "rule_type": "weekly_limit",
                 "severity": "hard",
-                "name": "Спокойные подряд в выбранные дни",
-                "params_json": {"weekdays": [0, 2], "max_consecutive": 2, "category": "calm"},
-                "explanation": "Есть явные дни недели и ограничение на количество подряд.",
-                "confidence": 0.97,
-            },
-        },
-        {
-            "text": "Силовые и кардио тренировки должны чередоваться в остальные дни",
-            "json": {
-                "rule_type": "alternation",
-                "severity": "hard",
-                "name": "Чередование силовых и кардио",
+                "name": "Лимит категории cardio",
                 "params_json": {
-                    "weekdays": [1, 3, 4, 5, 6],
-                    "categories": ["strength", "cardio"],
-                    "mode": "strict_alternate",
+                    "target_mode": "category",
+                    "category": "cardio",
+                    "period": "week",
+                    "max_total": 5,
                 },
-                "explanation": "Найден паттерн чередования двух категорий.",
+                "explanation": "Недельный лимит по категории, не по названию занятия.",
                 "confidence": 0.96,
             },
         },
         {
-            "text": "Две одинаковые тренировки в один день утром или вечером ставить нельзя",
+            "text": "Силовые и спокойные должны чередоваться",
             "json": {
-                "rule_type": "daily_duplicate_limit",
+                "rule_type": "alternation",
                 "severity": "hard",
-                "name": "Запрет дублей в день (утро/вечер)",
+                "name": "Чередование силовых и спокойных",
                 "params_json": {
-                    "scope": "bucket",
-                    "max_per_bucket_per_day": 1,
-                    "buckets": [
-                        {"name": "morning", "start": "09:00", "end": "14:00"},
-                        {"name": "evening", "start": "16:00", "end": "21:00"}
-                    ]
+                    "weekdays": [0, 1, 2, 3, 4, 5, 6],
+                    "categories": ["strength", "calm"],
+                    "mode": "strict_alternate",
                 },
-                "explanation": "Найден запрет повторять одинаковый тип занятия в одном окне дня.",
-                "confidence": 0.95
+                "explanation": "Чередование двух категорий.",
+                "confidence": 0.95,
             },
         },
     ]
+
     return (
         "Ты преобразуешь правило распределения расписания в JSON.\n"
-        "Верни ТОЛЬКО JSON, без markdown и пояснений вне JSON.\n"
-        "Если не можешь уверенно распознать — верни JSON: "
-        '{"need_clarification": true, "error": "...", "explanation":"...","confidence":0.0}\n'
-        f"Схема ответа: {json.dumps(schema, ensure_ascii=False)}\n"
+        "Верни только JSON без markdown.\n"
+        "Если распознать нельзя — верни JSON: "
+        '{"need_clarification": true, "error": "...", "explanation":"...", "confidence":0.0}\n'
+        f"Схема: {json.dumps(schema, ensure_ascii=False)}\n"
         f"Примеры: {json.dumps(examples, ensure_ascii=False)}\n"
         f"Правило: {rule_text}"
     )
@@ -99,29 +97,46 @@ def _validate_ai_result(payload: Dict[str, Any]) -> Tuple[bool, str]:
     severity = payload.get("severity")
     params = payload.get("params_json")
 
-    if rule_type not in {"weekly_limit", "calm_consecutive", "alternation", "daily_duplicate_limit"}:
+    if rule_type not in SUPPORTED_RULE_TYPES:
         return False, "AI вернул неподдерживаемый тип правила."
-    if severity not in {"hard", "soft"}:
+    if severity not in SUPPORTED_SEVERITY:
         return False, "AI вернул неподдерживаемую жесткость."
     if not isinstance(params, dict):
         return False, "AI вернул некорректные параметры правила."
 
     if rule_type == "weekly_limit":
-        if not params.get("workout_name"):
-            return False, "Для weekly_limit не задан workout_name."
-        buckets = params.get("buckets")
-        if not isinstance(buckets, list) or not buckets:
-            return False, "Для weekly_limit не заданы buckets."
+        target_mode = params.get("target_mode") or ("category" if params.get("category") else "workout")
+        if target_mode not in {"workout", "category"}:
+            return False, "Для weekly_limit target_mode должен быть workout или category."
+        if target_mode == "workout" and not params.get("workout_name"):
+            return False, "Для weekly_limit (workout) не задан workout_name."
+        if target_mode == "category":
+            cat = params.get("category")
+            if cat not in SUPPORTED_CATEGORIES:
+                return False, "Для weekly_limit (category) не задана корректная category."
+        has_buckets = isinstance(params.get("buckets"), list) and bool(params.get("buckets"))
+        has_max_total = params.get("max_total") is not None
+        if not has_buckets and not has_max_total:
+            return False, "Для weekly_limit задайте либо buckets, либо max_total."
+
     elif rule_type == "calm_consecutive":
         if not isinstance(params.get("weekdays"), list):
             return False, "Для calm_consecutive не заданы weekdays."
         if not isinstance(params.get("max_consecutive"), int):
             return False, "Для calm_consecutive не задан max_consecutive."
+        if params.get("category") not in SUPPORTED_CATEGORIES:
+            return False, "Для calm_consecutive не задана корректная category."
+
     elif rule_type == "alternation":
         if not isinstance(params.get("weekdays"), list):
             return False, "Для alternation не заданы weekdays."
-        if not isinstance(params.get("categories"), list) or len(params.get("categories")) < 2:
+        categories = params.get("categories")
+        if not isinstance(categories, list) or len(categories) < 2:
             return False, "Для alternation не заданы categories."
+        for cat in categories:
+            if cat not in SUPPORTED_CATEGORIES:
+                return False, "Для alternation указана некорректная category."
+
     elif rule_type == "daily_duplicate_limit":
         if not isinstance(params.get("buckets"), list) or not params.get("buckets"):
             return False, "Для daily_duplicate_limit не заданы buckets."
@@ -134,6 +149,7 @@ def _validate_ai_result(payload: Dict[str, Any]) -> Tuple[bool, str]:
 def try_parse_rule_with_ai(rule_text: str):
     if not getattr(settings, "RULE_AI_ENABLED", False):
         return {"success": False, "error": "AI отключен в настройках.", "source": "ai"}
+
     api_key = getattr(settings, "OPENAI_API_KEY", "")
     model = getattr(settings, "OPENAI_MODEL", "gpt-5.4-mini")
     if not api_key:

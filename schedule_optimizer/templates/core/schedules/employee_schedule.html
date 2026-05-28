@@ -27,20 +27,6 @@
         </div>
     </section>
 
-    {% if pending_approvals %}
-        <section class="my-schedule-approval">
-            <div>
-                <strong><i class="bi bi-exclamation-triangle-fill me-1"></i> Требуется подтверждение графика</strong>
-                <div class="small mt-1">
-                    {% for approval in pending_approvals %}
-                        «{{ approval.schedule.name }}»{% if not forloop.last %}, {% endif %}
-                    {% endfor %}
-                </div>
-            </div>
-            <a href="{% url 'schedule_detail' pending_approvals.0.schedule.id %}" class="btn btn-warning btn-sm">Открыть</a>
-        </section>
-    {% endif %}
-
     <section class="my-schedule-card">
         <div class="table-responsive">
             <table class="table my-schedule-calendar mb-0">
@@ -238,19 +224,6 @@
     color: var(--app-text-muted);
 }
 
-.my-schedule-approval {
-    margin-bottom: 1rem;
-    border-radius: 14px;
-    border: 1px solid rgba(246, 198, 69, .45);
-    background: rgba(246, 198, 69, .14);
-    color: var(--app-text);
-    padding: .75rem .95rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: .9rem;
-}
-
 .my-shift-item {
     display: flex;
     align-items: center;
@@ -427,3 +400,4 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 {% endblock %}
+

@@ -1,0 +1,237 @@
+function autoFillSchedule() {
+    const rows = document.querySelectorAll('#schedule-table tbody tr');
+    const employees = Array.from(document.querySelectorAll('.employee-select option[value]'))
+        .map(opt => ({ id: opt.value, name: opt.textContent }));
+    const state = {
+        weeklyWorkoutBucketCount: {},
+        weeklyWorkoutTotalCount: {},
+        dailyBucketWorkoutCount: {},
+        calmConsecutiveByDay: {},
+        prevCategoryByDay: {},
+        workoutUsageCount: {},
+        employeeWorkoutUsageCount: {},
+        violations: []
+    };
+
+    function weekdayIndex(dayStr) {
+        const d = new Date(`${dayStr}T00:00:00`);
+        const js = d.getDay(); // 0..6 (sun..sat)
+        return js === 0 ? 6 : js - 1; // 0..6 (mon..sun)
+    }
+
+    function bucketMatch(startTime, bucket) {
+        const t = toMinutes(startTime);
+        return t >= toMinutes(bucket.start) && t < toMinutes(bucket.end);
+    }
+
+    function checkRules(dayStr, startTime, workoutObj) {
+        const wDay = weekdayIndex(dayStr);
+        const reasons = [];
+        for (const rule of ACTIVE_DISTRIBUTION_RULES) {
+            const params = rule.params || {};
+            if (rule.rule_type === 'weekly_limit') {
+                const targetMode = params.target_mode || (params.category ? 'category' : 'workout');
+                const targetCategory = params.category || '';
+                const target = normalizeWorkoutNameForRule(params.workout_name || '');
+                const workoutNorm = normalizeWorkoutNameForRule(workoutObj.name || '');
+                const isMatch = targetMode === 'category'
+                    ? (targetCategory && workoutObj.category === targetCategory)
+                    : (target && workoutNorm.includes(target));
+                if (isMatch) {
+                    const targetKey = targetMode === 'category' ? `cat:${targetCategory}` : `workout:${target}`;
+                    const totalKey = `${rule.id || formatRuleLabel(rule)}|${targetKey}|total`;
+                    const usedTotal = state.weeklyWorkoutTotalCount[totalKey] || 0;
+                    if (params.max_total !== undefined && usedTotal >= Number(params.max_total || 0)) {
+                        reasons.push(formatRuleLabel(rule));
+                    }
+                    const buckets = Array.isArray(params.buckets) ? params.buckets : [];
+                    for (const b of buckets) {
+                        if (!bucketMatch(startTime, b)) continue;
+                        const key = `${rule.id || formatRuleLabel(rule)}|${targetKey}|${b.name}`;
+                        const used = state.weeklyWorkoutBucketCount[key] || 0;
+                        if (used >= Number(b.max || 0)) {
+                            reasons.push(formatRuleLabel(rule));
+                        }
+                    }
+                }
+            }
+            if (rule.rule_type === 'calm_consecutive') {
+                const weekdays = Array.isArray(params.weekdays) ? params.weekdays : [];
+                const maxConsecutive = Number(params.max_consecutive || 2);
+                const category = params.category || 'calm';
+                if (weekdays.includes(wDay) && workoutObj.category === category) {
+                    const prev = Number(state.calmConsecutiveByDay[dayStr] || 0);
+                    if (prev >= maxConsecutive) {
+                        reasons.push(formatRuleLabel(rule));
+                    }
+                }
+            }
+            if (rule.rule_type === 'alternation') {
+                const weekdays = Array.isArray(params.weekdays) ? params.weekdays : [];
+                const categories = Array.isArray(params.categories) ? params.categories : ['strength', 'cardio'];
+                if (weekdays.includes(wDay) && categories.includes(workoutObj.category)) {
+                    const prevCat = state.prevCategoryByDay[dayStr] || null;
+                    if (prevCat && prevCat === workoutObj.category) {
+                        reasons.push(formatRuleLabel(rule));
+                    }
+                }
+            }
+            if (rule.rule_type === 'daily_duplicate_limit') {
+                const buckets = Array.isArray(params.buckets) ? params.buckets : [];
+                const maxPer = Number(params.max_per_bucket_per_day || 1);
+                const workoutNorm = normalizeWorkoutNameForRule(workoutObj.name || '');
+                for (const b of buckets) {
+                    if (!bucketMatch(startTime, b)) continue;
+                    const key = `${rule.id || formatRuleLabel(rule)}|${dayStr}|${b.name}|${workoutNorm}`;
+                    const used = Number(state.dailyBucketWorkoutCount[key] || 0);
+                    if (used >= maxPer) {
+                        reasons.push(formatRuleLabel(rule));
+                    }
+                }
+            }
+        }
+        return reasons;
+    }
+
+    function workoutScore(empId, workoutId) {
+        const globalKey = String(workoutId);
+        const employeeKey = `${empId}|${workoutId}`;
+        const globalCount = Number(state.workoutUsageCount[globalKey] || 0);
+        const employeeCount = Number(state.employeeWorkoutUsageCount[employeeKey] || 0);
+        return (employeeCount * 3) + globalCount;
+    }
+
+    function commitRules(dayStr, startTime, workoutObj) {
+        const wDay = weekdayIndex(dayStr);
+        for (const rule of ACTIVE_DISTRIBUTION_RULES) {
+            const params = rule.params || {};
+            if (rule.rule_type === 'weekly_limit') {
+                const targetMode = params.target_mode || (params.category ? 'category' : 'workout');
+                const targetCategory = params.category || '';
+                const target = normalizeWorkoutNameForRule(params.workout_name || '');
+                const workoutNorm = normalizeWorkoutNameForRule(workoutObj.name || '');
+                const isMatch = targetMode === 'category'
+                    ? (targetCategory && workoutObj.category === targetCategory)
+                    : (target && workoutNorm.includes(target));
+                if (isMatch) {
+                    const targetKey = targetMode === 'category' ? `cat:${targetCategory}` : `workout:${target}`;
+                    const totalKey = `${rule.id || formatRuleLabel(rule)}|${targetKey}|total`;
+                    state.weeklyWorkoutTotalCount[totalKey] = (state.weeklyWorkoutTotalCount[totalKey] || 0) + 1;
+                    const buckets = Array.isArray(params.buckets) ? params.buckets : [];
+                    for (const b of buckets) {
+                        if (!bucketMatch(startTime, b)) continue;
+                        const key = `${rule.id || formatRuleLabel(rule)}|${targetKey}|${b.name}`;
+                        state.weeklyWorkoutBucketCount[key] = (state.weeklyWorkoutBucketCount[key] || 0) + 1;
+                    }
+                }
+            }
+            if (rule.rule_type === 'calm_consecutive') {
+                const weekdays = Array.isArray(params.weekdays) ? params.weekdays : [];
+                const category = params.category || 'calm';
+                if (weekdays.includes(wDay)) {
+                    if (workoutObj.category === category) {
+                        state.calmConsecutiveByDay[dayStr] = (state.calmConsecutiveByDay[dayStr] || 0) + 1;
+                    } else {
+                        state.calmConsecutiveByDay[dayStr] = 0;
+                    }
+                }
+            }
+            if (rule.rule_type === 'alternation') {
+                const weekdays = Array.isArray(params.weekdays) ? params.weekdays : [];
+                const categories = Array.isArray(params.categories) ? params.categories : ['strength', 'cardio'];
+                if (weekdays.includes(wDay)) {
+                    if (categories.includes(workoutObj.category)) {
+                        state.prevCategoryByDay[dayStr] = workoutObj.category;
+                    } else {
+                        state.prevCategoryByDay[dayStr] = null;
+                    }
+                }
+            }
+            if (rule.rule_type === 'daily_duplicate_limit') {
+                const buckets = Array.isArray(params.buckets) ? params.buckets : [];
+                const workoutNorm = normalizeWorkoutNameForRule(workoutObj.name || '');
+                for (const b of buckets) {
+                    if (!bucketMatch(startTime, b)) continue;
+                    const key = `${rule.id || formatRuleLabel(rule)}|${dayStr}|${b.name}|${workoutNorm}`;
+                    state.dailyBucketWorkoutCount[key] = (state.dailyBucketWorkoutCount[key] || 0) + 1;
+                }
+            }
+        }
+        // Балансируем выбор направлений: учитываем, сколько раз уже ставили тип занятия.
+        const wId = workoutObj?.id;
+        if (wId) {
+            const gKey = String(wId);
+            const empSelect = document.querySelector(`.shift-cell[data-day="${dayStr}"][data-time="${startTime}"] .employee-select`);
+            const empId = empSelect?.value || '';
+            state.workoutUsageCount[gKey] = (state.workoutUsageCount[gKey] || 0) + 1;
+            if (empId) {
+                const eKey = `${empId}|${wId}`;
+                state.employeeWorkoutUsageCount[eKey] = (state.employeeWorkoutUsageCount[eKey] || 0) + 1;
+            }
+        }
+    }
+
+    rows.forEach(row => {
+        row.querySelectorAll('.shift-cell').forEach(cell => {
+            const day = cell.dataset.day;
+            const startTime = cell.dataset.time;
+            const employeeSelect = cell.querySelector('.employee-select');
+            const workoutSelect = cell.querySelector('.workout-select');
+
+            if (employeeSelect.value) {
+                updateCellView(cell);
+                return;
+            }
+
+            let assigned = false;
+            for (let i = 0; i < employees.length; i++) {
+                const emp = employees[i];
+                const key = `${emp.id},${day},${startTime}`;
+                if (AVAILABILITY_SET.has(key)) {
+                    const allowedIds = EMPLOYEE_WORKOUT_MAP[emp.id] || [];
+                    if (!allowedIds.length) {
+                        continue;
+                    }
+
+                    const candidateWorkoutIds = [...allowedIds].sort((a, b) => workoutScore(emp.id, a) - workoutScore(emp.id, b));
+                    let selectedWorkoutId = null;
+
+                    for (const wtId of candidateWorkoutIds) {
+                        const workoutObj = WORKOUT_BY_ID[wtId];
+                        if (!workoutObj) continue;
+                        const blockedBy = checkRules(day, startTime, workoutObj);
+                        if (blockedBy.length === 0) {
+                            selectedWorkoutId = wtId;
+                            break;
+                        }
+                    }
+
+                    if (selectedWorkoutId) {
+                        employeeSelect.value = emp.id;
+                        updateWorkoutSelect(workoutSelect, allowedIds);
+                        workoutSelect.value = String(selectedWorkoutId);
+                        const workoutObj = WORKOUT_BY_ID[selectedWorkoutId];
+                        if (workoutObj) {
+                            commitRules(day, startTime, workoutObj);
+                        }
+                        assigned = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!assigned) {
+                employeeSelect.value = '';
+                workoutSelect.value = '';
+                updateWorkoutSelect(workoutSelect, null);
+            }
+            updateCellView(cell);
+        });
+    });
+
+    if (state.violations.length) {
+        showGlobalNotification('Часть слотов не заполнилась из-за активных правил распределения.', 'info');
+    }
+}
+
+

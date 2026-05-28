@@ -1,4 +1,4 @@
-<!-- templates/core/workout_types.html -->
+﻿<!-- templates/core/workout_types.html -->
 {% extends "core/base.html" %}
 
 {% block title %}Типы занятий - {{ block.super }}{% endblock %}
@@ -17,20 +17,18 @@
             <thead>
                 <tr>
                     <th>Название</th>
+                    <th>Категория</th>
                     <th>Описание</th>
                     <th>Действия</th>
                 </tr>
             </thead>
-            <tbody id="workoutTypeTableBody">
-                <!-- Содержимое загружается через AJAX -->
-            </tbody>
+            <tbody id="workoutTypeTableBody"></tbody>
         </table>
     </div>
 </div>
 {% endblock %}
 
 {% block modals %}
-<!-- Модальное окно для создания/редактирования типа занятия -->
 <div class="modal fade" id="workoutTypeModal" tabindex="-1" aria-labelledby="workoutTypeModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -45,7 +43,16 @@
                     <div class="mb-3">
                         <label for="workoutTypeName" class="form-label">Название *</label>
                         <input type="text" class="form-control" id="workoutTypeName" name="name" required>
-                        <div class="invalid-feedback"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="workoutTypeCategory" class="form-label">Категория *</label>
+                        <select class="form-select" id="workoutTypeCategory" name="category" required>
+                            <option value="other">Другое</option>
+                            <option value="calm">Спокойные</option>
+                            <option value="cardio">Кардио</option>
+                            <option value="strength">Силовые</option>
+                            <option value="dance">Танцы</option>
+                        </select>
                     </div>
                     <div class="mb-3">
                         <label for="workoutTypeDescription" class="form-label">Описание</label>
@@ -61,7 +68,6 @@
     </div>
 </div>
 
-<!-- Модальное окно подтверждения удаления -->
 <div class="modal fade" id="deleteWorkoutTypeModal" tabindex="-1" aria-labelledby="deleteWorkoutTypeModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -71,7 +77,6 @@
             </div>
             <div class="modal-body">
                 <p>Вы уверены, что хотите удалить тип занятия "<strong id="deleteWorkoutTypeName"></strong>"?</p>
-                <input type="hidden" id="deleteWorkoutTypeId" name="id">
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
@@ -84,127 +89,145 @@
 
 {% block extra_js %}
 <script>
-    let currentWorkoutTypeIdToDelete = null;
+let currentWorkoutTypeIdToDelete = null;
 
-    document.addEventListener('DOMContentLoaded', function () {
-        loadWorkoutTypes();
+const CATEGORY_LABELS = {
+    calm: 'Спокойные',
+    cardio: 'Кардио',
+    strength: 'Силовые',
+    dance: 'Танцы',
+    other: 'Другое'
+};
+
+document.addEventListener('DOMContentLoaded', function () {
+    loadWorkoutTypes();
+});
+
+function esc(value) {
+    return String(value || '').replace(/[&<>"']/g, function (s) {
+        return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[s];
     });
+}
 
-    function loadWorkoutTypes() {
-        fetch('/api/workout-types/')
-            .then(response => response.json())
-            .then(data => {
-                const tbody = document.getElementById('workoutTypeTableBody');
-                tbody.innerHTML = '';
-                data.forEach(wt => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${wt.name}</td>
-                        <td>${wt.description || '-'}</td>
-                        <td>
-                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="openEditWorkoutTypeModal(${wt.id}, '${wt.name}', '${wt.description || ''}')">
-                                <i class="bi bi-pencil"></i>
-                            </button>
-                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="openDeleteWorkoutTypeModal(${wt.id}, '${wt.name}')">
-                                <i class="bi bi-trash"></i>
-                            </button>
-                        </td>
-                    `;
-                    tbody.appendChild(row);
-                });
-            })
-            .catch(error => console.error('Error loading workout types:', error));
-    }
+function loadWorkoutTypes() {
+    fetch('/api/workout-types/')
+        .then(response => response.json())
+        .then(data => {
+            const tbody = document.getElementById('workoutTypeTableBody');
+            tbody.innerHTML = '';
+            data.forEach(wt => {
+                const row = document.createElement('tr');
+                const categoryText = wt.category_display || CATEGORY_LABELS[wt.category] || wt.category || '-';
 
-    function openCreateWorkoutTypeModal() {
-        document.getElementById('workoutTypeId').value = '';
-        document.getElementById('workoutTypeName').value = '';
-        document.getElementById('workoutTypeDescription').value = '';
-        document.getElementById('workoutTypeModalLabel').textContent = 'Добавить новый тип';
-        const modal = new bootstrap.Modal(document.getElementById('workoutTypeModal'));
-        modal.show();
-    }
+                row.innerHTML = `
+                    <td>${esc(wt.name)}</td>
+                    <td>${esc(categoryText)}</td>
+                    <td>${esc(wt.description || '-')}</td>
+                    <td>
+                        <button type="button"
+                                class="btn btn-sm btn-outline-secondary"
+                                data-id="${wt.id}"
+                                data-name="${esc(wt.name)}"
+                                data-description="${esc(wt.description || '')}"
+                                data-category="${esc(wt.category || 'other')}"
+                                onclick="openEditWorkoutTypeModalFromBtn(this)">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="openDeleteWorkoutTypeModal(${wt.id}, '${esc(wt.name)}')">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        })
+        .catch(error => console.error('Error loading workout types:', error));
+}
 
-    function openEditWorkoutTypeModal(id, name, description) {
-        document.getElementById('workoutTypeId').value = id;
-        document.getElementById('workoutTypeName').value = name;
-        document.getElementById('workoutTypeDescription').value = description;
-        document.getElementById('workoutTypeModalLabel').textContent = 'Редактировать тип';
-        const modal = new bootstrap.Modal(document.getElementById('workoutTypeModal'));
-        modal.show();
-    }
+function openCreateWorkoutTypeModal() {
+    document.getElementById('workoutTypeId').value = '';
+    document.getElementById('workoutTypeName').value = '';
+    document.getElementById('workoutTypeDescription').value = '';
+    document.getElementById('workoutTypeCategory').value = 'other';
+    document.getElementById('workoutTypeModalLabel').textContent = 'Добавить новый тип';
+    const modal = new bootstrap.Modal(document.getElementById('workoutTypeModal'));
+    modal.show();
+}
 
-    function submitWorkoutType() {
-        const form = document.getElementById('workoutTypeForm');
-        const workoutTypeId = document.getElementById('workoutTypeId').value;
-        const name = document.getElementById('workoutTypeName').value;
-        const description = document.getElementById('workoutTypeDescription').value;
+function openEditWorkoutTypeModalFromBtn(btn) {
+    document.getElementById('workoutTypeId').value = btn.getAttribute('data-id') || '';
+    document.getElementById('workoutTypeName').value = btn.getAttribute('data-name') || '';
+    document.getElementById('workoutTypeDescription').value = btn.getAttribute('data-description') || '';
+    document.getElementById('workoutTypeCategory').value = btn.getAttribute('data-category') || 'other';
+    document.getElementById('workoutTypeModalLabel').textContent = 'Редактировать тип';
+    const modal = new bootstrap.Modal(document.getElementById('workoutTypeModal'));
+    modal.show();
+}
 
-        const data = { name, description };
+function submitWorkoutType() {
+    const workoutTypeId = document.getElementById('workoutTypeId').value;
+    const data = {
+        name: document.getElementById('workoutTypeName').value,
+        description: document.getElementById('workoutTypeDescription').value,
+        category: document.getElementById('workoutTypeCategory').value,
+    };
 
-        let url, method;
-        if (workoutTypeId) {
-            // Обновление
-            url = `/api/workout-types/${workoutTypeId}/update/`;
-            method = 'PUT';
-        } else {
-            // Создание
-            url = '/api/workout-types/create/';
-            method = 'POST';
+    const isEdit = Boolean(workoutTypeId);
+    const url = isEdit ? `/api/workout-types/${workoutTypeId}/update/` : '/api/workout-types/create/';
+    const method = isEdit ? 'PUT' : 'POST';
+
+    fetch(url, {
+        method,
+        body: JSON.stringify(data),
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
         }
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            showGlobalNotification('Тип занятия успешно сохранен.');
+            bootstrap.Modal.getInstance(document.getElementById('workoutTypeModal')).hide();
+            loadWorkoutTypes();
+        } else {
+            showGlobalNotification('Ошибка при сохранении: ' + JSON.stringify(result.errors || result));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showGlobalNotification('Произошла ошибка. Проверьте консоль.');
+    });
+}
 
-        fetch(url, {
-            method: method,
-            body: JSON.stringify(data),
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-            }
-        })
-        .then(response => response.json())
-        .then(result => {
-            if (result.success) {
-                showGlobalNotification('Тип занятия успешно сохранен.');
-                bootstrap.Modal.getInstance(document.getElementById('workoutTypeModal')).hide();
-                loadWorkoutTypes();
-            } else {
-                showGlobalNotification('Ошибка при сохранении: ' + JSON.stringify(result.errors));
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showGlobalNotification('Произошла ошибка. Проверьте консоль.');
-        });
-    }
+function openDeleteWorkoutTypeModal(id, name) {
+    currentWorkoutTypeIdToDelete = id;
+    document.getElementById('deleteWorkoutTypeName').textContent = name;
+    const modal = new bootstrap.Modal(document.getElementById('deleteWorkoutTypeModal'));
+    modal.show();
+}
 
-    function openDeleteWorkoutTypeModal(id, name) {
-        currentWorkoutTypeIdToDelete = id;
-        document.getElementById('deleteWorkoutTypeName').textContent = name;
-        const modal = new bootstrap.Modal(document.getElementById('deleteWorkoutTypeModal'));
-        modal.show();
-    }
-
-    function confirmDeleteWorkoutType() {
-        fetch(`/api/workout-types/${currentWorkoutTypeIdToDelete}/delete/`, {
-            method: 'DELETE',
-            headers: {
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-            }
-        })
-        .then(response => response.json())
-        .then(result => {
-            if (result.success) {
-                showGlobalNotification('Тип занятия успешно удален.');
-                bootstrap.Modal.getInstance(document.getElementById('deleteWorkoutTypeModal')).hide();
-                loadWorkoutTypes();
-            } else {
-                showGlobalNotification('Ошибка при удалении: ' + JSON.stringify(result.errors));
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showGlobalNotification('Произошла ошибка. Проверьте консоль.');
-        });
-    }
+function confirmDeleteWorkoutType() {
+    fetch(`/api/workout-types/${currentWorkoutTypeIdToDelete}/delete/`, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        }
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            showGlobalNotification('Тип занятия успешно удален.');
+            bootstrap.Modal.getInstance(document.getElementById('deleteWorkoutTypeModal')).hide();
+            loadWorkoutTypes();
+        } else {
+            showGlobalNotification('Ошибка при удалении: ' + JSON.stringify(result.errors || result));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showGlobalNotification('Произошла ошибка. Проверьте консоль.');
+    });
+}
 </script>
 {% endblock %}

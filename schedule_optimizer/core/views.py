@@ -15,6 +15,7 @@ from django.conf import settings
 from django.http import JsonResponse
 from .error_utils import humanize_exception
 from .services.rule_ai_parser import try_parse_rule_with_ai
+from .email_utils import send_mail_with_fallback
 from .models import *
 from .forms import UserInvitationForm, UserProfileEditForm
 from django.contrib.auth.models import User
@@ -356,7 +357,7 @@ def change_password(request):
     # Проверяем, не истёк ли срок действия временного пароля при доступе к странице смены пароля
     if hasattr(user, 'profile') and user.profile.is_temporary_password_expired():
         messages.error(request, "Срок действия временного пароля истёк. Пожалуйста, свяжитесь с администратором для получения нового.")
-        return redirect('login') # Рли на главную, если не хочет логиниться снова
+        return redirect('login')  # Или на главную, если не хочет логиниться снова
 
     if request.method == 'POST':
         form = SetPasswordForm(user, request.POST)  # Передаём текущего пользователя
@@ -546,6 +547,35 @@ def _normalize_rule_text(text: str) -> str:
     return re.sub(r'\s+', ' ', (text or '').strip().lower())
 
 
+WORKOUT_CATEGORY_ALIASES = {
+    'спокойн': 'calm',
+    'calm': 'calm',
+    'йога': 'calm',
+    'стретч': 'calm',
+    'растяж': 'calm',
+    'пилатес': 'calm',
+    'кардио': 'cardio',
+    'cardio': 'cardio',
+    'табата': 'cardio',
+    'hiit': 'cardio',
+    'силов': 'strength',
+    'strength': 'strength',
+    'power': 'strength',
+    'танц': 'dance',
+    'dance': 'dance',
+    'бачата': 'dance',
+    'стрип': 'dance',
+    'восточ': 'dance',
+}
+
+
+def _extract_category_from_text(src: str):
+    for key, value in WORKOUT_CATEGORY_ALIASES.items():
+        if key in src:
+            return value
+    return None
+
+
 def _parse_distribution_rule_text(text: str):
     src = _normalize_rule_text(text)
     if not src:
@@ -553,45 +583,59 @@ def _parse_distribution_rule_text(text: str):
 
     # 1) "Табата не более 1 раза утром и 1 раза вечером в неделю"
     weekly_pattern = re.search(
-        r'(?P<workout>[а-яa-z0-9 \-_]+?)\s+.*?не более\s+(?P<morning>\d+)\s+раз.*?утр.*?(?P<evening>\d+)\s+раз.*?вечер.*?недел',
+        r'(?P<target>[а-яa-z0-9 \-_]+?)\s+.*?не более\s+(?P<morning>\d+)\s+раз.*?утр.*?(?P<evening>\d+)\s+раз.*?вечер.*?недел',
         src
     )
     if weekly_pattern:
-        workout_name = weekly_pattern.group('workout').strip(' "«»')
+        raw_target = weekly_pattern.group('target').strip(' "«»')
+        target_category = _extract_category_from_text(raw_target)
         morning_max = int(weekly_pattern.group('morning'))
         evening_max = int(weekly_pattern.group('evening'))
+        params = {
+            'period': 'week',
+            'buckets': [
+                {'name': 'morning', 'start': '09:00', 'end': '14:00', 'max': morning_max},
+                {'name': 'evening', 'start': '16:00', 'end': '21:00', 'max': evening_max},
+            ],
+        }
+        if target_category:
+            params.update({'target_mode': 'category', 'category': target_category})
+            title = f'Лимит категории "{target_category}" по неделе'
+        else:
+            params.update({'target_mode': 'workout', 'workout_name': raw_target})
+            title = f'Лимит "{raw_target}" по неделе'
         payload = {
             'rule_type': 'weekly_limit',
             'severity': 'hard',
-            'name': f'Лимит "{workout_name}" по неделе',
-            'params_json': {
-                'workout_name': workout_name,
-                'buckets': [
-                    {'name': 'morning', 'start': '09:00', 'end': '14:00', 'max': morning_max},
-                    {'name': 'evening', 'start': '16:00', 'end': '21:00', 'max': evening_max},
-                ],
-                'period': 'week',
-            }
+            'name': title,
+            'params_json': params
         }
         return payload, None
 
     # 1.1) "табата только 2 раза в неделю" / "не более 2 раз в неделю"
     total_week_pattern = re.search(
-        r'(?P<workout>[а-яa-z0-9 \-_]+?)\s+.*?(?:только|не более)\s+(?P<count>\d+)\s+раз\w*\s+.*?недел',
+        r'(?P<target>[а-яa-z0-9 \-_]+?)\s+.*?(?:только|не более)\s+(?P<count>\d+)\s+раз\w*\s+.*?недел',
         src
     )
     if total_week_pattern:
-        workout_name = total_week_pattern.group('workout').strip(' "«»')
+        raw_target = total_week_pattern.group('target').strip(' "«»')
+        target_category = _extract_category_from_text(raw_target)
         total_max = int(total_week_pattern.group('count'))
+        params = {
+            'period': 'week',
+            'max_total': total_max,
+        }
+        if target_category:
+            params.update({'target_mode': 'category', 'category': target_category})
+            title = f'Лимит категории "{target_category}" за неделю'
+        else:
+            params.update({'target_mode': 'workout', 'workout_name': raw_target})
+            title = f'Лимит "{raw_target}" за неделю'
         payload = {
             'rule_type': 'weekly_limit',
             'severity': 'hard',
-            'name': f'Лимит "{workout_name}" за неделю',
-            'params_json': {
-                'workout_name': workout_name,
-                'period': 'week',
-                'max_total': total_max,
-            }
+            'name': title,
+            'params_json': params
         }
         return payload, None
 
@@ -819,6 +863,8 @@ def _infer_category_from_name(workout_name: str) -> str:
         return 'cardio'
     if any(x in n for x in ['сил', 'strength', 'power']):
         return 'strength'
+    if any(x in n for x in ['dance', 'танц', 'bachata', 'восточ', 'стрип']):
+        return 'dance'
     if any(x in n for x in ['stretch', 'растяж', 'йог', 'calm', 'спокой']):
         return 'calm'
     return 'other'
@@ -883,7 +929,7 @@ def api_test_distribution_rules(request):
 
     for a in assignments:
         workout_name = a.workout_type.name if a.workout_type_id else ''
-        category = _infer_category_from_name(workout_name)
+        category = (a.workout_type.category if getattr(a.workout_type, 'category', None) else _infer_category_from_name(workout_name))
         weekday = a.date.weekday()
         day_key = a.date.isoformat()
         week_key = f"{a.date.isocalendar().year}-{a.date.isocalendar().week}"
@@ -891,9 +937,16 @@ def api_test_distribution_rules(request):
         for rule in rules:
             params = rule.params_json or {}
             if rule.rule_type == 'weekly_limit':
-                target = _normalize_workout_name_for_rule(params.get('workout_name') or '')
+                target_mode = params.get('target_mode') or ('category' if params.get('category') else 'workout')
+                target_workout = _normalize_workout_name_for_rule(params.get('workout_name') or '')
+                target_category = (params.get('category') or '').strip()
                 workout_norm = _normalize_workout_name_for_rule(workout_name)
-                if target and target in workout_norm:
+                is_match = False
+                if target_mode == 'category':
+                    is_match = bool(target_category and category == target_category)
+                else:
+                    is_match = bool(target_workout and target_workout in workout_norm)
+                if is_match:
                     total_key = f"{rule.id}|{week_key}|total"
                     weekly_total_counts[total_key] = weekly_total_counts.get(total_key, 0) + 1
                     if params.get('max_total') is not None and weekly_total_counts[total_key] > int(params.get('max_total', 0)):
@@ -1019,7 +1072,7 @@ def create_schedule_view(request):
      # Получаем всех сотрудников с их направлениями
     employees_with_workouts = []
     for emp in employee_models_with_workouts:
-        workouts = list(emp.workout_types.values('id', 'name'))
+        workouts = list(emp.workout_types.values('id', 'name', 'category'))
         employees_with_workouts.append({
             'id': emp.user_profile.id,
             'username': emp.user_profile.user.username,
@@ -1042,7 +1095,7 @@ def create_schedule_view(request):
         'availability_set_json': json.dumps(list(availability_set)),
         'employees_with_workouts_json': json.dumps(employees_with_workouts),
         'workout_types_json': json.dumps([
-            {'id': wt.id, 'name': wt.name} for wt in WorkoutType.objects.all()
+            {'id': wt.id, 'name': wt.name, 'category': wt.category} for wt in WorkoutType.objects.all()
         ]),
         'missing_workout_employees': [
             p.user.get_full_name().strip() or p.user.username for p in missing_workout_profiles
@@ -1179,6 +1232,7 @@ def schedule_view(request):
 @login_required
 def schedule_detail(request, schedule_id):
     schedule = get_object_or_404(Schedule, id=schedule_id)
+    schedule_versions = schedule.versions.select_related('created_by').order_by('-version_number')[:30]
 
     # === 1. Генерация дней из графика ===
     days = []
@@ -1195,6 +1249,35 @@ def schedule_detail(request, schedule_id):
         schedule=schedule,
         date__in=days
     ).select_related('employee__user', 'workout_type')
+
+    if (
+        hasattr(request.user, 'profile')
+        and request.user.profile.role in ['manager', 'studio_admin']
+        and not schedule_versions
+    ):
+        bootstrap_version = ScheduleVersion.objects.create(
+            schedule=schedule,
+            version_number=1,
+            schedule_name=schedule.name,
+            created_by=request.user,
+            change_source='bootstrap',
+            change_note='Базовая версия для существующего графика',
+        )
+        snapshots = [
+            ScheduleVersionAssignment(
+                schedule_version=bootstrap_version,
+                employee_id=a.employee_id,
+                workout_type_id=a.workout_type_id,
+                date=a.date,
+                start_time=a.start_time,
+                end_time=a.end_time,
+            )
+            for a in assignments
+            if a.employee_id
+        ]
+        if snapshots:
+            ScheduleVersionAssignment.objects.bulk_create(snapshots)
+        schedule_versions = schedule.versions.select_related('created_by').order_by('-version_number')[:30]
 
     # === 4. Создание словаря: {(дата, время_начала): assignment} ===
     assignment_dict = {}
@@ -1234,7 +1317,7 @@ def schedule_detail(request, schedule_id):
     ).distinct()
     employees_with_workouts = []
     for emp in employee_models_with_workouts:
-        workouts = list(emp.workout_types.values('id', 'name'))
+        workouts = list(emp.workout_types.values('id', 'name', 'category'))
         employees_with_workouts.append({
             'id': emp.user_profile.id,
             'username': emp.user_profile.user.username,
@@ -1257,6 +1340,7 @@ def schedule_detail(request, schedule_id):
 
     context = {
         'schedule': schedule,
+        'schedule_versions': schedule_versions,
         'days': days,
         'date_strings': [d.strftime('%Y-%m-%d') for d in days],
         'employees': UserProfile.objects.filter(
@@ -1266,7 +1350,7 @@ def schedule_detail(request, schedule_id):
         'workout_types': WorkoutType.objects.all(),
         'employees_with_workouts_json': json.dumps(employees_with_workouts),
         'workout_types_json': json.dumps([
-            {'id': wt.id, 'name': wt.name} for wt in WorkoutType.objects.all()
+            {'id': wt.id, 'name': wt.name, 'category': wt.category} for wt in WorkoutType.objects.all()
         ]),
         'availability_set_json': json.dumps(list(availability_set)),
         'table_data': table_data,
@@ -1359,6 +1443,7 @@ from datetime import date, timedelta
 import calendar
 import json
 from django.utils.html import escapejs
+from django.utils import timezone
 
 @login_required
 def employee_schedule(request):
@@ -1433,11 +1518,20 @@ def employee_schedule(request):
     # === Графики на утверждение ===
     pending_approvals = []
     if request.user.profile.role == 'employee':
+        today_local = timezone.localdate()
+        days_to_next_monday = (7 - today_local.weekday()) % 7
+        if days_to_next_monday == 0:
+            days_to_next_monday = 7
+        next_week_start = today_local + timedelta(days=days_to_next_monday)
+        next_week_end = next_week_start + timedelta(days=6)
+
         pending_approvals = ScheduleApproval.objects.filter(
             employee=request.user.profile,
             approved__isnull=True,
-            schedule__status='pending'
-        ).select_related('schedule')
+            schedule__status='pending',
+            schedule__start_date__lte=next_week_end,
+            schedule__end_date__gte=next_week_start,
+        ).select_related('schedule').order_by('schedule__start_date', 'schedule__id')
 
     context = {
         'current_year': year,
@@ -1606,14 +1700,20 @@ def send_availability_reminder_manual(request):
         employees = UserProfile.objects.filter(role='employee')
         emails = [emp.user.email for emp in employees if emp.user.email]
         if emails:
-            send_mail(
+            ok = send_mail_with_fallback(
                 subject="Напоминание: укажите ваши рабочие часы",
                 message="Пожалуйста, зайдите в личный кабинет и укажите, когда вы можете работать на следующей неделе.",
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=emails,
-                fail_silently=False,
             )
-            messages.success(request, f"Напоминание отправлено {len(emails)} сотрудникам.")
+            if ok:
+                messages.success(request, f"Напоминание отправлено {len(emails)} сотрудникам.")
+            else:
+                messages.error(
+                    request,
+                    "Письма не отправлены: почтовый сервер недоступен или отклоняет подключение. "
+                    "Проверьте настройки SMTP и пароль приложения."
+                )
         else:
             messages.warning(request, "Нет сотрудников с email.")
     return redirect('schedule_view')
@@ -1624,6 +1724,7 @@ def send_availability_reminder_manual(request):
 import json
 from datetime import date, datetime, timedelta
 from collections import defaultdict
+import statistics
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -1913,16 +2014,22 @@ def reports_view(request):
     employees_direction_rows = []
     direction_summary = {}
     workout_types_all = WorkoutType.objects.all().order_by('name')
+    staff_rows = []
+    staff_sort = request.GET.get('staff_sort', 'hours_desc')
+    staff_peak_filter = request.GET.get('staff_peak_day', 'all')
+    staff_swap_filter = request.GET.get('staff_swap_level', 'all')
+    staff_search_raw = request.GET.get('staff_search', '').strip()
+    staff_search = staff_search_raw.lower()
 
     if is_manager:
-        all_employee_profiles = UserProfile.objects.filter(
-            role='employee'
-        ).select_related('user', 'employee_profile').prefetch_related('employee_profile__workout_types')
-
         def _display_name(user_profile):
             user_obj = user_profile.user
             full_name = f"{user_obj.last_name} {user_obj.first_name} {user_profile.patronymic}".strip()
             return full_name if full_name else user_obj.username
+
+        all_employee_profiles = UserProfile.objects.filter(
+            role='employee'
+        ).select_related('user', 'employee_profile').prefetch_related('employee_profile__workout_types')
 
         # Кто какие направления ведет
         direction_to_trainers = {wt.id: [] for wt in workout_types_all}
@@ -2003,6 +2110,173 @@ def reports_view(request):
             'employees_without_directions': employees_without_directions,
         }
 
+        # === Staff analytics ===
+        weekday_names = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
+
+        assignments_for_staff = assignments_base
+        if employee_filter:
+            assignments_for_staff = assignments_for_staff.filter(employee=employee_filter)
+        if workout_id and workout_id != 'all':
+            assignments_for_staff = assignments_for_staff.filter(workout_type_id=workout_id)
+
+        daily_hours_map = defaultdict(lambda: defaultdict(float))
+        shifts_count_map = defaultdict(int)
+        for shift in assignments_for_staff:
+            if shift.start_time is None or shift.end_time is None:
+                continue
+            duration_raw = (
+                datetime.combine(date.min, shift.end_time) -
+                datetime.combine(date.min, shift.start_time)
+            ).total_seconds() / 3600
+            duration = _round_half_up_to_int(duration_raw)
+            daily_hours_map[shift.employee_id][shift.date] += duration
+            shifts_count_map[shift.employee_id] += 1
+
+        period_schedules = Schedule.objects.filter(
+            start_date__lte=end_date,
+            end_date__gte=start_date,
+        )
+
+        approvals_qs = ScheduleApproval.objects.filter(
+            schedule__in=period_schedules
+        ).exclude(approved__isnull=True).select_related('employee')
+
+        approval_map = defaultdict(lambda: {'responded': 0, 'rejected': 0})
+        for approval in approvals_qs:
+            approval_map[approval.employee_id]['responded'] += 1
+            if approval.approved is False:
+                approval_map[approval.employee_id]['rejected'] += 1
+
+        swap_qs = ShiftSwapRequest.objects.filter(
+            created_at__date__gte=start_date,
+            created_at__date__lte=end_date,
+            status__in=['approved_by_manager', 'completed']
+        ).select_related('from_employee__user_profile', 'to_employee__user_profile')
+
+        swap_involved_map = defaultdict(int)
+        swap_sent_map = defaultdict(int)
+        swap_received_map = defaultdict(int)
+        for swap in swap_qs:
+            from_profile_id = swap.from_employee.user_profile_id if swap.from_employee_id else None
+            to_profile_id = swap.to_employee.user_profile_id if swap.to_employee_id else None
+            if from_profile_id:
+                swap_involved_map[from_profile_id] += 1
+                swap_sent_map[from_profile_id] += 1
+            if to_profile_id:
+                swap_involved_map[to_profile_id] += 1
+                swap_received_map[to_profile_id] += 1
+
+        for emp_profile in all_employee_profiles:
+            emp_id = emp_profile.id
+            full_name = _display_name(emp_profile)
+            login_name = emp_profile.user.username
+
+            daily_items = daily_hours_map.get(emp_id, {})
+            total_hours_emp = round(sum(daily_items.values()), 2)
+            shifts_emp = shifts_count_map.get(emp_id, 0)
+            worked_days = [h for h in daily_items.values() if h > 0]
+            worked_days_count = len(worked_days)
+            avg_per_workday = round(total_hours_emp / worked_days_count, 2) if worked_days_count else 0.0
+
+            if worked_days_count >= 2:
+                mean_val = statistics.mean(worked_days)
+                std_val = statistics.pstdev(worked_days)
+                cv = (std_val / mean_val) if mean_val > 0 else 1.0
+                uniformity_score = max(0, round(100 - min(100, cv * 100), 1))
+            elif worked_days_count == 1:
+                uniformity_score = 100.0
+            else:
+                uniformity_score = 0.0
+
+            peak_day_name = '—'
+            if daily_items:
+                peak_day_index, _ = max(
+                    ((d.weekday(), hrs) for d, hrs in daily_items.items()),
+                    key=lambda pair: pair[1]
+                )
+                peak_day_name = weekday_names[peak_day_index]
+
+            approved_swaps = swap_involved_map.get(emp_id, 0)
+            swaps_sent = swap_sent_map.get(emp_id, 0)
+            swaps_received = swap_received_map.get(emp_id, 0)
+            swap_frequency_pct = round((approved_swaps / shifts_emp) * 100, 1) if shifts_emp else 0.0
+
+            responded = approval_map[emp_id]['responded']
+            rejected = approval_map[emp_id]['rejected']
+            rejection_pct = round((rejected / responded) * 100, 1) if responded else 0.0
+
+            staff_rows.append({
+                'employee_id': emp_id,
+                'name': full_name,
+                'username': login_name,
+                'hours': total_hours_emp,
+                'worked_days': worked_days_count,
+                'shifts': shifts_emp,
+                'avg_per_day': avg_per_workday,
+                'uniformity': uniformity_score,
+                'rejection_pct': rejection_pct,
+                'rejected_count': rejected,
+                'responded_count': responded,
+                'swap_count': approved_swaps,
+                'swap_sent': swaps_sent,
+                'swap_received': swaps_received,
+                'swap_frequency': swap_frequency_pct,
+                'peak_day': peak_day_name,
+            })
+
+        if staff_peak_filter != 'all':
+            staff_rows = [row for row in staff_rows if row['peak_day'] == staff_peak_filter]
+
+        if staff_swap_filter == 'none':
+            staff_rows = [row for row in staff_rows if row['swap_count'] == 0]
+        elif staff_swap_filter == 'low':
+            staff_rows = [row for row in staff_rows if 0 < row['swap_frequency'] <= 20]
+        elif staff_swap_filter == 'high':
+            staff_rows = [row for row in staff_rows if row['swap_frequency'] > 20]
+
+        if staff_search:
+            staff_rows = [
+                row for row in staff_rows
+                if staff_search in row['name'].lower() or staff_search in row['username'].lower()
+            ]
+
+        if staff_sort == 'hours_asc':
+            staff_rows.sort(key=lambda x: (x['hours'], x['name'].lower()))
+        elif staff_sort == 'uniformity_desc':
+            staff_rows.sort(key=lambda x: (-x['uniformity'], x['name'].lower()))
+        elif staff_sort == 'uniformity_asc':
+            staff_rows.sort(key=lambda x: (x['uniformity'], x['name'].lower()))
+        elif staff_sort == 'reject_desc':
+            staff_rows.sort(key=lambda x: (-x['rejection_pct'], x['name'].lower()))
+        elif staff_sort == 'swap_desc':
+            staff_rows.sort(key=lambda x: (-x['swap_count'], x['name'].lower()))
+        elif staff_sort == 'name_asc':
+            staff_rows.sort(key=lambda x: x['name'].lower())
+        else:
+            staff_rows.sort(key=lambda x: (-x['hours'], x['name'].lower()))
+
+    staff_chart = {
+        'labels': [row['name'] for row in staff_rows[:12]],
+        'hours': [row['hours'] for row in staff_rows[:12]],
+        'uniformity': [row['uniformity'] for row in staff_rows[:12]],
+        'rejection': [row['rejection_pct'] for row in staff_rows[:12]],
+        'swaps': [row['swap_count'] for row in staff_rows[:12]],
+    }
+
+    staff_summary = {
+        'trainers_count': len(staff_rows),
+        'total_hours': round(sum((row.get('hours') or 0) for row in staff_rows), 1),
+        'avg_uniformity': round(
+            (sum((row.get('uniformity') or 0) for row in staff_rows) / len(staff_rows)),
+            1
+        ) if staff_rows else 0.0,
+        'avg_rejection_pct': round(
+            (sum((row.get('rejection_pct') or 0) for row in staff_rows) / len(staff_rows)),
+            1
+        ) if staff_rows else 0.0,
+        'total_swaps': int(sum((row.get('swap_count') or 0) for row in staff_rows)),
+    }
+
     context = {
         'start_date': start_date,
     'end_date': end_date,
@@ -2033,6 +2307,13 @@ def reports_view(request):
         'direction_rows': direction_rows,
         'employees_direction_rows': employees_direction_rows,
         'direction_summary': direction_summary,
+        'staff_rows': staff_rows,
+        'staff_sort': staff_sort,
+        'staff_peak_filter': staff_peak_filter,
+        'staff_swap_filter': staff_swap_filter,
+        'staff_search': staff_search_raw,
+        'staff_chart_json': json.dumps(staff_chart, ensure_ascii=False),
+        'staff_summary': staff_summary,
     }
     return render(request, 'core/reports/reports.html', context)
 

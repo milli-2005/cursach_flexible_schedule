@@ -83,8 +83,22 @@ class WorkoutType(models.Model):
     Например: Stretch Basic, Deep Stretch, Yoga.
     Все занятия длятся 50 минут и оплачиваются по фиксированной ставке.
     """
+    CATEGORY_CHOICES = [
+        ('calm', 'Спокойные'),
+        ('cardio', 'Кардио'),
+        ('strength', 'Силовые'),
+        ('dance', 'Танцы'),
+        ('other', 'Другое'),
+    ]
+
     name = models.CharField(max_length=100, verbose_name="Название занятия")
     description = models.TextField(blank=True, verbose_name="Описание")
+    category = models.CharField(
+        max_length=20,
+        choices=CATEGORY_CHOICES,
+        default='other',
+        verbose_name='Категория занятия'
+    )
 
     class Meta:
         verbose_name = "Тип занятия"
@@ -211,6 +225,90 @@ class Schedule(models.Model):
     def __str__(self):
         return f"{self.name} ({self.start_date} - {self.end_date})"
 
+
+class ScheduleVersion(models.Model):
+    """
+    Версия графика (снимок на момент сохранения).
+    """
+    schedule = models.ForeignKey(
+        Schedule,
+        on_delete=models.CASCADE,
+        related_name='versions',
+        verbose_name="График",
+    )
+    version_number = models.PositiveIntegerField(verbose_name="Номер версии")
+    schedule_name = models.CharField(max_length=200, verbose_name="Название графика в версии")
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_schedule_versions',
+        verbose_name="Кто создал версию",
+    )
+    change_source = models.CharField(
+        max_length=30,
+        blank=True,
+        verbose_name="Источник изменения",
+        help_text="create, update, restore",
+    )
+    change_note = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name="Комментарий к версии",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата создания версии")
+
+    class Meta:
+        verbose_name = "Версия графика"
+        verbose_name_plural = "Версии графиков"
+        ordering = ['-version_number', '-id']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['schedule', 'version_number'],
+                name='unique_schedule_version_number',
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.schedule.name} v{self.version_number}"
+
+
+class ScheduleVersionAssignment(models.Model):
+    """
+    Снимок одной ячейки расписания для конкретной версии графика.
+    """
+    schedule_version = models.ForeignKey(
+        ScheduleVersion,
+        on_delete=models.CASCADE,
+        related_name='assignments',
+        verbose_name="Версия графика",
+    )
+    employee = models.ForeignKey(
+        UserProfile,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Сотрудник",
+    )
+    workout_type = models.ForeignKey(
+        WorkoutType,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Тип занятия",
+    )
+    date = models.DateField(verbose_name="Дата")
+    start_time = models.TimeField(verbose_name="Время начала")
+    end_time = models.TimeField(verbose_name="Время окончания")
+
+    class Meta:
+        verbose_name = "Снимок смены версии"
+        verbose_name_plural = "Снимки смен версий"
+        ordering = ['date', 'start_time', 'id']
+
+    def __str__(self):
+        return f"v{self.schedule_version.version_number}: {self.date} {self.start_time}"
 
 
 class ShiftAssignment(models.Model):

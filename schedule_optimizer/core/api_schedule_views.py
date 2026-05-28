@@ -1,12 +1,12 @@
-# core/api_schedule_views.py
+﻿# core/api_schedule_views.py
 import json
+import logging
 import re
 import threading
 from datetime import datetime, timedelta
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.core.mail import send_mail
 from django.db.models import Count
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
@@ -16,7 +16,20 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from .error_utils import api_error_response, humanize_exception
-from .models import Availability, Employee, Schedule, ScheduleApproval, ShiftAssignment, UserProfile, WorkoutType
+from .email_utils import send_mail_with_fallback
+from .models import (
+    Availability,
+    Employee,
+    Schedule,
+    ScheduleApproval,
+    ScheduleVersion,
+    ScheduleVersionAssignment,
+    ShiftAssignment,
+    UserProfile,
+    WorkoutType,
+)
+
+logger = logging.getLogger(__name__)
 
 
 def is_manager(user):
@@ -29,7 +42,7 @@ def parse_time_slot(time_slot: str):
     if not time_slot or not isinstance(time_slot, str):
         raise ValueError('Не удалось определить временной слот.')
 
-    normalized = time_slot.strip().replace('–', '-').replace('–', '-').replace('—', '-')
+    normalized = time_slot.strip().replace('–', '-').replace('—', '-')
     parts = re.split(r'\s*-\s*', normalized, maxsplit=1)
     if not parts or not parts[0]:
         raise ValueError(f'Некорректный формат времени: {time_slot}')
@@ -44,20 +57,26 @@ def parse_time_slot(time_slot: str):
 
 
 def _send_schedule_email_async(subject: str, message: str, recipient_list: list[str]):
+    recipient_list = [email for email in dict.fromkeys(recipient_list or []) if email]
     if not recipient_list:
+        logger.warning("Email not sent: recipient list is empty. Subject: %s", subject)
         return
 
     def _job():
         try:
-            send_mail(
+            from_email = getattr(settings, 'EMAIL_HOST_USER', None) or settings.DEFAULT_FROM_EMAIL
+            ok = send_mail_with_fallback(
                 subject=subject,
                 message=message,
-                from_email=settings.DEFAULT_FROM_EMAIL,
+                from_email=from_email,
                 recipient_list=recipient_list,
-                fail_silently=True,
             )
-        except Exception:
-            pass
+            if ok:
+                logger.info("Email sent. Subject: %s; recipients: %s", subject, ", ".join(recipient_list))
+            else:
+                logger.error("Email send failed after fallback. Subject: %s", subject)
+        except Exception as exc:
+            logger.exception("Email send failed. Subject: %s; error: %s", subject, exc)
 
     threading.Thread(target=_job, daemon=True).start()
 
@@ -69,6 +88,121 @@ def _parse_optional_int(value, field_name: str):
         return int(value)
     except (TypeError, ValueError):
         raise ValueError(f'Поле "{field_name}" должно быть числом.')
+
+
+def _shift_signature(shift: ShiftAssignment):
+    return (
+        shift.employee_id,
+        shift.date,
+        shift.start_time,
+        shift.end_time,
+        shift.workout_type_id,
+    )
+
+
+def _create_schedule_version(schedule: Schedule, created_by=None, source: str = '', note: str = ''):
+    last_number = (
+        ScheduleVersion.objects.filter(schedule=schedule)
+        .order_by('-version_number')
+        .values_list('version_number', flat=True)
+        .first()
+        or 0
+    )
+    version = ScheduleVersion.objects.create(
+        schedule=schedule,
+        version_number=last_number + 1,
+        schedule_name=schedule.name,
+        created_by=created_by if getattr(created_by, 'is_authenticated', False) else None,
+        change_source=(source or '')[:30],
+        change_note=(note or '')[:255],
+    )
+
+    current_assignments = ShiftAssignment.objects.filter(schedule=schedule)
+    snapshot_rows = [
+        ScheduleVersionAssignment(
+            schedule_version=version,
+            employee_id=assignment.employee_id,
+            workout_type_id=assignment.workout_type_id,
+            date=assignment.date,
+            start_time=assignment.start_time,
+            end_time=assignment.end_time,
+        )
+        for assignment in current_assignments
+        if assignment.employee_id
+    ]
+    if snapshot_rows:
+        ScheduleVersionAssignment.objects.bulk_create(snapshot_rows)
+    return version
+
+
+def _sync_schedule_approvals_and_notify(schedule: Schedule, old_shifts: list, new_shifts: list):
+    old_by_key = {}
+    old_employee_shifts = {}
+    for shift in old_shifts:
+        key = (shift.employee_id, shift.date, shift.start_time)
+        old_by_key[key] = shift
+        if shift.employee_id:
+            old_employee_shifts.setdefault(shift.employee_id, []).append(key)
+
+    new_by_key = {}
+    new_employee_shifts = {}
+    for shift in new_shifts:
+        key = (shift.employee_id, shift.date, shift.start_time)
+        new_by_key[key] = shift
+        if shift.employee_id:
+            new_employee_shifts.setdefault(shift.employee_id, []).append(key)
+
+    changed_employees = set()
+    for emp_id in old_employee_shifts:
+        if emp_id not in new_employee_shifts:
+            changed_employees.add(emp_id)
+    for emp_id in new_employee_shifts:
+        if emp_id not in old_employee_shifts:
+            changed_employees.add(emp_id)
+
+    for emp_id in old_employee_shifts:
+        if emp_id not in new_employee_shifts:
+            continue
+        old_keys = set(old_employee_shifts[emp_id])
+        new_keys = set(new_employee_shifts[emp_id])
+        if old_keys != new_keys:
+            changed_employees.add(emp_id)
+            continue
+        for key in old_keys:
+            if old_by_key[key].workout_type_id != new_by_key[key].workout_type_id:
+                changed_employees.add(emp_id)
+                break
+
+    if changed_employees:
+        ScheduleApproval.objects.filter(
+            schedule=schedule,
+            employee__in=list(changed_employees),
+        ).update(approved=None, comment='', responded_at=None)
+
+    employee_ids_with_shifts = {s.employee_id for s in new_shifts if s.employee_id}
+    ScheduleApproval.objects.filter(schedule=schedule).exclude(
+        employee_id__in=employee_ids_with_shifts
+    ).delete()
+
+    existing = set(ScheduleApproval.objects.filter(schedule=schedule).values_list('employee_id', flat=True))
+    new_approvals = [
+        ScheduleApproval(schedule=schedule, employee_id=emp_id, approved=None)
+        for emp_id in (employee_ids_with_shifts - existing)
+        if emp_id
+    ]
+    if new_approvals:
+        ScheduleApproval.objects.bulk_create(new_approvals)
+
+    if changed_employees:
+        changed_objs = UserProfile.objects.filter(id__in=changed_employees)
+        emails = [emp.user.email for emp in changed_objs if emp.user.email]
+        _send_schedule_email_async(
+            subject='График был изменен и требует повторного подтверждения',
+            message=f"График '{schedule.name}' был изменен. Пожалуйста, подтвердите изменения.",
+            recipient_list=emails,
+        )
+
+    return changed_employees
 
 
 @login_required
@@ -260,24 +394,17 @@ def api_update_schedule(request, schedule_id):
         schedule_name = (data.get('name') or '').strip()
         assignments = data.get('assignments', [])
 
+        old_shifts = list(ShiftAssignment.objects.filter(schedule=schedule))
+        old_name = schedule.name
+        old_signature_set = {_shift_signature(s) for s in old_shifts}
+
         if schedule_name:
             schedule.name = schedule_name
             schedule.save(update_fields=['name', 'updated_at'])
 
-        old_shifts = list(ShiftAssignment.objects.filter(schedule=schedule))
-        old_by_key = {}
-        old_employee_shifts = {}
-        for shift in old_shifts:
-            key = (shift.employee_id, shift.date, shift.start_time)
-            old_by_key[key] = shift
-            if shift.employee_id:
-                old_employee_shifts.setdefault(shift.employee_id, []).append(key)
-
         ShiftAssignment.objects.filter(schedule=schedule).delete()
 
         new_shifts = []
-        new_by_key = {}
-        new_employee_shifts = {}
         for item in assignments:
             date_str = item['date']
             time_slot = item['time_slot']
@@ -322,72 +449,35 @@ def api_update_schedule(request, schedule_id):
             )
             new_shifts.append(shift)
 
-            key = (employee_id, date_obj, start_time)
-            new_by_key[key] = shift
-            if employee_id:
-                new_employee_shifts.setdefault(employee_id, []).append(key)
+        changed_employees = _sync_schedule_approvals_and_notify(
+            schedule=schedule,
+            old_shifts=old_shifts,
+            new_shifts=new_shifts,
+        )
 
-        changed_employees = set()
+        new_signature_set = {_shift_signature(s) for s in new_shifts}
+        has_structural_changes = old_signature_set != new_signature_set
+        has_name_changes = old_name != schedule.name
 
-        for emp_id in old_employee_shifts:
-            if emp_id not in new_employee_shifts:
-                changed_employees.add(emp_id)
-
-        for emp_id in new_employee_shifts:
-            if emp_id not in old_employee_shifts:
-                changed_employees.add(emp_id)
-
-        for emp_id in old_employee_shifts:
-            if emp_id in new_employee_shifts:
-                old_keys = set(old_employee_shifts[emp_id])
-                new_keys = set(new_employee_shifts[emp_id])
-                if old_keys != new_keys:
-                    changed_employees.add(emp_id)
-                else:
-                    for key in old_keys:
-                        if old_by_key[key].workout_type_id != new_by_key[key].workout_type_id:
-                            changed_employees.add(emp_id)
-                            break
-
-        if changed_employees:
-            ScheduleApproval.objects.filter(
+        new_version = None
+        if has_structural_changes or has_name_changes:
+            new_version = _create_schedule_version(
                 schedule=schedule,
-                employee__in=list(changed_employees),
-            ).update(approved=None, comment='', responded_at=None)
-
-        emp_ids_with_shifts = {s.employee_id for s in new_shifts if s.employee_id}
-        ScheduleApproval.objects.filter(schedule=schedule).exclude(
-            employee_id__in=emp_ids_with_shifts
-        ).delete()
-
-        existing = set(ScheduleApproval.objects.filter(schedule=schedule).values_list('employee_id', flat=True))
-        new_approvals = [
-            ScheduleApproval(schedule=schedule, employee_id=emp_id, approved=None)
-            for emp_id in (emp_ids_with_shifts - existing)
-            if emp_id
-        ]
-        if new_approvals:
-            ScheduleApproval.objects.bulk_create(new_approvals)
-
-        if changed_employees:
-            changed_objs = UserProfile.objects.filter(id__in=changed_employees)
-            emails = [emp.user.email for emp in changed_objs if emp.user.email]
-            _send_schedule_email_async(
-                subject='График был изменен и требует повторного подтверждения',
-                message=f"График '{schedule.name}' был изменен. Пожалуйста, подтвердите изменения.",
-                recipient_list=emails,
+                created_by=request.user,
+                source='update',
+                note='Изменения графика вручную',
             )
 
         return JsonResponse({
             'success': True,
             'changed_employees': list(changed_employees),
             'schedule_name': schedule.name,
+            'version_number': new_version.version_number if new_version else None,
+            'version_created': bool(new_version),
         })
 
     except Exception as exc:
         return api_error_response(exc, status=400)
-
-
 def copy_availability_from_previous_week(employee, current_week_start):
     prev_week_start = current_week_start - timedelta(weeks=1)
     prev_avail = Availability.objects.filter(
@@ -510,7 +600,24 @@ def api_save_schedule(request):
             recipient_list=employee_emails,
         )
 
-        return JsonResponse({'success': True, 'schedule_id': schedule.id})
+        first_version = _create_schedule_version(
+            schedule=schedule,
+            created_by=request.user,
+            source='create',
+            note='Первичное создание графика',
+        )
+
+        return JsonResponse({
+            'success': True,
+            'schedule_id': schedule.id,
+            'version_number': first_version.version_number,
+            'email_recipients_count': len(employee_emails),
+            'warning': (
+                'У сотрудников, добавленных в график, не заполнены email. '
+                'Уведомления не отправлены.'
+                if not employee_emails else ''
+            ),
+        })
 
     except Exception as exc:
         if schedule is not None and getattr(schedule, 'id', None):
@@ -519,6 +626,176 @@ def api_save_schedule(request):
                 'schedule_id': schedule.id,
                 'warning': humanize_exception(exc),
             })
+        return api_error_response(exc, status=400)
+
+
+def _version_assignment_map(version: ScheduleVersion):
+    result = {}
+    rows = version.assignments.select_related('employee__user', 'workout_type').all()
+    for row in rows:
+        key = f"{row.date.isoformat()}|{row.start_time.strftime('%H:%M')}"
+        employee_name = ''
+        if row.employee_id:
+            employee_name = row.employee.user.get_full_name().strip() or row.employee.user.username
+        result[key] = {
+            'date': row.date.isoformat(),
+            'time': row.start_time.strftime('%H:%M'),
+            'employee_id': row.employee_id,
+            'employee_name': employee_name or '—',
+            'workout_type_id': row.workout_type_id,
+            'workout_name': row.workout_type.name if row.workout_type_id else '—',
+        }
+    return result
+
+
+@login_required
+@user_passes_test(is_manager)
+@require_http_methods(['GET'])
+def api_schedule_versions(request, schedule_id):
+    schedule = get_object_or_404(Schedule, id=schedule_id)
+    versions = (
+        ScheduleVersion.objects.filter(schedule=schedule)
+        .select_related('created_by')
+        .annotate(assignments_count=Count('assignments'))
+        .order_by('-version_number')
+    )
+
+    data = []
+    for v in versions:
+        if v.created_by_id:
+            author = v.created_by.get_full_name().strip() or v.created_by.username
+        else:
+            author = 'system'
+        data.append({
+            'id': v.id,
+            'version_number': v.version_number,
+            'schedule_name': v.schedule_name,
+            'change_source': v.change_source,
+            'change_note': v.change_note,
+            'created_at': timezone.localtime(v.created_at).strftime('%d.%m.%Y %H:%M'),
+            'created_by': author,
+            'assignments_count': v.assignments_count,
+        })
+
+    return JsonResponse({'success': True, 'versions': data})
+
+
+@login_required
+@user_passes_test(is_manager)
+@require_http_methods(['GET'])
+def api_compare_schedule_versions(request, schedule_id):
+    schedule = get_object_or_404(Schedule, id=schedule_id)
+    left_id = request.GET.get('left_version_id')
+    right_id = request.GET.get('right_version_id')
+    if not left_id or not right_id:
+        return JsonResponse({'success': False, 'error': 'Выберите две версии для сравнения.'}, status=400)
+    try:
+        left_id = int(left_id)
+        right_id = int(right_id)
+    except (TypeError, ValueError):
+        return JsonResponse({'success': False, 'error': 'Некорректные идентификаторы версий.'}, status=400)
+
+    left = get_object_or_404(ScheduleVersion, id=left_id, schedule=schedule)
+    right = get_object_or_404(ScheduleVersion, id=right_id, schedule=schedule)
+
+    left_map = _version_assignment_map(left)
+    right_map = _version_assignment_map(right)
+    all_keys = sorted(set(left_map.keys()) | set(right_map.keys()))
+
+    changes = []
+    for key in all_keys:
+        l = left_map.get(key)
+        r = right_map.get(key)
+        if l and not r:
+            changes.append({
+                'date': l['date'],
+                'time': l['time'],
+                'change_type': 'removed',
+                'left': l,
+                'right': None,
+            })
+            continue
+        if r and not l:
+            changes.append({
+                'date': r['date'],
+                'time': r['time'],
+                'change_type': 'added',
+                'left': None,
+                'right': r,
+            })
+            continue
+        if not l or not r:
+            continue
+        if l['employee_id'] != r['employee_id'] or l['workout_type_id'] != r['workout_type_id']:
+            changes.append({
+                'date': r['date'],
+                'time': r['time'],
+                'change_type': 'changed',
+                'left': l,
+                'right': r,
+            })
+
+    return JsonResponse({
+        'success': True,
+        'left_version': {'id': left.id, 'number': left.version_number, 'name': left.schedule_name},
+        'right_version': {'id': right.id, 'number': right.version_number, 'name': right.schedule_name},
+        'changes_count': len(changes),
+        'changes': changes,
+    })
+
+
+@login_required
+@user_passes_test(is_manager)
+@csrf_exempt
+@require_http_methods(['POST'])
+def api_restore_schedule_version(request, schedule_id, version_id):
+    try:
+        schedule = get_object_or_404(Schedule, id=schedule_id)
+        version = get_object_or_404(ScheduleVersion, id=version_id, schedule=schedule)
+
+        old_shifts = list(ShiftAssignment.objects.filter(schedule=schedule))
+        ShiftAssignment.objects.filter(schedule=schedule).delete()
+
+        version_rows = version.assignments.all()
+        restored_shifts = []
+        for row in version_rows:
+            if not row.employee_id:
+                continue
+            restored_shifts.append(
+                ShiftAssignment.objects.create(
+                    schedule=schedule,
+                    employee_id=row.employee_id,
+                    workout_type_id=row.workout_type_id,
+                    date=row.date,
+                    start_time=row.start_time,
+                    end_time=row.end_time,
+                )
+            )
+
+        if schedule.name != version.schedule_name:
+            schedule.name = version.schedule_name
+            schedule.save(update_fields=['name', 'updated_at'])
+
+        changed_employees = _sync_schedule_approvals_and_notify(
+            schedule=schedule,
+            old_shifts=old_shifts,
+            new_shifts=restored_shifts,
+        )
+
+        new_version = _create_schedule_version(
+            schedule=schedule,
+            created_by=request.user,
+            source='restore',
+            note=f'Откат к версии v{version.version_number}',
+        )
+
+        return JsonResponse({
+            'success': True,
+            'restored_to': version.version_number,
+            'new_version': new_version.version_number,
+            'changed_employees': list(changed_employees),
+        })
+    except Exception as exc:
         return api_error_response(exc, status=400)
 
 
