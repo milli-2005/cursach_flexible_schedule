@@ -816,9 +816,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const hourRateForm = document.getElementById('hour-rate-form');
     if (hourRateForm) {
-        hourRateForm.addEventListener('submit', function (event) {
-            const ok = confirm('Точно изменить часовую ставку? После сохранения новые смены будут рассчитываться по новой ставке.');
-            if (!ok) event.preventDefault();
+        hourRateForm.addEventListener('submit', async function (event) {
+            event.preventDefault();
+            const ok = await window.showAppConfirm(
+                'Точно изменить часовую ставку? После сохранения новые смены будут рассчитываться по новой ставке.',
+                'Изменение ставки'
+            );
+            if (ok) hourRateForm.submit();
         });
     }
 

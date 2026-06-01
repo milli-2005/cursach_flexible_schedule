@@ -1953,7 +1953,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 const versionId = this.dataset.versionId;
                 const versionNumber = this.dataset.versionNumber;
                 if (!versionId) return;
-                if (!confirm(`Откатить график к версии v${versionNumber}? Будет создана новая версия-откат.`)) {
+                const ok = await window.showAppConfirm(
+                    `Откатить график к версии v${versionNumber}? Будет создана новая версия-откат.`,
+                    'Откат версии графика'
+                );
+                if (!ok) {
                     return;
                 }
                 this.disabled = true;

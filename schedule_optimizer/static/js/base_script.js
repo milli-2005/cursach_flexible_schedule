@@ -23,6 +23,7 @@
     setupPasswordVisibilityToggles();
     setupModalLayoutStability();
     disableModalFadeAnimations();
+    setupAppDialogs();
 });
 
 function setupThemeToggle() {
@@ -31,7 +32,7 @@ function setupThemeToggle() {
     const toggleLabel = document.getElementById('themeToggleLabel');
 
     const storedTheme = localStorage.getItem('app-theme');
-    const preferredTheme = storedTheme === 'light' || storedTheme === 'dark' ? storedTheme : 'dark';
+    const preferredTheme = storedTheme === 'light' || storedTheme === 'dark' ? storedTheme : 'light';
     applyTheme(preferredTheme, toggleBtn, toggleLabel);
 
     if (!toggleBtn) {
@@ -272,3 +273,109 @@ function disableModalFadeAnimations() {
         modalEl.classList.remove('fade');
     });
 }
+
+let appDialogModalInstance = null;
+let appDialogResolver = null;
+
+function setupAppDialogs() {
+    const modalEl = document.getElementById('appDialogModal');
+    const okBtn = document.getElementById('appDialogOkBtn');
+    const cancelBtn = document.getElementById('appDialogCancelBtn');
+
+    if (!modalEl || !okBtn || !cancelBtn || typeof bootstrap === 'undefined') {
+        return;
+    }
+
+    appDialogModalInstance = new bootstrap.Modal(modalEl);
+
+    okBtn.addEventListener('click', function () {
+        if (appDialogResolver) {
+            appDialogResolver('ok');
+            appDialogResolver = null;
+        }
+        appDialogModalInstance.hide();
+    });
+
+    cancelBtn.addEventListener('click', function () {
+        if (appDialogResolver) {
+            appDialogResolver('cancel');
+            appDialogResolver = null;
+        }
+        appDialogModalInstance.hide();
+    });
+
+    modalEl.addEventListener('hidden.bs.modal', function () {
+        if (appDialogResolver) {
+            appDialogResolver('cancel');
+            appDialogResolver = null;
+        }
+    });
+}
+
+function showAppDialog(options) {
+    const opts = options || {};
+    const modalEl = document.getElementById('appDialogModal');
+    const titleEl = document.getElementById('appDialogTitle');
+    const messageEl = document.getElementById('appDialogMessage');
+    const okBtn = document.getElementById('appDialogOkBtn');
+    const cancelBtn = document.getElementById('appDialogCancelBtn');
+    const inputWrap = document.getElementById('appDialogInputWrap');
+    const inputEl = document.getElementById('appDialogInput');
+
+    if (!appDialogModalInstance || !modalEl || !titleEl || !messageEl || !okBtn || !cancelBtn || !inputWrap || !inputEl) {
+        return Promise.resolve({ action: 'cancel', value: null });
+    }
+
+    titleEl.textContent = opts.title || 'Подтвердите действие';
+    messageEl.textContent = opts.message || '';
+    okBtn.textContent = opts.okText || 'ОК';
+    cancelBtn.textContent = opts.cancelText || 'Отмена';
+
+    const isPrompt = opts.type === 'prompt';
+    const hideCancel = opts.type === 'alert';
+
+    if (isPrompt) {
+        inputWrap.classList.remove('d-none');
+        inputEl.value = opts.defaultValue || '';
+    } else {
+        inputWrap.classList.add('d-none');
+        inputEl.value = '';
+    }
+
+    if (hideCancel) {
+        cancelBtn.classList.add('d-none');
+    } else {
+        cancelBtn.classList.remove('d-none');
+    }
+
+    appDialogModalInstance.show();
+
+    if (isPrompt) {
+        setTimeout(() => inputEl.focus(), 50);
+    } else {
+        setTimeout(() => okBtn.focus(), 50);
+    }
+
+    return new Promise((resolve) => {
+        appDialogResolver = function (action) {
+            resolve({
+                action,
+                value: isPrompt && action === 'ok' ? inputEl.value : null,
+            });
+        };
+    });
+}
+
+window.showAppConfirm = async function (message, title = 'Подтвердите действие') {
+    const result = await showAppDialog({ type: 'confirm', title, message, okText: 'Подтвердить', cancelText: 'Отмена' });
+    return result.action === 'ok';
+};
+
+window.showAppPrompt = async function (message, defaultValue = '', title = 'Введите значение') {
+    const result = await showAppDialog({ type: 'prompt', title, message, defaultValue, okText: 'Сохранить', cancelText: 'Отмена' });
+    return result.action === 'ok' ? result.value : null;
+};
+
+window.showAppAlert = async function (message, title = 'Сообщение') {
+    await showAppDialog({ type: 'alert', title, message, okText: 'ОК' });
+};

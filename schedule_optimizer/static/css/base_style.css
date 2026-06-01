@@ -1359,6 +1359,16 @@ html[data-theme='light'] .theme-toggle-btn {
     color: var(--app-danger-text);
 }
 
+.app-dialog-modal {
+    background: linear-gradient(180deg, var(--app-surface-soft) 0%, var(--app-surface) 100%);
+    border: 1px solid var(--app-accent);
+}
+
+.app-dialog-modal .modal-header,
+.app-dialog-modal .modal-footer {
+    border-color: var(--app-border);
+}
+
 .table-dark {
     --bs-table-color: var(--app-text);
     --bs-table-striped-color: var(--app-text);
@@ -1390,6 +1400,20 @@ html[data-theme='light'] .table-dark {
     background-color: var(--app-accent);
     color: #fff;
     border-color: var(--app-accent);
+}
+
+.badge.bg-success,
+.badge.text-bg-success,
+.bg-success.badge {
+    color: #fff !important;
+    --bs-badge-color: #fff !important;
+}
+
+html[data-theme='light'] .table-dark tbody td .badge.bg-success,
+html[data-theme='light'] .table-dark tbody td .badge.text-bg-success,
+html[data-theme='light'] .table-dark tbody td .bg-success.badge {
+    color: #ffffff !important;
+    --bs-badge-color: #ffffff !important;
 }
 
 html[data-theme='light'] .sidebar .text-white,

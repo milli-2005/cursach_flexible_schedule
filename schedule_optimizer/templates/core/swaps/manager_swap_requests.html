@@ -430,8 +430,9 @@ function loadSwapCandidates(swapId, triggerBtn) {
         });
 }
 
-function rejectSwap(swapId) {
-    if (!confirm('Отклонить эту заявку на обмен?')) return;
+async function rejectSwap(swapId) {
+    const ok = await window.showAppConfirm('Отклонить эту заявку на обмен?', 'Отклонение заявки');
+    if (!ok) return;
 
     fetch(`/api/swap-request/${swapId}/reject/`, {
         method: 'POST',

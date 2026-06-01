@@ -1,4 +1,4 @@
-{% extends "core/base.html" %}
+﻿{% extends "core/base.html" %}
 
 {% block title %}Правила распределения - {{ block.super }}{% endblock %}
 
@@ -14,12 +14,52 @@
     align-items: center;
     background: transparent !important;
 }
+.rule-conflict-card {
+    border: 1px solid rgba(220, 53, 69, 0.35);
+    background: rgba(220, 53, 69, 0.08);
+    border-radius: 12px;
+    padding: 0.85rem 1rem;
+}
+.rule-conflict-card + .rule-conflict-card {
+    margin-top: 0.6rem;
+}
+.rule-conflict-card.soft {
+    border-color: rgba(255, 193, 7, 0.4);
+    background: rgba(255, 193, 7, 0.12);
+}
+.conflict-row-hard td {
+    background: rgba(220, 53, 69, 0.14) !important;
+    box-shadow: inset 0 0 0 1px rgba(220, 53, 69, 0.35);
+}
+.conflict-row-soft td {
+    background: rgba(255, 193, 7, 0.14) !important;
+    box-shadow: inset 0 0 0 1px rgba(255, 193, 7, 0.38);
+}
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="management-container">
     <h2 class="mb-3">Правила распределения</h2>
+    {% if rules_conflicts_count > 0 %}
+    <div class="management-table p-3 mb-3">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5 class="mb-0 text-danger">Конфликты правил</h5>
+            <span class="badge bg-danger">Найдено: {{ rules_conflicts_count }}</span>
+        </div>
+        <div class="small mb-3">Ниже показаны конфликтующие пары правил. Исправьте их, чтобы автозаполнение работало стабильно.</div>
+        {% for c in rules_conflicts %}
+            <div class="rule-conflict-card {% if c.level == 'soft' %}soft{% endif %}">
+                <div class="fw-semibold mb-1">
+                    {% if c.level == 'hard' %}Критично{% else %}Предупреждение{% endif %}: {{ c.title }}
+                </div>
+                <div class="mb-1"><strong>Конфликтуют:</strong> «{{ c.rule_a.name }}» и «{{ c.rule_b.name }}»</div>
+                <div class="mb-1"><strong>Причина:</strong> {{ c.description }}</div>
+                <div><strong>Как исправить:</strong> {{ c.how_to_fix }}</div>
+            </div>
+        {% endfor %}
+    </div>
+    {% endif %}
 
     <div class="management-table p-3 mb-3">
         <div class="d-flex flex-wrap gap-2 mb-3">
@@ -217,7 +257,8 @@
                 </thead>
                 <tbody>
                     {% for rule in rules %}
-                    <tr data-rule-id="{{ rule.id }}">
+                    <tr data-rule-id="{{ rule.id }}"
+                        class="{% if rule.id in conflict_rule_hard_ids %}conflict-row-hard{% elif rule.id in conflict_rule_soft_ids %}conflict-row-soft{% endif %}">
                         <td>{{ rule.name }}</td>
                         <td>{{ rule.get_rule_type_display }}</td>
                         <td>{{ rule.get_severity_display }}</td>
@@ -604,7 +645,6 @@
             showGlobalNotification('Сначала сформируйте или распознайте правило.', 'error');
             return;
         }
-        if (!confirm('Сохранить правило в активные ограничения автозаполнения?')) return;
         try {
             const res = await fetch('/api/distribution-rules/save/', {
                 method: 'POST',
@@ -641,13 +681,13 @@
         if (editBtn) {
             const currentName = row.children[0]?.textContent?.trim() || '';
             const currentPriority = row.children[4]?.textContent?.trim() || '100';
-            const name = prompt('Название правила:', currentName);
+            const name = await window.showAppPrompt('Название правила:', currentName, 'Редактирование правила');
             if (name === null) return;
-            const priority = prompt('Приоритет (меньше = важнее):', currentPriority);
+            const priority = await window.showAppPrompt('Приоритет (меньше = важнее):', currentPriority, 'Редактирование правила');
             if (priority === null) return;
             const severityLabel = row.children[2]?.textContent?.trim()?.toLowerCase() || 'жесткое';
             const severityDefault = severityLabel.includes('мяг') ? 'soft' : 'hard';
-            const severity = prompt('Жесткость (hard или soft):', severityDefault);
+            const severity = await window.showAppPrompt('Жесткость (hard или soft):', severityDefault, 'Редактирование правила');
             if (severity === null) return;
             const res = await fetch(`/api/distribution-rules/${ruleId}/update/`, {
                 method: 'POST',
@@ -678,7 +718,8 @@
         }
 
         if (deleteBtn) {
-            if (!confirm('Удалить правило?')) return;
+            const ok = await window.showAppConfirm('Удалить правило?', 'Удаление правила');
+            if (!ok) return;
             const res = await fetch(`/api/distribution-rules/${ruleId}/delete/`, {
                 method: 'POST',
                 headers: { 'X-CSRFToken': csrfToken() }
@@ -732,3 +773,4 @@
 })();
 </script>
 {% endblock %}
+

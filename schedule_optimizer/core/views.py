@@ -719,11 +719,180 @@ def _serialize_active_distribution_rules():
     return serialized
 
 
+def _bucket_signature(bucket: dict) -> str:
+    return f"{(bucket or {}).get('name','')}|{(bucket or {}).get('start','')}|{(bucket or {}).get('end','')}"
+
+
+def _extract_weekly_limit_map(rule: DistributionRule):
+    if rule.rule_type != 'weekly_limit':
+        return {}
+    params = rule.params_json or {}
+    target_mode = params.get('target_mode') or ('category' if params.get('category') else 'workout')
+    target_key = (params.get('category') or '').strip().lower() if target_mode == 'category' else _normalize_workout_name_for_rule(params.get('workout_name') or '')
+    if not target_key:
+        return {}
+    result = {}
+    for bucket in (params.get('buckets') or []):
+        try:
+            max_value = int(bucket.get('max', 0))
+        except Exception:
+            max_value = 0
+        result[_bucket_signature(bucket)] = {
+            'max': max_value,
+            'bucket': bucket,
+            'target_mode': target_mode,
+            'target_key': target_key,
+        }
+    return result
+
+
+def _extract_alternation_signature(rule: DistributionRule):
+    if rule.rule_type != 'alternation':
+        return None
+    params = rule.params_json or {}
+    categories = [str(x).strip().lower() for x in (params.get('categories') or []) if str(x).strip()]
+    weekdays = sorted(set(int(x) for x in (params.get('weekdays') or []) if str(x).strip().isdigit()))
+    if len(categories) < 2 or not weekdays:
+        return None
+    return {
+        'categories': tuple(sorted(set(categories))),
+        'weekdays': tuple(weekdays),
+    }
+
+
+def _build_distribution_rules_conflicts(rules):
+    """
+    Ищет явные и потенциальные противоречия между активными правилами.
+    Возвращает список словарей для отображения на странице.
+    """
+    active_rules = [r for r in rules if r.is_active]
+    conflicts = []
+
+    for i in range(len(active_rules)):
+        for j in range(i + 1, len(active_rules)):
+            a = active_rules[i]
+            b = active_rules[j]
+
+            # 1) Явный конфликт: два weekly_limit на один и тот же таргет и одно окно,
+            # но с разным max.
+            a_week = _extract_weekly_limit_map(a)
+            b_week = _extract_weekly_limit_map(b)
+            if a_week and b_week:
+                for bucket_key, a_data in a_week.items():
+                    b_data = b_week.get(bucket_key)
+                    if not b_data:
+                        continue
+                    if a_data['target_mode'] != b_data['target_mode'] or a_data['target_key'] != b_data['target_key']:
+                        continue
+                    if a_data['max'] != b_data['max']:
+                        conflicts.append({
+                            'level': 'hard',
+                            'title': 'Противоречивые лимиты',
+                            'rule_a': a,
+                            'rule_b': b,
+                            'description': (
+                                f'Для одного и того же ограничения заданы разные лимиты '
+                                f'в окне "{a_data["bucket"].get("name", "slot")}".'
+                            ),
+                            'how_to_fix': 'Оставьте один лимит или сделайте одинаковые значения max в обоих правилах.',
+                        })
+
+            # 2) Потенциальный конфликт: две alternation со схожими днями и общей категорией,
+            # но разными наборами категорий.
+            a_alt = _extract_alternation_signature(a)
+            b_alt = _extract_alternation_signature(b)
+            if a_alt and b_alt:
+                weekdays_intersection = set(a_alt['weekdays']) & set(b_alt['weekdays'])
+                categories_intersection = set(a_alt['categories']) & set(b_alt['categories'])
+                a_cnt = len(set(a_alt['categories']))
+                b_cnt = len(set(b_alt['categories']))
+                mixed_scope = (a_cnt >= 3 and b_cnt == 2) or (b_cnt >= 3 and a_cnt == 2)
+
+                if (
+                    weekdays_intersection
+                    and categories_intersection
+                    and set(a_alt['categories']) != set(b_alt['categories'])
+                    and not mixed_scope
+                ):
+                    conflicts.append({
+                        'level': 'soft',
+                        'title': 'Возможный конфликт чередования',
+                        'rule_a': a,
+                        'rule_b': b,
+                        'description': (
+                            'Для пересекающихся дней заданы разные пары категорий чередования. '
+                            'Алгоритм может заполнять такие дни нестабильно.'
+                        ),
+                        'how_to_fix': 'Разведите правила по разным дням недели или оставьте одну пару категорий на один набор дней.',
+                    })
+
+                # 2.1) Усиленный конфликт: одно alternation общее (3+ категорий),
+                # а второе более узкое (2 категории) на пересекающиеся дни.
+                if weekdays_intersection and ((a_cnt >= 3 and b_cnt == 2) or (b_cnt >= 3 and a_cnt == 2)):
+                    conflicts.append({
+                        'level': 'hard',
+                        'title': 'Противоречивые схемы чередования',
+                        'rule_a': a,
+                        'rule_b': b,
+                        'description': (
+                            'Широкое правило чередования (с 3+ категориями) пересекается с узким '
+                            'правилом (2 категории) по тем же дням.'
+                        ),
+                        'how_to_fix': 'Оставьте одно правило чередования на эти дни или разделите дни между правилами.',
+                    })
+
+            # 3) Потенциальный конфликт приоритетов: два hard-правила одного типа и одного таргета.
+            if a.rule_type == b.rule_type and a.severity == 'hard' and b.severity == 'hard':
+                if a.rule_type == 'weekly_limit' and _extract_weekly_limit_map(a) and _extract_weekly_limit_map(b):
+                    conflicts.append({
+                        'level': 'soft',
+                        'title': 'Перекрывающиеся жесткие weekly_limit',
+                        'rule_a': a,
+                        'rule_b': b,
+                        'description': 'Два жестких weekly_limit могут дублировать друг друга и усложнять отладку.',
+                        'how_to_fix': 'Объедините их в одно правило или понизьте жесткость/измените приоритет одного из них.',
+                    })
+
+    return conflicts
+
+
 @login_required
 @user_passes_test(is_manager)
 def distribution_rules_page(request):
     rules = DistributionRule.objects.all().select_related('created_by').order_by('priority', 'id')
-    return render(request, 'core/schedules/distribution_rules.html', {'rules': rules})
+    conflicts = _build_distribution_rules_conflicts(list(rules))
+    conflict_rule_ids = set()
+    conflict_rule_hard_ids = set()
+    conflict_rule_soft_ids = set()
+    for c in conflicts:
+        level = c.get('level') or 'soft'
+        if c.get('rule_a'):
+            rid = c['rule_a'].id
+            conflict_rule_ids.add(rid)
+            if level == 'hard':
+                conflict_rule_hard_ids.add(rid)
+            else:
+                conflict_rule_soft_ids.add(rid)
+        if c.get('rule_b'):
+            rid = c['rule_b'].id
+            conflict_rule_ids.add(rid)
+            if level == 'hard':
+                conflict_rule_hard_ids.add(rid)
+            else:
+                conflict_rule_soft_ids.add(rid)
+    conflict_rule_soft_ids = conflict_rule_soft_ids - conflict_rule_hard_ids
+    return render(
+        request,
+        'core/schedules/distribution_rules.html',
+        {
+            'rules': rules,
+            'rules_conflicts': conflicts,
+            'rules_conflicts_count': len(conflicts),
+            'conflict_rule_ids': sorted(conflict_rule_ids),
+            'conflict_rule_hard_ids': sorted(conflict_rule_hard_ids),
+            'conflict_rule_soft_ids': sorted(conflict_rule_soft_ids),
+        }
+    )
 
 
 @login_required
@@ -789,7 +958,14 @@ def api_save_distribution_rule(request):
         priority=int(payload.get('priority', 100) or 100),
         created_by=request.user,
     )
-    return JsonResponse({'success': True, 'rule_id': rule.id})
+    conflicts = _build_distribution_rules_conflicts(
+        list(DistributionRule.objects.all().order_by('priority', 'id'))
+    )
+    return JsonResponse({
+        'success': True,
+        'rule_id': rule.id,
+        'conflicts_count': len(conflicts),
+    })
 
 
 @login_required
