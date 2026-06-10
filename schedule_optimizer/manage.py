@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!Главный управляющий файл Django: миграции, запуск сервера, команды.
 """Django's command-line utility for administrative tasks."""
 import os
 import sys

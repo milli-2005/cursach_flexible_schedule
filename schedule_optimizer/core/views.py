@@ -235,7 +235,10 @@ def custom_login(request):
         return redirect('dashboard')
 
     if request.method == 'POST':
-        form = AuthenticationForm(data=request.POST)
+        login_data = request.POST.copy()
+        login_data['username'] = login_data.get('username', '').strip()
+        login_data['password'] = login_data.get('password', '').strip()
+        form = AuthenticationForm(data=login_data)
         if form.is_valid():
             user = form.get_user()
 
@@ -252,7 +255,7 @@ def custom_login(request):
                 return redirect('change_password')
 
             messages.success(request, f"Добро пожаловать, {user.username}!")
-            return redirect('dashboard') # afo Перенаправляем на дашборд после входа
+            return redirect('dashboard')  # Перенаправляем на дашборд после входа
         else:
             messages.error(request, "Неверное имя пользователя или пароль.")
     else:
@@ -1241,9 +1244,12 @@ def create_schedule_view(request):
     employees_with_workouts = []
     for emp in employee_models_with_workouts:
         workouts = list(emp.workout_types.values('id', 'name', 'category'))
+        user = emp.user_profile.user
+        display_name = user.get_full_name().strip() or user.username
         employees_with_workouts.append({
             'id': emp.user_profile.id,
             'username': emp.user_profile.user.username,
+            'display_name': display_name,
             'workout_types': workouts
         })
 
@@ -1501,9 +1507,12 @@ def schedule_detail(request, schedule_id):
     employees_with_workouts = []
     for emp in employee_models_with_workouts:
         workouts = list(emp.workout_types.values('id', 'name', 'category'))
+        user = emp.user_profile.user
+        display_name = user.get_full_name().strip() or user.username
         employees_with_workouts.append({
             'id': emp.user_profile.id,
             'username': emp.user_profile.user.username,
+            'display_name': display_name,
             'workout_types': workouts,
         })
 

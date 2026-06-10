@@ -1,52 +1,99 @@
+#описание какие контейнеры будут
+
 services:
   db:
+    # Готовый официальный образ PostgreSQL версии 16 на легковесной Alpine Linux.
     image: postgres:16-alpine
     container_name: schedule_db
+    # Автоматически перезапускать контейнер, пока его не остановили вручную.
     restart: unless-stopped
+    # Переменные окружения для первичной настройки PostgreSQL.
     environment:
+      # Имя базы данных, которая будет создана при первом запуске контейнера.
       POSTGRES_DB: schedule_optimizer
+      # Имя пользователя PostgreSQL.
       POSTGRES_USER: postgres
+      # Пароль берется из файла .env/.env.docker или переменных окружения хоста.
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    # Проверка готовности базы данных перед запуском зависимых контейнеров.
     healthcheck:
+      # Команда проверяет, принимает ли PostgreSQL подключения к базе schedule_optimizer.
       test: ["CMD-SHELL", "pg_isready -U postgres -d schedule_optimizer"]
+      # Проверять состояние базы каждые 5 секунд.
       interval: 5s
+      # Ждать ответ от проверки не дольше 5 секунд.
       timeout: 5s
+      # Сделать до 20 попыток перед признанием контейнера неготовым.
       retries: 20
+    # Постоянное хранилище для данных PostgreSQL.
     volumes:
+      # Docker volume pg_data хранит файлы базы внутри /var/lib/postgresql/data.
       - pg_data:/var/lib/postgresql/data
 
+  
   backend:
+    # Инструкция Docker Compose собрать образ backend из Dockerfile.
     build:
+      # Контекст сборки - текущая папка schedule_optimizer.
       context: .
+      # Файл с инструкциями сборки backend-образа.
       dockerfile: Dockerfile
     container_name: schedule_backend
+    # Автоматически перезапускать backend, пока его не остановили вручную.
     restart: unless-stopped
+    # Файл с переменными окружения для Django внутри Docker.
     env_file:
+      # Здесь обычно указаны USE_POSTGRES, POSTGRES_HOST=db и другие настройки.
       - .env.docker
+    # Указывает, что backend зависит от контейнера базы данных.
     depends_on:
+      # Зависимость именно от сервиса db.
       db:
+        # Запускать backend только после успешной healthcheck-проверки базы.
         condition: service_healthy
+    # Команда запуска: миграции, сбор статики и запуск Django-сервера.
     command: sh -c "python manage.py migrate && python manage.py collectstatic --noinput && python manage.py runserver 0.0.0.0:8000"
+    # Открывает порт 8000 только внутри docker-сети для других контейнеров.
     expose:
+      # Внутренний порт Django, к которому подключается frontend/Nginx.
       - "8000"
+    # Общие хранилища для файлов, которыми backend делится с frontend.
     volumes:
+      # Загруженные пользователями файлы сохраняются в общий volume media_data.
       - media_data:/app/media
+      # Собранная статика Django сохраняется в общий volume static_data.
       - static_data:/app/staticfiles
 
+  # Контейнер frontend-части: Nginx принимает запросы из браузера.
   frontend:
+    # Готовый официальный образ Nginx версии 1.27 на Alpine Linux.
     image: nginx:1.27-alpine
+    # Понятное имя контейнера frontend/Nginx.
     container_name: schedule_frontend
+    # Автоматически перезапускать frontend, пока его не остановили вручную.
     restart: unless-stopped
+    # Указывает, что frontend запускается после backend.
     depends_on:
+      # Frontend проксирует запросы в backend, поэтому зависит от него.
       - backend
+    # Проброс портов с компьютера в контейнер.
     ports:
+      # localhost:8000 на компьютере открывает порт 80 внутри контейнера Nginx.
       - "8000:80"
+    # Подключение конфигурации Nginx и общих файлов static/media.
     volumes:
+      # Конфиг Nginx монтируется внутрь контейнера только для чтения.
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      # Nginx читает пользовательские файлы из общего media volume.
       - media_data:/app/media:ro
+      # Nginx читает собранную статику из общего static volume.
       - static_data:/app/staticfiles:ro
 
+# Раздел volumes описывает постоянные Docker-хранилища.
 volumes:
+  # Хранилище данных PostgreSQL, чтобы база не исчезала после перезапуска контейнера.
   pg_data:
+  # Хранилище пользовательских media-файлов.
   media_data:
+  # Хранилище собранных static-файлов Django.
   static_data:

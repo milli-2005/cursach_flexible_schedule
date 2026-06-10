@@ -10,6 +10,7 @@ def _load_env_file(path: Path) -> None:
     """Простой загрузчик .env для локального запуска без дополнительных библиотек."""
     if not path.exists():
         return
+    override_existing = not Path('/.dockerenv').exists()
     for raw_line in path.read_text(encoding='utf-8').splitlines():
         line = raw_line.strip()
         if not line or line.startswith('#') or '=' not in line:
@@ -22,7 +23,10 @@ def _load_env_file(path: Path) -> None:
         if '#' in value and not (value.startswith('"') or value.startswith("'")):
             value = value.split('#', 1)[0].rstrip()
         value = value.strip('"').strip("'")
-        os.environ.setdefault(key, value)
+        if override_existing:
+            os.environ[key] = value
+        else:
+            os.environ.setdefault(key, value)
 
 
 _load_env_file(BASE_DIR / '.env')
