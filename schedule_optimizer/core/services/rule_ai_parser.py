@@ -1,4 +1,6 @@
-﻿import json
+"""Интеграция с AI-парсером, который пытается превратить текст правила в структурированные параметры."""
+
+import json
 import logging
 from typing import Any, Dict, Tuple
 
@@ -13,6 +15,7 @@ SUPPORTED_CATEGORIES = {"calm", "cardio", "strength", "dance", "other"}
 
 
 def _build_prompt(rule_text: str) -> str:
+    """Собирает промпт для AI-модели, чтобы она распознала правило распределения."""
     schema = {
         "rule_type": "weekly_limit | calm_consecutive | alternation | daily_duplicate_limit",
         "severity": "hard | soft",
@@ -90,6 +93,7 @@ def _build_prompt(rule_text: str) -> str:
 
 
 def _validate_ai_result(payload: Dict[str, Any]) -> Tuple[bool, str]:
+    """Проверяет, что ответ AI содержит нужные поля и безопасен для сохранения."""
     if payload.get("need_clarification") is True:
         return False, payload.get("error") or "Нужно уточнение правила."
 
@@ -147,6 +151,7 @@ def _validate_ai_result(payload: Dict[str, Any]) -> Tuple[bool, str]:
 
 
 def try_parse_rule_with_ai(rule_text: str):
+    """Пытается распознать правило через AI и возвращает результат без падения страницы."""
     if not getattr(settings, "RULE_AI_ENABLED", False):
         return {"success": False, "error": "AI отключен в настройках.", "source": "ai"}
 

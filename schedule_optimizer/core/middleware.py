@@ -1,3 +1,5 @@
+"""Middleware-проверки, которые выполняются вокруг каждого HTTP-запроса."""
+
 import json
 
 from django.http import JsonResponse
@@ -8,10 +10,13 @@ from .error_utils import humanize_error_text, humanize_exception
 
 
 class FriendlyErrorMiddleware:
+    """Перехватывает ошибки ответа и показывает пользователю более дружелюбную страницу."""
     def __init__(self, get_response):
+        """Выполняет вспомогательное действие внутри своей части проекта."""
         self.get_response = get_response
 
     def __call__(self, request):
+        """Выполняет вспомогательное действие внутри своей части проекта."""
         try:
             response = self.get_response(request)
             return self._normalize_json_error_response(request, response)
@@ -33,6 +38,7 @@ class FriendlyErrorMiddleware:
             )
 
     def _normalize_json_error_response(self, request, response):
+        """Приводит значение к единому формату, чтобы сравнения и фильтры работали стабильно."""
         if not request.path.startswith("/api/"):
             return response
 
@@ -76,9 +82,11 @@ class ForcePasswordChangeMiddleware:
     """
 
     def __init__(self, get_response):
+        """Выполняет вспомогательное действие внутри своей части проекта."""
         self.get_response = get_response
 
     def __call__(self, request):
+        """Выполняет вспомогательное действие внутри своей части проекта."""
         user = getattr(request, "user", None)
         if user and user.is_authenticated and hasattr(user, "profile"):
             profile = user.profile

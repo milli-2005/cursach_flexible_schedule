@@ -1,3 +1,5 @@
+"""Фоновые задачи Celery для напоминаний и автоматической обработки графиков."""
+
 # core/tasks.py
 
 from celery import shared_task
@@ -11,6 +13,7 @@ from .models import Schedule, UserProfile
 # === ЗАДАЧА 1: Напоминание о доступности  ===
 @shared_task
 def send_availability_reminder():
+    """Фоновая задача отправляет сотрудникам напоминание о заполнении доступности."""
     # Получаем глобальные настройки
     try:
         settings_obj = GlobalSettings.objects.get(pk=1)
@@ -47,6 +50,7 @@ def send_availability_reminder():
 # === ЗАДАЧА 2: Автоматическое утверждение графика (каждые 10 мин) ===
 @shared_task
 def auto_approve_schedules():
+    """Фоновая задача автоматически утверждает графики после истечения времени согласования."""
     one_hour_ago = timezone.now() - timedelta(hours=1)
     pending_schedules = Schedule.objects.filter(
         status='pending',

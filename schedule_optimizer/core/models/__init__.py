@@ -1,4 +1,6 @@
-﻿# core/models.py
+"""Модели базы данных: пользователи, сотрудники, графики, смены, заявки, чат и правила."""
+
+# core/models.py
 from django.db import models
 from django.db.models import Q
 from django.contrib.auth.models import User
@@ -11,26 +13,14 @@ class UserProfile(models.Model):
     Расширенный профиль пользователя.
     Связывается со стандартной моделью User через OneToOne.
     """
-    # Роли пользователей
     ROLE_CHOICES = [
         ('employee', 'Сотрудник'),
         ('manager', 'Руководитель'),
     ]
-    # Должности (для бизнес-логики)
-    # POSITION_CHOICES = [
-    #     ('trainer', 'Тренер'),
-    #     ('administrator', 'Администратор'),
-    # ]
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='employee')
     phone = models.CharField(max_length=20, blank=True, verbose_name="Телефон")
-    # position = models.CharField(
-    #     max_length=20,
-    #     choices=POSITION_CHOICES,
-    #     default='trainer',
-    #     verbose_name="Должность"
-    # )
 
     patronymic = models.CharField(
         max_length=150,
@@ -44,10 +34,12 @@ class UserProfile(models.Model):
     invitation_timestamp = models.DateTimeField(null=True, blank=True, verbose_name="Время приглашения/сброса пароля")
 
     class Meta:
+        """Внутренние настройки модели Django: название, сортировка, ограничения или отображение."""
         verbose_name = "Профиль пользователя"
         verbose_name_plural = "Профили пользователей"
 
     def __str__(self):
+        """Возвращает короткое читаемое представление объекта для админки, логов и списков."""
         return f"{self.user.username} ({self.get_role_display()})"
 
 
@@ -66,6 +58,7 @@ class UserProfile(models.Model):
 
 @receiver(post_save, sender=User)
 def save_user_profile(sender, instance, **kwargs):
+    """Сохраняет связанный профиль пользователя после сохранения стандартного User."""
     if hasattr(instance, 'profile'):
         instance.profile.save()
 
@@ -101,10 +94,12 @@ class WorkoutType(models.Model):
     )
 
     class Meta:
+        """Внутренние настройки модели Django: название, сортировка, ограничения или отображение."""
         verbose_name = "Тип занятия"
         verbose_name_plural = "Типы занятий"
 
     def __str__(self):
+        """Возвращает короткое читаемое представление объекта для админки, логов и списков."""
         return self.name
 
     @property
@@ -153,14 +148,17 @@ class Employee(models.Model):
     )
 
     def __str__(self):
+        """Возвращает короткое читаемое представление объекта для админки, логов и списков."""
         return f"{self.user_profile.user.get_full_name()}"
 
 
     class Meta:
+        """Внутренние настройки модели Django: название, сортировка, ограничения или отображение."""
         verbose_name = "Сотрудник"
         verbose_name_plural = "Сотрудники"
 
     def __str__(self):
+        """Возвращает короткое читаемое представление объекта для админки, логов и списков."""
         return f"{self.user_profile.user.get_full_name() or self.user_profile.user.username}"
 
 
@@ -183,17 +181,20 @@ class HourRateChange(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Создано")
 
     class Meta:
+        """Внутренние настройки модели Django: название, сортировка, ограничения или отображение."""
         verbose_name = "Изменение часовой ставки"
         verbose_name_plural = "История изменения часовой ставки"
         ordering = ['-effective_from', '-id']
 
     def __str__(self):
+        """Возвращает короткое читаемое представление объекта для админки, логов и списков."""
         who = self.changed_by.username if self.changed_by_id else "system"
         return f"{self.rate} ₽/ч с {self.effective_from:%Y-%m-%d %H:%M} ({who})"
 
 
 @receiver(post_save, sender=UserProfile)
 def create_employee_for_user_profile(sender, instance, created, **kwargs):
+    """Создает запись сотрудника при создании нового профиля пользователя."""
     if created:
         Employee.objects.get_or_create(user_profile=instance)
 
@@ -219,10 +220,12 @@ class Schedule(models.Model):
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Дата обновления")
 
     class Meta:
+        """Внутренние настройки модели Django: название, сортировка, ограничения или отображение."""
         verbose_name = "График работы"
         verbose_name_plural = "Графики работы"
 
     def __str__(self):
+        """Возвращает короткое читаемое представление объекта для админки, логов и списков."""
         return f"{self.name} ({self.start_date} - {self.end_date})"
 
 
@@ -260,6 +263,7 @@ class ScheduleVersion(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата создания версии")
 
     class Meta:
+        """Внутренние настройки модели Django: название, сортировка, ограничения или отображение."""
         verbose_name = "Версия графика"
         verbose_name_plural = "Версии графиков"
         ordering = ['-version_number', '-id']
@@ -271,6 +275,7 @@ class ScheduleVersion(models.Model):
         ]
 
     def __str__(self):
+        """Возвращает короткое читаемое представление объекта для админки, логов и списков."""
         return f"{self.schedule.name} v{self.version_number}"
 
 
@@ -303,11 +308,13 @@ class ScheduleVersionAssignment(models.Model):
     end_time = models.TimeField(verbose_name="Время окончания")
 
     class Meta:
+        """Внутренние настройки модели Django: название, сортировка, ограничения или отображение."""
         verbose_name = "Снимок смены версии"
         verbose_name_plural = "Снимки смен версий"
         ordering = ['date', 'start_time', 'id']
 
     def __str__(self):
+        """Возвращает короткое читаемое представление объекта для админки, логов и списков."""
         return f"v{self.schedule_version.version_number}: {self.date} {self.start_time}"
 
 
@@ -350,11 +357,13 @@ class ShiftAssignment(models.Model):
     actual_hours = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True, verbose_name="Факт. часы")
 
     class Meta:
+        """Внутренние настройки модели Django: название, сортировка, ограничения или отображение."""
         verbose_name = "Назначение на занятие"
         verbose_name_plural = "Назначения на занятия"
         unique_together = ['employee', 'date', 'start_time']  # Сотрудник не может быть в двух местах одновременно
 
     def __str__(self):
+        """Возвращает короткое читаемое представление объекта для админки, логов и списков."""
         # Единственный, правильный метод __str__
         end_time_str = self.end_time.strftime('%H:%M') if self.end_time else '??:??'
         return f"{self.employee.user.username} - {self.workout_type or 'Работа'} ({self.date} {self.start_time.strftime('%H:%M')}-{end_time_str})"
@@ -374,6 +383,7 @@ class ShiftAssignment(models.Model):
 
     #вычисляет продолжительность смены в часах
     def get_duration(self):
+        """Вычисляет длительность смены в часах по времени начала и окончания."""
         from datetime import datetime, date
         # Создаём "фиктивную" дату (01.01.0001), чтобы превратить время в полноценный datetime
         start = datetime.combine(date.min, self.start_time)  # -> datetime(1, 1, 1, 9, 0)
@@ -412,10 +422,12 @@ class TimeOffRequest(models.Model):
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Дата обновления")
 
     class Meta:
+        """Внутренние настройки модели Django: название, сортировка, ограничения или отображение."""
         verbose_name = "Заявка на отгул"
         verbose_name_plural = "Заявки на отгул"
 
     def __str__(self):
+        """Возвращает короткое читаемое представление объекта для админки, логов и списков."""
         return f"{self.employee} - {self.get_request_type_display()} ({self.start_date} - {self.end_date})"
 
 
@@ -445,10 +457,12 @@ class ShiftSwapRequest(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата создания")
 
     class Meta:
+        """Внутренние настройки модели Django: название, сортировка, ограничения или отображение."""
         verbose_name = "Заявка на обмен сменами"
         verbose_name_plural = "Заявки на обмен сменами"
 
     def __str__(self):
+        """Возвращает короткое читаемое представление объекта для админки, логов и списков."""
         return f"Обмен: {self.from_employee} -> {self.to_employee or 'кандидат не выбран'}"
 
 
@@ -460,10 +474,12 @@ class SwapShift(models.Model):
     shift_assignment = models.ForeignKey(ShiftAssignment, on_delete=models.CASCADE, verbose_name="Смена для обмена")
 
     class Meta:
+        """Внутренние настройки модели Django: название, сортировка, ограничения или отображение."""
         verbose_name = "Смена в обмене"
         verbose_name_plural = "Смены в обмене"
 
     def __str__(self):
+        """Возвращает короткое читаемое представление объекта для админки, логов и списков."""
         return f"{self.shift_assignment} in {self.swap_request}"
 
 
@@ -492,11 +508,13 @@ class OptimizationRule(models.Model):
     priority = models.IntegerField(default=1, verbose_name="Приоритет")
 
     class Meta:
+        """Внутренние настройки модели Django: название, сортировка, ограничения или отображение."""
         verbose_name = "Правило оптимизации"
         verbose_name_plural = "Правила оптимизации"
         ordering = ['priority', 'rule_type']
 
     def __str__(self):
+        """Возвращает короткое читаемое представление объекта для админки, логов и списков."""
         return f"{self.name} ({self.get_rule_type_display()})"
 
 
@@ -534,15 +552,18 @@ class DistributionRule(models.Model):
     updated_at = models.DateTimeField(auto_now=True, verbose_name='Обновлено')
 
     class Meta:
+        """Внутренние настройки модели Django: название, сортировка, ограничения или отображение."""
         verbose_name = 'Правило распределения'
         verbose_name_plural = 'Правила распределения'
         ordering = ['priority', 'id']
 
     def __str__(self):
+        """Возвращает короткое читаемое представление объекта для админки, логов и списков."""
         return self.name
 
 
 class Availability(models.Model):
+    """Модель Django описывает таблицу базы данных и связанные с ней правила поведения."""
     employee = models.ForeignKey(UserProfile, on_delete=models.CASCADE, verbose_name="Сотрудник")
     date = models.DateField(verbose_name="Дата")
     start_time = models.TimeField(verbose_name="Начало слота")
@@ -551,17 +572,20 @@ class Availability(models.Model):
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Последнее обновление")
 
     class Meta:
+        """Внутренние настройки модели Django: название, сортировка, ограничения или отображение."""
         verbose_name = "Доступность"
         verbose_name_plural = "Доступность"
         unique_together = ('employee', 'date', 'start_time')
 
     def __str__(self):
+        """Возвращает короткое читаемое представление объекта для админки, логов и списков."""
         return f"{self.employee.user.username} — {self.date} {self.start_time}–{self.end_time}"
 
 
 
 #согласование графика: модель отзыва
 class ScheduleApproval(models.Model):
+    """Модель Django описывает таблицу базы данных и связанные с ней правила поведения."""
     schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE, related_name='approvals')
     employee = models.ForeignKey(UserProfile, on_delete=models.CASCADE)
     approved = models.BooleanField(null=True)  # True/False/None
@@ -571,6 +595,7 @@ class ScheduleApproval(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        """Внутренние настройки модели Django: название, сортировка, ограничения или отображение."""
         unique_together = ('schedule', 'employee')
 
 
@@ -616,6 +641,7 @@ class ChatConversation(models.Model):
     updated_at = models.DateTimeField(auto_now=True, verbose_name='Обновлен')
 
     class Meta:
+        """Внутренние настройки модели Django: название, сортировка, ограничения или отображение."""
         verbose_name = 'Диалог'
         verbose_name_plural = 'Диалоги'
         constraints = [
@@ -628,6 +654,7 @@ class ChatConversation(models.Model):
         ordering = ['-updated_at']
 
     def __str__(self):
+        """Возвращает короткое читаемое представление объекта для админки, логов и списков."""
         if self.is_group:
             return self.title or f'Группа #{self.id}'
         if self.participant_a and self.participant_b:
@@ -635,6 +662,7 @@ class ChatConversation(models.Model):
         return f'Диалог #{self.id}'
 
     def get_other_user(self, current_user):
+        """Возвращает второго участника личного диалога относительно текущего пользователя."""
         return self.participant_b if self.participant_a_id == current_user.id else self.participant_a
 
 
@@ -657,6 +685,7 @@ class ChatConversationPin(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Закреплено в')
 
     class Meta:
+        """Внутренние настройки модели Django: название, сортировка, ограничения или отображение."""
         verbose_name = 'Закрепленный диалог'
         verbose_name_plural = 'Закрепленные диалоги'
         constraints = [
@@ -665,6 +694,7 @@ class ChatConversationPin(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
+        """Возвращает короткое читаемое представление объекта для админки, логов и списков."""
         return f'{self.user.username} pinned #{self.conversation_id}'
 
 
@@ -689,11 +719,13 @@ class ChatMessage(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Отправлено')
 
     class Meta:
+        """Внутренние настройки модели Django: название, сортировка, ограничения или отображение."""
         verbose_name = 'Сообщение чата'
         verbose_name_plural = 'Сообщения чата'
         ordering = ['created_at']
 
     def __str__(self):
+        """Возвращает короткое читаемое представление объекта для админки, логов и списков."""
         preview = (self.text or '').strip()
         if not preview:
             preview = '[вложение]'
@@ -701,6 +733,7 @@ class ChatMessage(models.Model):
 
 
 class ChatMessageAttachment(models.Model):
+    """Модель Django описывает таблицу базы данных и связанные с ней правила поведения."""
     message = models.ForeignKey(
         ChatMessage,
         on_delete=models.CASCADE,
@@ -713,11 +746,13 @@ class ChatMessageAttachment(models.Model):
     uploaded_at = models.DateTimeField(auto_now_add=True, verbose_name='Загружен')
 
     class Meta:
+        """Внутренние настройки модели Django: название, сортировка, ограничения или отображение."""
         verbose_name = 'Вложение сообщения'
         verbose_name_plural = 'Вложения сообщений'
         ordering = ['id']
 
     def __str__(self):
+        """Возвращает короткое читаемое представление объекта для админки, логов и списков."""
         return f'Файл {self.original_name} к сообщению #{self.message_id}'
 
 
@@ -740,6 +775,7 @@ class ChatMessageRead(models.Model):
     read_at = models.DateTimeField(null=True, blank=True, verbose_name='Прочитано в')
 
     class Meta:
+        """Внутренние настройки модели Django: название, сортировка, ограничения или отображение."""
         verbose_name = 'Статус прочтения сообщения'
         verbose_name_plural = 'Статусы прочтения сообщений'
         constraints = [
@@ -747,4 +783,5 @@ class ChatMessageRead(models.Model):
         ]
 
     def __str__(self):
+        """Возвращает короткое читаемое представление объекта для админки, логов и списков."""
         return f'Чтение сообщения #{self.message_id} пользователем {self.user.username}'

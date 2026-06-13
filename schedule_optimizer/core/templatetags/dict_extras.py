@@ -1,3 +1,5 @@
+"""Минимальные фильтры шаблонов для удобной работы со словарями."""
+
 from django import template
 
 register = template.Library()

@@ -1,3 +1,5 @@
+"""JSON API для пользователей чата, диалогов, сообщений, вложений и прочтения."""
+
 import json
 import os
 
@@ -26,11 +28,13 @@ SYSTEM_MESSAGE_PREFIX = "__system__:"
 
 
 def _full_name(user: User) -> str:
+    """Выполняет вспомогательное действие внутри своей части проекта."""
     name = user.get_full_name().strip()
     return name or user.username
 
 
 def _role_display(user: User) -> str:
+    """Выполняет вспомогательное действие внутри своей части проекта."""
     try:
         return user.profile.get_role_display()
     except Exception:
@@ -38,6 +42,7 @@ def _role_display(user: User) -> str:
 
 
 def _avatar_url(request, user: User) -> str:
+    """Выполняет вспомогательное действие внутри своей части проекта."""
     try:
         if user.profile.avatar:
             return request.build_absolute_uri(user.profile.avatar.url)
@@ -47,10 +52,12 @@ def _avatar_url(request, user: User) -> str:
 
 
 def _ordered_pair(user_a: User, user_b: User):
+    """Выполняет вспомогательное действие внутри своей части проекта."""
     return (user_a, user_b) if user_a.id < user_b.id else (user_b, user_a)
 
 
 def _conversation_participant_ids(conversation: ChatConversation):
+    """Выполняет вспомогательное действие внутри своей части проекта."""
     participant_ids = list(conversation.participants.values_list("id", flat=True))
     if participant_ids:
         return participant_ids
@@ -64,12 +71,14 @@ def _conversation_participant_ids(conversation: ChatConversation):
 
 
 def _ensure_participant(conversation: ChatConversation, user: User) -> bool:
+    """Проверяет обязательное условие и подготавливает объект для дальнейшей работы."""
     if conversation.participants.filter(id=user.id).exists():
         return True
     return conversation.participant_a_id == user.id or conversation.participant_b_id == user.id
 
 
 def _conversation_other_user(conversation: ChatConversation, current_user: User):
+    """Выполняет вспомогательное действие внутри своей части проекта."""
     if conversation.is_group:
         return None
     if conversation.participant_a_id and conversation.participant_b_id:
@@ -78,6 +87,7 @@ def _conversation_other_user(conversation: ChatConversation, current_user: User)
 
 
 def _ensure_direct_conversation(current_user: User, target_user: User) -> ChatConversation:
+    """Проверяет обязательное условие и подготавливает объект для дальнейшей работы."""
     first, second = _ordered_pair(current_user, target_user)
     conversation, _ = ChatConversation.objects.get_or_create(
         participant_a=first,
@@ -89,6 +99,7 @@ def _ensure_direct_conversation(current_user: User, target_user: User) -> ChatCo
 
 
 def _serialize_attachment(request, attachment: ChatMessageAttachment):
+    """Преобразует объект в словарь, который удобно вернуть в JSON или передать в шаблон."""
     return {
         "id": attachment.id,
         "name": attachment.original_name,
@@ -99,6 +110,7 @@ def _serialize_attachment(request, attachment: ChatMessageAttachment):
 
 
 def _serialize_message(request, message: ChatMessage, current_user: User):
+    """Преобразует объект в словарь, который удобно вернуть в JSON или передать в шаблон."""
     attachments = [_serialize_attachment(request, att) for att in message.attachments.all()]
     raw_text = message.text or ""
     is_system = raw_text.startswith(SYSTEM_MESSAGE_PREFIX)
@@ -118,6 +130,7 @@ def _serialize_message(request, message: ChatMessage, current_user: User):
 
 
 def _create_group_event_message(conversation: ChatConversation, actor: User, text: str):
+    """Выполняет вспомогательное действие внутри своей части проекта."""
     text = (text or "").strip()
     if not text:
         return None
@@ -141,6 +154,7 @@ def _create_group_event_message(conversation: ChatConversation, actor: User, tex
 
 
 def _normalize_participant_ids(raw_ids, current_user_id):
+    """Приводит значение к единому формату, чтобы сравнения и фильтры работали стабильно."""
     normalized_ids = []
     for pid in raw_ids or []:
         try:
@@ -153,6 +167,7 @@ def _normalize_participant_ids(raw_ids, current_user_id):
 
 
 def _can_manage_group(conversation: ChatConversation, user: User) -> bool:
+    """Проверяет, разрешено ли пользователю выполнить действие в текущем контексте."""
     if not conversation.is_group or not _ensure_participant(conversation, user):
         return False
     if user.is_superuser:
@@ -166,6 +181,7 @@ def _can_manage_group(conversation: ChatConversation, user: User) -> bool:
 
 
 def _last_message_payload(message: ChatMessage):
+    """Выполняет вспомогательное действие внутри своей части проекта."""
     if not message:
         return None
     text = (message.text or "").strip()
@@ -183,6 +199,7 @@ def _last_message_payload(message: ChatMessage):
 @login_required
 @require_http_methods(["GET"])
 def api_chat_users(request):
+    """Возвращает пользователей, доступных для начала личного или группового чата."""
     query = request.GET.get("q", "").strip()
 
     users = (
@@ -218,6 +235,7 @@ def api_chat_users(request):
 @login_required
 @require_http_methods(["POST"])
 def api_chat_start_conversation(request):
+    """Создает или находит личный диалог между текущим пользователем и выбранным участником."""
     try:
         payload = json.loads(request.body.decode("utf-8") or "{}")
     except json.JSONDecodeError:
@@ -238,6 +256,7 @@ def api_chat_start_conversation(request):
 @login_required
 @require_http_methods(["POST"])
 def api_chat_create_group(request):
+    """Создает групповой чат и добавляет выбранных участников."""
     try:
         payload = json.loads(request.body.decode("utf-8") or "{}")
     except json.JSONDecodeError:
@@ -269,6 +288,7 @@ def api_chat_create_group(request):
 @login_required
 @require_http_methods(["POST"])
 def api_chat_update_group(request):
+    """Обновляет название и состав участников группового чата."""
     try:
         payload = json.loads(request.body.decode("utf-8") or "{}")
     except json.JSONDecodeError:
@@ -343,6 +363,7 @@ def api_chat_update_group(request):
 @login_required
 @require_http_methods(["POST"])
 def api_chat_delete_group(request):
+    """Удаляет групповой чат, если пользователь имеет право управления."""
     try:
         payload = json.loads(request.body.decode("utf-8") or "{}")
     except json.JSONDecodeError:
@@ -364,6 +385,7 @@ def api_chat_delete_group(request):
 @login_required
 @require_http_methods(["POST"])
 def api_chat_leave_group(request):
+    """Удаляет текущего пользователя из участников группового чата."""
     try:
         payload = json.loads(request.body.decode("utf-8") or "{}")
     except json.JSONDecodeError:
@@ -405,6 +427,7 @@ def api_chat_leave_group(request):
 @login_required
 @require_http_methods(["GET"])
 def api_chat_conversations(request):
+    """Возвращает список диалогов текущего пользователя с последними сообщениями."""
     conversations = (
         ChatConversation.objects.filter(
             Q(participants=request.user) | Q(participant_a=request.user) | Q(participant_b=request.user)
@@ -500,6 +523,7 @@ def api_chat_conversations(request):
 @login_required
 @require_http_methods(["POST"])
 def api_chat_toggle_pin(request):
+    """Закрепляет или открепляет диалог в списке текущего пользователя."""
     try:
         payload = json.loads(request.body.decode("utf-8") or "{}")
     except json.JSONDecodeError:
@@ -532,6 +556,7 @@ def api_chat_toggle_pin(request):
 @login_required
 @require_http_methods(["GET"])
 def api_chat_messages(request, conversation_id):
+    """Возвращает сообщения выбранного диалога и отмечает входящие как прочитанные."""
     conversation = get_object_or_404(ChatConversation.objects.prefetch_related("participants"), id=conversation_id)
     if not _ensure_participant(conversation, request.user):
         return JsonResponse({"success": False, "error": "Нет доступа к диалогу."}, status=403)
@@ -604,6 +629,7 @@ def api_chat_messages(request, conversation_id):
 @login_required
 @require_http_methods(["POST"])
 def api_chat_send_message(request):
+    """Создает сообщение в диалоге и сохраняет прикрепленные файлы."""
     is_multipart = request.content_type and request.content_type.startswith("multipart/form-data")
     if is_multipart:
         conversation_id = request.POST.get("conversation_id")
@@ -689,6 +715,7 @@ def api_chat_send_message(request):
 @login_required
 @require_http_methods(["GET"])
 def api_chat_unread_count(request):
+    """Возвращает количество непрочитанных сообщений для индикатора в интерфейсе."""
     unread_count = (
         ChatMessageRead.objects.filter(user=request.user, read_at__isnull=True)
         .exclude(message__sender=request.user)

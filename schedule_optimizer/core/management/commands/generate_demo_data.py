@@ -1,3 +1,5 @@
+"""Команда Django для заполнения проекта демонстрационными данными."""
+
 # core/management/commands/generate_demo_data.py
 from django.core.management.base import BaseCommand
 from django.utils import timezone
@@ -7,9 +9,11 @@ import random
 
 
 class Command(BaseCommand):
+    """Команда manage.py, выполняющая служебное действие проекта."""
     help = 'Генерирует демо-данные для отчётов: графики и назначения за последние 4 недели'
 
     def handle(self, *args, **options):
+        """Выполняет вспомогательное действие внутри своей части проекта."""
         # Получаем всех сотрудников и типы занятий
         employees = UserProfile.objects.filter(role='employee')
         workout_types = WorkoutType.objects.all()

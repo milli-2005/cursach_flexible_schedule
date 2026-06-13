@@ -1,3 +1,5 @@
+"""Контекстные процессоры добавляют глобальные уведомления в шаблоны без ручной передачи в каждом view."""
+
 from datetime import timedelta
 
 from django.urls import reverse
@@ -7,6 +9,7 @@ from .models import ScheduleApproval
 
 
 def _next_week_bounds(today):
+    """Вычисляет даты начала и конца следующей недели для уведомлений сотрудника."""
     days_to_next_monday = (7 - today.weekday()) % 7
     if days_to_next_monday == 0:
         days_to_next_monday = 7
@@ -16,6 +19,7 @@ def _next_week_bounds(today):
 
 
 def pending_schedule_approval_notice(request):
+    """Добавляет в шаблоны уведомление о графиках, которые сотрудник еще не подтвердил."""
     if not request.user.is_authenticated:
         return {}
 
@@ -49,6 +53,7 @@ def pending_schedule_approval_notice(request):
 
 
 def manager_schedule_feedback_notice(request):
+    """Добавляет руководителю уведомление об актуальных ответах сотрудников по графикам."""
     if not request.user.is_authenticated:
         return {}
 
@@ -57,13 +62,12 @@ def manager_schedule_feedback_notice(request):
         return {}
 
     today = timezone.localdate()
-    window_start = today - timedelta(days=14)
 
     approvals_qs = (
         ScheduleApproval.objects.filter(
             schedule__status="pending",
             responded_at__isnull=False,
-            schedule__end_date__gte=window_start,
+            schedule__end_date__gte=today,
             approved__isnull=False,
         )
         .select_related("schedule", "employee__user")

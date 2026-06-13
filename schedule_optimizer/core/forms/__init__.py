@@ -1,14 +1,17 @@
+"""Django-формы для приглашения пользователей, редактирования профиля и настройки сотрудников."""
+
 # core/forms.py
 from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import UserCreationForm, SetPasswordForm
-from .models import UserProfile
+from ..models import UserProfile
 import re
-from .models import Employee, WorkoutType
+from ..models import Employee, WorkoutType
 
 
 
 class UserInvitationForm(forms.ModelForm):
+    """Описывает форму Django: поля, проверки и подготовку данных пользователя."""
     username = forms.CharField(max_length=150, label="Имя пользователя")
     email = forms.EmailField(label="Email")
     first_name = forms.CharField(max_length=150, label="Имя")
@@ -18,13 +21,16 @@ class UserInvitationForm(forms.ModelForm):
     role = forms.ChoiceField(choices=UserProfile.ROLE_CHOICES, label="Роль")
 
     class Meta:
+        """Класс группирует данные и поведение для своей части проекта."""
         model = UserProfile
         fields = ['role', 'phone', 'patronymic']
 
     def clean_patronymic(self):
+        """Проверяет и нормализует значение поля формы перед сохранением данных."""
         return self.cleaned_data['patronymic'].strip() or ''
 
     def clean_username(self):
+        """Проверяет и нормализует значение поля формы перед сохранением данных."""
         username = self.cleaned_data['username'].strip()
         if not username:
             raise forms.ValidationError("Имя пользователя обязательно.")
@@ -35,6 +41,7 @@ class UserInvitationForm(forms.ModelForm):
         return username
 
     def clean_email(self):
+        """Проверяет и нормализует значение поля формы перед сохранением данных."""
         email = self.cleaned_data['email'].strip()
         if not email:
             raise forms.ValidationError("Email обязателен.")
@@ -43,6 +50,7 @@ class UserInvitationForm(forms.ModelForm):
         return email
 
     def clean_first_name(self):
+        """Проверяет и нормализует значение поля формы перед сохранением данных."""
         name = self.cleaned_data['first_name'].strip()
         if not name:
             raise forms.ValidationError("Имя обязательно.")
@@ -51,12 +59,14 @@ class UserInvitationForm(forms.ModelForm):
         return name
 
     def clean_last_name(self):
+        """Проверяет и нормализует значение поля формы перед сохранением данных."""
         name = self.cleaned_data['last_name'].strip()
         if name and not re.match(r'^[а-яА-ЯёЁ\s]+$', name):
             raise forms.ValidationError("Фамилия должна содержать только русские буквы.")
         return name
 
     def clean_phone(self):
+        """Проверяет и нормализует значение поля формы перед сохранением данных."""
         phone = self.cleaned_data['phone'].strip()
         if not phone:
             raise forms.ValidationError("Телефон обязателен.")
@@ -68,6 +78,7 @@ class UserInvitationForm(forms.ModelForm):
         return cleaned
 
     def clean_role(self):
+        """Проверяет и нормализует значение поля формы перед сохранением данных."""
         role = self.cleaned_data['role']
         if not role:
             raise forms.ValidationError("Роль обязательна.")
@@ -101,15 +112,17 @@ class CustomSetPasswordForm(SetPasswordForm):
     Можно добавить стили Bootstrap.
     """
     def __init__(self, *args, **kwargs):
+        """Выполняет вспомогательное действие внутри своей части проекта."""
         super().__init__(*args, **kwargs)
         for field_name in ['new_password1', 'new_password2']:
             self.fields[field_name].widget.attrs.update({'class': 'form-control'})
 
 
 from django import forms
-from .models import Employee, WorkoutType
+from ..models import Employee, WorkoutType
 
 class EmployeeAdminForm(forms.ModelForm):
+    """Описывает форму Django: поля, проверки и подготовку данных пользователя."""
     workout_types = forms.ModelMultipleChoiceField(
         queryset=WorkoutType.objects.all(),
         widget=forms.CheckboxSelectMultiple,
@@ -118,10 +131,13 @@ class EmployeeAdminForm(forms.ModelForm):
     )
 
     class Meta:
+        """Класс группирует данные и поведение для своей части проекта."""
         model = Employee
         fields = ['workout_types']
 class UserProfileEditForm(forms.ModelForm):
+    """Описывает форму Django: поля, проверки и подготовку данных пользователя."""
     class Meta:
+        """Класс группирует данные и поведение для своей части проекта."""
         model = UserProfile
         fields = ['phone', 'patronymic', 'avatar']
         labels = {

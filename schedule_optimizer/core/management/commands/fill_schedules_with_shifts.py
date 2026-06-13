@@ -1,12 +1,16 @@
+"""Команда Django для заполнения существующих графиков сменами."""
+
 # core/management/commands/fill_schedules_with_realistic_shifts.py
 from django.core.management.base import BaseCommand
 from core.models import Schedule, ShiftAssignment, UserProfile, WorkoutType
 from datetime import timedelta, time
 
 class Command(BaseCommand):
+    """Команда manage.py, выполняющая служебное действие проекта."""
     help = 'Заполняет утверждённые графики реалистичными сменами (50 минут, кратные 10 минутам)'
 
     def handle(self, *args, **options):
+        """Выполняет вспомогательное действие внутри своей части проекта."""
         employees = UserProfile.objects.filter(role='employee')
         if not employees.exists():
             self.stdout.write(self.style.ERROR('Нет сотрудников'))

@@ -1,3 +1,5 @@
+"""Утилиты отправки почты с запасным поведением на случай ошибок SMTP."""
+
 import logging
 
 from django.conf import settings

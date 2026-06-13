@@ -1,7 +1,10 @@
+"""Обработчики страниц ошибок HTTP 400, 403, 404 и 500."""
+
 from django.shortcuts import render
 
 
 def handler400(request, exception=None):
+    """Показывает страницу ошибки 400, когда запрос пользователя некорректен."""
     return render(
         request,
         "core/errors/400.html",
@@ -11,6 +14,7 @@ def handler400(request, exception=None):
 
 
 def handler403(request, exception=None):
+    """Показывает страницу ошибки 403, когда доступ к действию запрещен."""
     return render(
         request,
         "core/errors/403.html",
@@ -20,6 +24,7 @@ def handler403(request, exception=None):
 
 
 def handler404(request, exception=None):
+    """Показывает страницу ошибки 404, когда нужная страница или объект не найдены."""
     return render(
         request,
         "core/errors/404.html",
@@ -29,6 +34,7 @@ def handler404(request, exception=None):
 
 
 def handler500(request):
+    """Показывает страницу ошибки 500 при непредвиденной ошибке сервера."""
     return render(
         request,
         "core/errors/500.html",

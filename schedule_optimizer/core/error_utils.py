@@ -1,3 +1,5 @@
+"""Утилиты для преобразования технических ошибок в понятные сообщения для пользователя и API."""
+
 import json
 import logging
 from typing import Any
@@ -11,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 def humanize_error_text(text: str) -> str:
+    """Заменяет технический текст ошибки на более понятное русское описание."""
     if not text:
         return "Произошла ошибка. Попробуйте снова."
 
@@ -27,6 +30,7 @@ def humanize_error_text(text: str) -> str:
 
 
 def humanize_exception(exc: Exception) -> str:
+    """Преобразует исключение Python в сообщение, которое можно показать пользователю."""
     if isinstance(exc, json.JSONDecodeError):
         return "Не удалось прочитать данные запроса. Обновите страницу и попробуйте снова."
     if isinstance(exc, KeyError):
@@ -56,6 +60,7 @@ def api_error_response(
     error_key: str = "error",
     extra: dict[str, Any] | None = None,
 ) -> JsonResponse:
+    """Формирует единый JSON-ответ об ошибке для API-обработчиков."""
     message = humanize_exception(exc)
     logger.exception("API error: %s", exc)
 

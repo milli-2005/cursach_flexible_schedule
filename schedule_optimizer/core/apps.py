@@ -1,11 +1,15 @@
+"""Конфигурация приложения core и подключение сигналов при старте Django."""
+
 # core/apps.py
 from django.apps import AppConfig
 
 class CoreConfig(AppConfig):
+    """Описывает Django-приложение core и подключает стартовую настройку приложения."""
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'core'
 
     def ready(self):
+        """Выполняет вспомогательное действие внутри своей части проекта."""
         # Импорты внутри ready()
         from django.db.models.signals import post_save
         from django.contrib.auth.models import User

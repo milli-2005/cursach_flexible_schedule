@@ -1,3 +1,5 @@
+"""JSON API для управления пользователями: список, создание, редактирование, удаление и сброс пароля."""
+
 # core/api_views/user_views.py
 import logging
 from django.http import JsonResponse
@@ -23,15 +25,18 @@ from core.models import WorkoutType
 logger = logging.getLogger(__name__)
 
 def is_admin(user):
+    """Проверяет, может ли пользователь выполнять административные действия в интерфейсе проекта."""
     if not hasattr(user, 'profile'):
         return False
     return user.profile.role == 'manager' or user.is_superuser
 
 def generate_random_password(length=12):
+    """Создает случайный временный пароль для приглашения или сброса доступа пользователя."""
     alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
     return ''.join(secrets.choice(alphabet) for _ in range(length))
 
 def send_user_invitation(user, raw_password):
+    """Формирует и отправляет письмо с приглашением и временным паролем новому пользователю."""
     subject = 'Приглашение в систему планирования смен'
     site_url = getattr(settings, 'PUBLIC_SITE_URL', 'http://localhost:8000')
     html_message = render_to_string('core/emails/user_invitation.html', {
@@ -59,6 +64,7 @@ def send_user_invitation(user, raw_password):
 @user_passes_test(is_admin)
 @require_http_methods(["GET"])
 def api_get_users(request):
+    """Возвращает список пользователей и их профилей для страницы управления."""
     users = User.objects.select_related('profile').all().order_by('username')
     employee_workout_map = {}
     for emp in Employee.objects.select_related('user_profile').prefetch_related('workout_types'):
@@ -103,6 +109,7 @@ def api_get_users(request):
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_invite_user(request):
+    """Создает пользователя через API и возвращает результат операции в JSON."""
     try:
         data = json.loads(request.body.decode('utf-8'))
     except json.JSONDecodeError:
@@ -157,6 +164,7 @@ def api_invite_user(request):
 @user_passes_test(is_admin)
 @require_http_methods(["GET"])
 def api_get_user_detail(request, user_id):
+    """Возвращает подробные данные выбранного пользователя для формы редактирования."""
     try:
         user = User.objects.select_related('profile').get(id=user_id)
         return JsonResponse({
@@ -179,6 +187,7 @@ def api_get_user_detail(request, user_id):
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_update_user(request, user_id):
+    """Обновляет данные пользователя и связанные настройки сотрудника через API."""
     logger.info(f"Обновление пользователя {user_id}")
     try:
         user = User.objects.get(id=user_id)
@@ -241,6 +250,7 @@ def api_update_user(request, user_id):
 @csrf_exempt
 @require_http_methods(["DELETE"])
 def api_delete_user(request, user_id):
+    """Удаляет пользователя через API после проверки прав доступа."""
     try:
         user = User.objects.get(id=user_id)
         user.delete()
@@ -253,6 +263,7 @@ def api_delete_user(request, user_id):
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_reset_user_password(request, user_id):
+    """Сбрасывает пароль пользователя через API и отправляет новый временный пароль."""
     try:
         user = User.objects.get(id=user_id)
         raw_password = generate_random_password()

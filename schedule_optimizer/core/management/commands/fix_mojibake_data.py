@@ -1,3 +1,5 @@
+"""Команда Django для исправления поврежденной кодировки в данных базы."""
+
 from django.apps import apps
 from django.core.management.base import BaseCommand
 from django.db import transaction
@@ -10,6 +12,7 @@ CYRILLIC_MOJIBAKE_RE = re.compile(r'(?:Р.|С.){3,}')
 
 
 def _has_non_russian_cyrillic(text: str) -> bool:
+    """Выполняет вспомогательное действие внутри своей части проекта."""
     for ch in text:
         o = ord(ch)
         if 0x0400 <= o <= 0x04FF and not ((0x0410 <= o <= 0x044F) or o in (0x0401, 0x0451)):
@@ -18,6 +21,7 @@ def _has_non_russian_cyrillic(text: str) -> bool:
 
 
 def _looks_mojibake(text: str) -> bool:
+    """Выполняет вспомогательное действие внутри своей части проекта."""
     if not text:
         return False
     if '�' in text:
@@ -34,6 +38,7 @@ def _looks_mojibake(text: str) -> bool:
 
 
 def _decode_mojibake(value: str) -> str:
+    """Выполняет вспомогательное действие внутри своей части проекта."""
     # Fast path
     if not _looks_mojibake(value):
         return value
@@ -46,6 +51,7 @@ def _decode_mojibake(value: str) -> str:
             pass
 
     def score(s: str) -> tuple[int, int]:
+        """Выполняет вспомогательное действие внутри своей части проекта."""
         bad = 0
         for ch in s:
             o = ord(ch)
@@ -59,10 +65,12 @@ def _decode_mojibake(value: str) -> str:
 
 
 class Command(BaseCommand):
+    """Команда manage.py, выполняющая служебное действие проекта."""
     help = 'Fix mojibake in text fields across database records.'
 
     @transaction.atomic
     def handle(self, *args, **options):
+        """Выполняет вспомогательное действие внутри своей части проекта."""
         updated_rows = 0
         scanned_rows = 0
 

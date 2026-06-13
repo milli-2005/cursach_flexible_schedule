@@ -1,4 +1,6 @@
-﻿import os
+"""Основные настройки Django-проекта: приложения, база данных, статика, почта и фоновые задачи."""
+
+import os
 from pathlib import Path
 from celery.schedules import crontab
 
@@ -88,6 +90,7 @@ WSGI_APPLICATION = 'schedule_optimizer.wsgi.application'
 
 
 def _env_bool(name: str, default: bool = False) -> bool:
+    """Преобразует строковое значение переменной окружения в boolean."""
     raw = os.getenv(name)
     if raw is None:
         return default

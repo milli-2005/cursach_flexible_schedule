@@ -1,3 +1,5 @@
+"""JSON API для создания, просмотра и согласования заявок на обмен сменами."""
+
 # core/swap_views.py
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -8,7 +10,7 @@ from django.db.models import Q
 from ..models import ShiftAssignment, Employee, ShiftSwapRequest, SwapShift
 import json
 from ..error_utils import humanize_exception
-from ..api_schedule_views import _build_candidate_rows, _slot_to_time_slot
+from .schedule_views import _build_candidate_rows, _slot_to_time_slot
 
 import logging
 
@@ -16,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 def is_admin(user):
+    """Проверяет, может ли пользователь выполнять административные действия в интерфейсе проекта."""
     if not hasattr(user, 'profile'):
         return False
     return user.profile.role == 'manager' or user.is_superuser
@@ -67,6 +70,7 @@ def api_employees_for_swap(request):
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_create_swap_request(request):
+    """Создает заявку на обмен выбранных смен от имени текущего сотрудника."""
     try:
         data = json.loads(request.body)
         shift_ids_raw = data.get('shift_ids')
@@ -197,6 +201,7 @@ def api_swap_request_candidates(request, swap_id):
 
 @login_required
 def manager_swap_requests(request):
+    """Показывает руководителю заявки сотрудников на обмен сменами."""
     if request.user.profile.role != 'manager':
         messages.error(request, "Доступ запрещён.")
         return redirect('dashboard')
@@ -220,6 +225,7 @@ def manager_swap_requests(request):
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_approve_swap_request(request, swap_id):
+    """Подтверждает обмен сменами и переносит смены выбранному сотруднику."""
     try:
         body = {}
         try:
@@ -323,6 +329,7 @@ def api_approve_swap_request(request, swap_id):
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_reject_swap_request(request, swap_id):
+    """Отклоняет заявку на обмен сменами по решению руководителя."""
     try:
         swap = ShiftSwapRequest.objects.get(id=swap_id)
         manager = request.user

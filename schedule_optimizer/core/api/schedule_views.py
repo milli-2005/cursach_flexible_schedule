@@ -1,4 +1,6 @@
-﻿# core/api_schedule_views.py
+"""JSON API для сохранения графиков, версий, согласований и подбора замен."""
+
+# core/api_schedule_views.py
 import json
 import logging
 import re
@@ -16,9 +18,9 @@ from django.utils.dateparse import parse_date
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
-from .error_utils import api_error_response, humanize_exception
-from .email_utils import send_mail_with_fallback
-from .models import (
+from ..error_utils import api_error_response, humanize_exception
+from ..email_utils import send_mail_with_fallback
+from ..models import (
     Availability,
     Employee,
     Schedule,
@@ -34,6 +36,7 @@ logger = logging.getLogger(__name__)
 
 
 def is_manager(user):
+    """Проверяет, есть ли у пользователя роль руководителя для доступа к управленческим разделам."""
     if not hasattr(user, 'profile'):
         return False
     return user.profile.role in ['manager', 'studio_admin']
@@ -45,6 +48,7 @@ def _assert_schedule_editable(schedule: Schedule):
 
 
 def parse_time_slot(time_slot: str):
+    """Разбирает строковый временной слот и возвращает время начала и окончания."""
     if not time_slot or not isinstance(time_slot, str):
         raise ValueError('Не удалось определить временной слот.')
 
@@ -63,12 +67,14 @@ def parse_time_slot(time_slot: str):
 
 
 def _send_schedule_email_async(subject: str, message: str, recipient_list: list[str]):
+    """Запускает отправку письма по графику в отдельном потоке, чтобы не задерживать HTTP-ответ."""
     recipient_list = [email for email in dict.fromkeys(recipient_list or []) if email]
     if not recipient_list:
         logger.warning("Email not sent: recipient list is empty. Subject: %s", subject)
         return
 
     def _job():
+        """Выполняет фоновую отправку письма и логирует результат."""
         try:
             from_email = getattr(settings, 'EMAIL_HOST_USER', None) or settings.DEFAULT_FROM_EMAIL
             ok = send_mail_with_fallback(
@@ -88,6 +94,7 @@ def _send_schedule_email_async(subject: str, message: str, recipient_list: list[
 
 
 def _parse_optional_int(value, field_name: str):
+    """Преобразует необязательное поле запроса в число или возвращает None."""
     if value in (None, ''):
         return None
     try:
@@ -97,6 +104,7 @@ def _parse_optional_int(value, field_name: str):
 
 
 def _shift_signature(shift: ShiftAssignment):
+    """Собирает устойчивую подпись смены для сравнения старого и нового состояния графика."""
     return (
         shift.employee_id,
         shift.date,
@@ -107,6 +115,7 @@ def _shift_signature(shift: ShiftAssignment):
 
 
 def _create_schedule_version(schedule: Schedule, created_by=None, source: str = '', note: str = ''):
+    """Создает снимок текущего графика, чтобы изменения можно было сравнивать и откатывать."""
     last_number = (
         ScheduleVersion.objects.filter(schedule=schedule)
         .order_by('-version_number')
@@ -142,6 +151,7 @@ def _create_schedule_version(schedule: Schedule, created_by=None, source: str = 
 
 
 def _sync_schedule_approvals_and_notify(schedule: Schedule, old_shifts: list, new_shifts: list):
+    """Обновляет согласования сотрудников после изменения графика и отправляет уведомления."""
     old_by_key = {}
     old_employee_shifts = {}
     for shift in old_shifts:
@@ -212,11 +222,13 @@ def _sync_schedule_approvals_and_notify(schedule: Schedule, old_shifts: list, ne
 
 
 def _slot_to_time_slot(start_time):
+    """Преобразует время начала в строку временного слота с окончанием через 50 минут."""
     end_time = (datetime.combine(datetime.min, start_time) + timedelta(minutes=50)).time()
     return f'{start_time.strftime("%H:%M")}-{end_time.strftime("%H:%M")}'
 
 
 def _time_of_day_from_slot(start_time):
+    """Определяет часть дня по времени начала слота: утро, день или вечер."""
     if start_time < datetime.strptime('14:00', '%H:%M').time():
         return 'morning'
     if start_time >= datetime.strptime('16:00', '%H:%M').time():
@@ -225,6 +237,7 @@ def _time_of_day_from_slot(start_time):
 
 
 def _parse_rejection_text_to_slot_hints(text: str):
+    """Извлекает из текста отклонения подсказки по дням недели и частям суток."""
     lower = (text or '').lower()
     days = []
     day_map = {
@@ -253,6 +266,7 @@ def _parse_rejection_text_to_slot_hints(text: str):
 
 
 def _build_candidate_rows(shift_date, time_slot, workout_type_id=None, schedule_id=None, exclude_employee_id=None, limit=3):
+    """Подбирает сотрудников-кандидатов для замены с учетом доступности, нагрузки и направлений."""
     start_time, _ = parse_time_slot(time_slot)
     workout_type = None
     if workout_type_id:
@@ -387,6 +401,7 @@ def _build_candidate_rows(shift_date, time_slot, workout_type_id=None, schedule_
 @csrf_exempt
 @require_http_methods(['POST'])
 def api_substitute_candidates(request):
+    """Возвращает кандидатов на замену для выбранного слота графика."""
     try:
         data = json.loads(request.body.decode('utf-8'))
 
@@ -427,6 +442,7 @@ def api_substitute_candidates(request):
 @csrf_exempt
 @require_http_methods(['PUT'])
 def api_update_schedule(request, schedule_id):
+    """Обновляет график, пересоздает смены, согласования и версию при изменениях."""
     try:
         schedule = get_object_or_404(Schedule, id=schedule_id)
         _assert_schedule_editable(schedule)
@@ -519,6 +535,7 @@ def api_update_schedule(request, schedule_id):
     except Exception as exc:
         return api_error_response(exc, status=400)
 def copy_availability_from_previous_week(employee, current_week_start):
+    """Копирует доступность сотрудника с предыдущей недели на текущую."""
     prev_week_start = current_week_start - timedelta(weeks=1)
     prev_avail = Availability.objects.filter(
         employee=employee,
@@ -547,6 +564,7 @@ def copy_availability_from_previous_week(employee, current_week_start):
 @csrf_exempt
 @require_http_methods(['POST'])
 def api_save_schedule(request):
+    """Создает график, сохраняет назначения и отправляет сотрудникам запрос согласования."""
     schedule = None
     try:
         data = json.loads(request.body.decode('utf-8'))
@@ -670,6 +688,7 @@ def api_save_schedule(request):
 
 
 def _version_assignment_map(version: ScheduleVersion):
+    """Преобразует назначения версии графика в словарь для сравнения версий."""
     result = {}
     rows = version.assignments.select_related('employee__user', 'workout_type').all()
     for row in rows:
@@ -692,6 +711,7 @@ def _version_assignment_map(version: ScheduleVersion):
 @user_passes_test(is_manager)
 @require_http_methods(['GET'])
 def api_schedule_versions(request, schedule_id):
+    """Возвращает историю версий выбранного графика."""
     schedule = get_object_or_404(Schedule, id=schedule_id)
     versions = (
         ScheduleVersion.objects.filter(schedule=schedule)
@@ -724,6 +744,7 @@ def api_schedule_versions(request, schedule_id):
 @user_passes_test(is_manager)
 @require_http_methods(['GET'])
 def api_compare_schedule_versions(request, schedule_id):
+    """Сравнивает две версии графика и возвращает список отличий."""
     schedule = get_object_or_404(Schedule, id=schedule_id)
     left_id = request.GET.get('left_version_id')
     right_id = request.GET.get('right_version_id')
@@ -789,6 +810,7 @@ def api_compare_schedule_versions(request, schedule_id):
 @csrf_exempt
 @require_http_methods(['POST'])
 def api_restore_schedule_version(request, schedule_id, version_id):
+    """Восстанавливает график из выбранной версии и создает новую версию отката."""
     try:
         schedule = get_object_or_404(Schedule, id=schedule_id)
         _assert_schedule_editable(schedule)
@@ -843,6 +865,7 @@ def api_restore_schedule_version(request, schedule_id, version_id):
 @login_required
 @require_http_methods(['POST'])
 def api_approve_schedule(request, schedule_id):
+    """Сохраняет ответ сотрудника по графику: подтверждение или отклонение."""
     try:
         schedule = get_object_or_404(Schedule, id=schedule_id)
         employee = request.user.profile
@@ -898,6 +921,7 @@ def api_approve_schedule(request, schedule_id):
 
 
 def _build_rejection_suggestions(schedule, employee, reject_mode='manual', selected_slots=None, ai_text=''):
+    """Формирует список слотов, по которым сотрудник просит замену при отклонении графика."""
     selected_slots = selected_slots or []
     shifts_qs = ShiftAssignment.objects.filter(
         schedule=schedule,
@@ -998,6 +1022,7 @@ def api_simulate_schedule_variants(request, schedule_id):
         )
 
         def _plan_metrics(plan_map):
+            """Считает простые метрики варианта графика: заполненность и баланс нагрузки."""
             loads = {}
             for item in plan_map.values():
                 emp_id = item.get('employee_id')
@@ -1074,6 +1099,7 @@ def api_simulate_schedule_variants(request, schedule_id):
 @csrf_exempt
 @require_http_methods(['POST'])
 def api_set_schedule_status(request, schedule_id):
+    """Меняет статус графика и возвращает новое отображаемое состояние."""
     try:
         schedule = get_object_or_404(Schedule, id=schedule_id)
         data = json.loads(request.body or '{}')
