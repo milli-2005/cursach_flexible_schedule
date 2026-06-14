@@ -1,25 +1,6 @@
-"""Страницы заявок на отгулы и обмен сменами между сотрудниками."""
+"""Страницы обмена сменами между сотрудниками."""
 
 from .auth import *
-
-@login_required
-def timeoff_requests(request):
-    """Показывает раздел заявок на отгулы с учетом роли текущего пользователя."""
-    if not hasattr(request.user, 'profile'):
-        messages.error(request, "Профиль пользователя не найден.")
-        return redirect('dashboard')
-
-    user_profile = request.user.profile
-    current_role = user_profile.role # Берём роль из профиля
-
-    # Права доступа могут отличаться
-    # Сотрудник видит свои заявки, менеджер - все на согласование
-    context = {
-        'current_role': current_role,
-    }
-    return render(request, 'core/timeoff_requests.html', context)
-
-
 
 @login_required
 def shift_swaps(request):

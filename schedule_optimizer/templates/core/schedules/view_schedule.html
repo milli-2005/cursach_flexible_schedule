@@ -1,5 +1,6 @@
 ﻿<!-- templates/core/schedules/view_schedule.html -->
 {% extends "core/base.html" %}
+{% load custom_filters %}
 
 {% block title %}График {{ schedule.name }} - {{ block.super }}{% endblock %}
 
@@ -34,6 +35,7 @@
 .cell-preview {
     min-height: 38px;
     margin-bottom: 0.35rem;
+    text-align: center;
 }
 
 .cell-controls {
@@ -752,21 +754,20 @@ html[data-theme='light'] .approved-edit-body { color: #2f1d5d; }
                     </div>
                 {% endif %}
                 <div class="schedule-status-block">
-                    <span class="meta-chip"><strong>Статус</strong> <span id="schedule-status-text">{{ schedule.get_status_display }}</span></span>
+                    <span class="meta-chip"><strong>Статус</strong>
+                        {% if user.profile.role == 'manager' or user.profile.role == 'studio_admin' %}
+                        <select id="schedule-status-select" class="form-select form-select-sm d-inline-block" style="width:auto;padding:0.1rem 1.5rem 0.1rem 0.5rem;font-size:0.85rem;border-radius:6px;">
+                            <option value="draft" {% if schedule.status == 'draft' %}selected{% endif %}>Черновик</option>
+                            <option value="pending" {% if schedule.status == 'pending' %}selected{% endif %}>На согласовании</option>
+                            <option value="approved" {% if schedule.status == 'approved' %}selected{% endif %}>Утвержден</option>
+                        </select>
+                        {% else %}
+                        <span id="schedule-status-text">{{ schedule.get_status_display }}</span>
+                        {% endif %}
+                    </span>
                 </div>
             </div>
         </div>
-        {% if user.profile.role == 'manager' or user.profile.role == 'studio_admin' %}
-            <div class="mt-3 d-flex flex-wrap align-items-center gap-2">
-                <label for="schedule-status-select" class="small fw-semibold mb-0">Сменить статус:</label>
-                <select id="schedule-status-select" class="form-select form-select-sm" style="max-width: 220px;">
-                    <option value="draft" {% if schedule.status == 'draft' %}selected{% endif %}>Черновик</option>
-                    <option value="pending" {% if schedule.status == 'pending' %}selected{% endif %}>На согласовании</option>
-                    <option value="approved" {% if schedule.status == 'approved' %}selected{% endif %}>Утвержден</option>
-                </select>
-                <button id="save-status-btn" type="button" class="btn btn-sm btn-outline-light">Применить статус</button>
-            </div>
-        {% endif %}
         {% if can_edit_schedule %}
             <div class="schedule-actions-panel">
                 <div class="panel-header">
@@ -778,6 +779,7 @@ html[data-theme='light'] .approved-edit-body { color: #2f1d5d; }
                             <button id="toggle-multi-select-btn" class="btn btn-outline-warning">Мультивыбор: выкл</button>
                             <button id="cancel-multi-select-btn" class="btn btn-outline-secondary d-none">Отменить мультивыделение</button>
                             <button id="save-schedule-btn" class="btn btn-primary">Сохранить изменения</button>
+                            <button id="download-pdf-btn" class="btn btn-success">Скачать PDF</button>
                         </div>
                     </div>
                 </div>
@@ -803,7 +805,7 @@ html[data-theme='light'] .approved-edit-body { color: #2f1d5d; }
                     <select id="bulk-employee-select" class="form-select form-select-sm" style="max-width:220px;">
                         <option value="">Тренер...</option>
                         {% for emp in employees %}
-                            <option value="{{ emp.id }}">{{ emp.user.username }}</option>
+                            <option value="{{ emp.id }}">{{ emp.user|short_name }}</option>
                         {% endfor %}
                     </select>
                     <select id="bulk-workout-select" class="form-select form-select-sm" style="max-width:220px;">
@@ -834,7 +836,7 @@ html[data-theme='light'] .approved-edit-body { color: #2f1d5d; }
                         <select id="availability-employee-select" class="form-select form-select-sm" style="min-width:220px;">
                             <option value="">Сотрудник...</option>
                             {% for emp in employees %}
-                                <option value="{{ emp.id }}">{{ emp.user.get_full_name|default:emp.user.username }}</option>
+                                 <option value="{{ emp.id }}">{{ emp.user|short_name }}</option>
                             {% endfor %}
                         </select>
                         <button id="availability-clear-btn" type="button" class="btn btn-sm btn-outline-light">Сбросить</button>
@@ -902,7 +904,7 @@ html[data-theme='light'] .approved-edit-body { color: #2f1d5d; }
                                 <td>{{ v.created_at|date:"d.m.Y H:i" }}</td>
                                 <td>
                                     {% if v.created_by %}
-                                        {{ v.created_by.get_full_name|default:v.created_by.username }}
+                                        {{ v.created_by|short_name }}
                                     {% else %}
                                         system
                                     {% endif %}
@@ -953,7 +955,7 @@ html[data-theme='light'] .approved-edit-body { color: #2f1d5d; }
                         {% if can_edit_schedule %}
                             <div class="cell-preview">
                                 {% if cell.assignment and cell.assignment.employee %}
-                                    <span class="trainer-pill" data-employee-id="{{ cell.assignment.employee.id }}">{{ cell.assignment.employee.user.username }}</span><br>
+                                    <span class="trainer-pill" data-employee-id="{{ cell.assignment.employee.id }}">{{ cell.assignment.employee.user|short_name }}</span><br>
                                     <small class="workout-preview">{{ cell.assignment.workout_type.name|default:"Работа" }}</small>
                                 {% else %}
                                     <span class="trainer-pill">—</span><br>
@@ -965,11 +967,11 @@ html[data-theme='light'] .approved-edit-body { color: #2f1d5d; }
                                     <option value="">Выберите...</option>
                                     {% if cell.assignment and cell.assignment.employee and cell.assignment.employee.id not in editable_employee_ids %}
                                         <option value="{{ cell.assignment.employee.id }}" selected>
-                                            {{ cell.assignment.employee.user.username }}
+                                            {{ cell.assignment.employee.user|short_name }}
                                         </option>
                                     {% endif %}
                                     {% for emp in employees %}
-                                        <option value="{{ emp.id }}" {% if cell.assignment and cell.assignment.employee and cell.assignment.employee.id == emp.id %}selected{% endif %}>{{ emp.user.username }}</option>
+                                        <option value="{{ emp.id }}" {% if cell.assignment and cell.assignment.employee and cell.assignment.employee.id == emp.id %}selected{% endif %}>{{ emp.user|short_name }}</option>
                                     {% endfor %}
                                 </select>
                                 <select class="form-select form-select-sm workout-select">
@@ -986,12 +988,14 @@ html[data-theme='light'] .approved-edit-body { color: #2f1d5d; }
                                 <small class="substitute-hint d-none"></small>
                             </div>
                         {% else %}
+                            <div class="cell-preview">
                             {% if cell.assignment %}
-                                <span class="trainer-pill" data-employee-id="{{ cell.assignment.employee.id }}">{{ cell.assignment.employee.user.username }}</span><br>
+                                <span class="trainer-pill" data-employee-id="{{ cell.assignment.employee.id }}">{{ cell.assignment.employee.user|short_name }}</span><br>
                                 <small>{{ cell.assignment.workout_type.name|default:"Работа" }}</small>
                             {% else %}
                                 <em>—</em>
                             {% endif %}
+                            </div>
                         {% endif %}
                     </td>
                     {% endfor %}
@@ -1764,14 +1768,12 @@ async function ensureApprovedEditConfirmation() {
 
 document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.trainer-pill').forEach(colorizeTrainerPill);
-    const saveStatusBtn = document.getElementById('save-status-btn');
     const statusSelect = document.getElementById('schedule-status-select');
-    const statusText = document.getElementById('schedule-status-text');
-    if (saveStatusBtn && statusSelect) {
-        saveStatusBtn.addEventListener('click', async function () {
-            const nextStatus = statusSelect.value;
+    if (statusSelect) {
+        statusSelect.addEventListener('change', async function () {
+            const nextStatus = this.value;
             if (!nextStatus) return;
-            saveStatusBtn.disabled = true;
+            this.disabled = true;
             try {
                 const response = await fetch(SET_STATUS_API_URL, {
                     method: 'POST',
@@ -1786,15 +1788,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     throw new Error(data.error || 'Не удалось изменить статус.');
                 }
                 SCHEDULE_STATUS = data.status || nextStatus;
-                if (statusText) {
-                    statusText.textContent = data.status_display || STATUS_DISPLAY[SCHEDULE_STATUS] || SCHEDULE_STATUS;
-                }
-                APPROVED_EDIT_CONFIRMED = false;
-                showGlobalNotification(`Статус обновлен: ${data.status_display || STATUS_DISPLAY[SCHEDULE_STATUS]}`, 'success');
+                showGlobalNotification(`Статус обновлён: ${data.status_display || STATUS_DISPLAY[SCHEDULE_STATUS]}`, 'success');
             } catch (err) {
                 showGlobalNotification(err.message || 'Ошибка обновления статуса.', 'error');
+                this.value = '{{ schedule.status }}';
             } finally {
-                saveStatusBtn.disabled = false;
+                this.disabled = false;
             }
         });
     }
@@ -1864,6 +1863,25 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (!await ensureApprovedEditConfirmation()) return;
                 autoFillEmptyCells();
                 showGlobalNotification('Пустые слоты заполнены автоматически.', 'success');
+            });
+        }
+        const downloadPdfBtn = document.getElementById('download-pdf-btn');
+        if (downloadPdfBtn) {
+            downloadPdfBtn.addEventListener('click', async function () {
+                try {
+                    const response = await fetch('/schedules/{{ schedule.id }}/export/pdf/');
+                    const blob = await response.blob();
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = '{{ schedule.name|default:"График" }}.pdf'.replace(/[<>:"/\\|?*]/g, '_');
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                } catch (e) {
+                    showGlobalNotification('Ошибка скачивания PDF', 'error');
+                }
             });
         }
         if (simulateVariantsBtn) {

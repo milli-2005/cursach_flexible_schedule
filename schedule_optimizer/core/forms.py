@@ -4,9 +4,9 @@
 from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import UserCreationForm, SetPasswordForm
-from ..models import UserProfile
+from .models import UserProfile
 import re
-from ..models import Employee, WorkoutType
+from .models import Employee, WorkoutType
 
 
 
@@ -85,27 +85,6 @@ class UserInvitationForm(forms.ModelForm):
         return role
 
 
-# class UserProfileEditForm(forms.ModelForm):
-#     """
-#     Форма для редактирования профиля пользователя.
-#     Теперь включает только актуальные поля: телефон и должность.
-#     """
-#     class Meta:
-#         model = UserProfile
-#         # Убираем 'department', так как его больше нет в модели
-#         fields = ['phone', 'position']
-#         labels = {
-#             'phone': 'Телефон',
-#             'position': 'Должность',
-#         }
-#         widgets = {
-#             'phone': forms.TextInput(attrs={'class': 'form-control'}),
-#             'position': forms.Select(attrs={'class': 'form-select'}), # Используем Select для выпадающего списка
-#         }
-
-
-
-# Оставим SetPasswordForm как есть, если используется
 class CustomSetPasswordForm(SetPasswordForm):
     """
     Кастомная форма для смены пароля, наследуется от SetPasswordForm.
@@ -117,9 +96,6 @@ class CustomSetPasswordForm(SetPasswordForm):
         for field_name in ['new_password1', 'new_password2']:
             self.fields[field_name].widget.attrs.update({'class': 'form-control'})
 
-
-from django import forms
-from ..models import Employee, WorkoutType
 
 class EmployeeAdminForm(forms.ModelForm):
     """Описывает форму Django: поля, проверки и подготовку данных пользователя."""
@@ -134,6 +110,7 @@ class EmployeeAdminForm(forms.ModelForm):
         """Класс группирует данные и поведение для своей части проекта."""
         model = Employee
         fields = ['workout_types']
+
 class UserProfileEditForm(forms.ModelForm):
     """Описывает форму Django: поля, проверки и подготовку данных пользователя."""
     class Meta:

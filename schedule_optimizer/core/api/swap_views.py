@@ -199,26 +199,6 @@ def api_swap_request_candidates(request, swap_id):
         return JsonResponse({'success': False, 'error': humanize_exception(e)})
 
 
-@login_required
-def manager_swap_requests(request):
-    """Показывает руководителю заявки сотрудников на обмен сменами."""
-    if request.user.profile.role != 'manager':
-        messages.error(request, "Доступ запрещён.")
-        return redirect('dashboard')
-
-    # Все заявки на обмен
-    swap_requests = ShiftSwapRequest.objects.select_related(
-        'from_employee__user_profile__user',
-        'to_employee__user_profile__user',
-        'shift_assignment__workout_type'
-    ).order_by('-created_at')
-
-    context = {
-        'swap_requests': swap_requests,
-    }
-    return render(request, 'core/swaps/manager_swap_requests.html', context)
-
-
 #API для одобрения/отклонения
 @login_required
 @user_passes_test(is_admin)

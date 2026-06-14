@@ -69,6 +69,7 @@ urlpatterns = [
     path('schedules/create/', views.create_schedule_view, name='create_schedule'),
     path('schedules/rules/', views.distribution_rules_page, name='distribution_rules'),
     path('schedules/<int:schedule_id>/', views.schedule_detail, name='schedule_detail'),
+    path('schedules/<int:schedule_id>/export/pdf/', views.schedule_pdf_export, name='schedule_pdf_export'),
     path('schedules/<int:schedule_id>/edit/', views.edit_schedule_view, name='edit_schedule'),
     path('schedules/<int:schedule_id>/delete/', views.delete_schedule_view, name='delete_schedule'),
     path('my-schedule/', views.employee_schedule, name='employee_schedule'),
@@ -102,8 +103,7 @@ urlpatterns = [
     path('api/workout-types/<int:workout_type_id>/delete/', api_delete_workout_type, name='api_delete_workout_type'),
     path('api/employee-workout-types/<int:user_id>/', api_get_employee_workout_types, name='api_get_employee_workout_types'),
 
-    # Заявки и обмен сменами
-    path('timeoff/', views.timeoff_requests, name='timeoff_requests'),
+    # Обмен сменами
     path('shift-swaps/', views.shift_swaps, name='shift_swaps'),
     path('manager-swaps/', views.manager_swap_requests, name='manager_swap_requests'),
     path('api/my-shifts-for-swap/', api_my_shifts_for_swap, name='api_my_shifts_for_swap'),

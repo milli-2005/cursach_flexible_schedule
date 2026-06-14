@@ -99,9 +99,9 @@ def _env_bool(name: str, default: bool = False) -> bool:
 
 # База данных
 USE_POSTGRES = _env_bool('USE_POSTGRES', default=False)
-RULE_AI_ENABLED = _env_bool('RULE_AI_ENABLED', default=False)
+RULE_AI_ENABLED = _env_bool('RULE_AI_ENABLED', default=True)
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '').strip()
-OPENAI_MODEL = os.getenv('OPENAI_MODEL', 'gpt-5.4-mini').strip() or 'gpt-5.4-mini'
+OPENAI_MODEL = os.getenv('OPENAI_MODEL', 'gpt-4o-mini').strip() or 'gpt-4o-mini'
 
 if USE_POSTGRES:
     DATABASES = {

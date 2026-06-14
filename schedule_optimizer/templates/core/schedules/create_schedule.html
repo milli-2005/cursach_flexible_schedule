@@ -1,5 +1,5 @@
 ﻿{% extends "core/base.html" %}
-{% load dict_extras %}
+{% load custom_filters %}
 
 {% block title %}Создание графика - {{ block.super }}{% endblock %}
 
@@ -9,14 +9,13 @@
 #schedule-table { margin-bottom: 0; width: 100%; table-layout: fixed; }
 #schedule-table th, #schedule-table td { vertical-align: top; }
 .shift-cell { cursor: pointer; }
-.cell-view { min-height: 38px; }
+.cell-view { min-height: 38px; text-align: center; }
 .cell-view .trainer-name {
     display: inline-block; font-weight: 700; color: #fff; padding: 0.12rem 0.45rem;
     border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.25);
-    max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     line-height: 1.2; margin-bottom: 0.25rem;
 }
-.cell-view .workout-name { display: block; color: #d0d0d0; font-size: 0.82rem; }
+.cell-view .workout-name { display: block; color: #d0d0d0; font-size: 0.82rem; text-align: center; }
 .cell-controls { display: none; margin-top: 0.45rem; }
 .shift-cell.is-editing .cell-controls { display: block; }
 .cell-controls .form-select { font-size: 0.8rem; margin-bottom: 0.35rem; }
@@ -307,7 +306,7 @@ html[data-theme='light'] .availability-day-chip {
                     <select id="availability-employee-select" class="form-select form-select-sm" style="min-width:220px;">
                         <option value="">Сотрудник...</option>
                         {% for emp in employees %}
-                            <option value="{{ emp.id }}">{{ emp.user.get_full_name|default:emp.user.username }}</option>
+                            <option value="{{ emp.id }}">{{ emp.user|short_name }}</option>
                         {% endfor %}
                     </select>
                     <button id="availability-clear-btn" type="button" class="btn btn-sm btn-outline-light">Сбросить</button>
@@ -357,7 +356,7 @@ html[data-theme='light'] .availability-day-chip {
                                 <select class="form-select form-select-sm employee-select">
                                     <option value="">Выберите...</option>
                                     {% for emp in employees %}
-                                        <option value="{{ emp.id }}">{{ emp.user.username }}</option>
+                                        <option value="{{ emp.id }}">{{ emp.user|short_name }}</option>
                                     {% endfor %}
                                 </select>
                                 <select class="form-select form-select-sm workout-select">
@@ -594,7 +593,7 @@ function hashString(str) {
 
 function buildAutoFillPlan(seed = 1) {
     const rows = document.querySelectorAll('#schedule-table tbody tr');
-    const employees = EMPLOYEES_WITH_WORKOUTS.map(e => ({ id: String(e.id), name: e.username }));
+    const employees = EMPLOYEES_WITH_WORKOUTS.map(e => ({ id: String(e.id), name: e.display_name }));
     const state = {
         weeklyWorkoutBucketCount: {},
         weeklyWorkoutTotalCount: {},

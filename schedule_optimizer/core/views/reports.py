@@ -36,7 +36,7 @@ def reports_view(request):
         else:
             employee_filter = None  # все сотрудники
 
-    latest_rate = HourRateChange.objects.order_by('-effective_from', '-id').first()
+    latest_rate = HourRateChange.objects.order_by('-created_at').first()
     hour_rate = float(latest_rate.rate) if latest_rate else None
 
     # Изменение ставки: только руководитель.
@@ -266,8 +266,8 @@ def reports_view(request):
     for emp in employees:
         emp_id = emp.id
         hours = sum(data[emp_id].values())
-        shifts = len([h for h in data[emp_id].values() if h > 0])
-        total_hours[emp.id] = round(hours, 2)
+        shifts = sum(1 for v in data[emp_id].values() if v > 0)
+        total_hours[emp.id] = int(round(hours))
         total_shifts[emp.id] = shifts
 
     daily_totals = []
@@ -284,13 +284,13 @@ def reports_view(request):
     # === Charts ===
     chart_data = {
         'empNames': list(emp_hours.keys()) or [],
-        'empValues': [round(v, 2) for v in emp_hours.values()] or [],
+        'empValues': [int(round(v)) for v in emp_hours.values()] or [],
         'dayLabels': ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'],
-        'dayValues': [round(v, 2) for v in day_hours] or [0]*7,
+        'dayValues': [int(round(v)) for v in day_hours] or [0]*7,
         'workoutLabels': list(workout_hours.keys()) or [],
-        'workoutValues': [round(v, 2) for v in workout_hours.values()] or [],
+        'workoutValues': [int(round(v)) for v in workout_hours.values()] or [],
         'dateLabels': [d.strftime('%d.%m') for d in sorted(date_hours.keys())] or [],
-        'dateValues': [round(date_hours[d], 2) for d in sorted(date_hours.keys())] or [],
+        'dateValues': [int(round(date_hours[d])) for d in sorted(date_hours.keys())] or [],
     }
 
     # === Direction summary for manager ===
@@ -309,7 +309,7 @@ def reports_view(request):
         def _display_name(user_profile):
             """Собирает читаемое имя пользователя из фамилии, имени, отчества или логина."""
             user_obj = user_profile.user
-            full_name = f"{user_obj.last_name} {user_obj.first_name} {user_profile.patronymic}".strip()
+            full_name = f"{user_obj.last_name} {user_obj.first_name}".strip()
             return full_name if full_name else user_obj.username
 
         all_employee_profiles = UserProfile.objects.filter(
@@ -369,7 +369,7 @@ def reports_view(request):
                 'name': wt.name,
                 'trainers': trainers,
                 'trainers_count': len(trainers),
-                'hours': round(direction_hours.get(wt.id, 0), 2),
+                'hours': int(round(direction_hours.get(wt.id, 0))),
                 'shifts': direction_shifts.get(wt.id, 0),
             })
 
@@ -496,7 +496,6 @@ def reports_view(request):
                 'username': login_name,
                 'hours': total_hours_emp,
                 'worked_days': worked_days_count,
-                'shifts': shifts_emp,
                 'avg_per_day': avg_per_workday,
                 'uniformity': uniformity_score,
                 'rejection_pct': rejection_pct,
@@ -577,12 +576,12 @@ def reports_view(request):
         'total_hours': total_hours,
         'total_shifts': total_shifts,
         'daily_totals': daily_totals,
-        'total_all_hours': round(sum(total_hours.values()), 2),
+        'total_all_hours': int(round(sum(total_hours.values()))),
         'total_all_assignments': assignments.count(),
         'active_employees': len(employees),
         'chart_data_json': json.dumps(chart_data, ensure_ascii=False),
         'hour_rate': hour_rate,
-        'rate_last_changed_at': latest_rate.effective_from if latest_rate else None,
+        'rate_last_changed_at': latest_rate.created_at if latest_rate else None,
         'total_salary': total_salary,
         'total_salary_per_emp': total_salary_per_emp,
         'salary_available': salary_available,

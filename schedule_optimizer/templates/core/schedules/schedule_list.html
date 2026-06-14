@@ -1,4 +1,5 @@
 {% extends "core/base.html" %}
+{% load custom_filters %}
 
 {% block title %}Управление графиками - {{ block.super }}{% endblock %}
 
@@ -154,7 +155,7 @@
                     <option value="">Все создатели</option>
                     {% for creator in creators %}
                         <option value="{{ creator.id }}" {% if filter_creator == creator.id|stringformat:"s" %}selected{% endif %}>
-                            {{ creator.get_full_name|default:creator.username }}
+                            {{ creator|short_name }}
                         </option>
                     {% endfor %}
                 </select>
@@ -235,7 +236,7 @@
             <tbody id="schedule-table-body">
                 {% for item in schedules_with_stats %}
                     {% with s=item.schedule %}
-                    <tr class="schedule-row" data-search="{{ s.name|lower }} {{ s.created_by.username|default:''|lower }} {{ s.get_status_display|lower }}">
+                    <tr class="schedule-row" data-search="{{ s.name|lower }} {{ s.created_by|short_name|lower }} {{ s.get_status_display|lower }}">
                         <td><a href="{% url 'schedule_detail' s.id %}">{{ s.name }}</a></td>
                         <td>{{ s.start_date|date:"d E Y" }}</td>
                         <td>{{ s.end_date|date:"d E Y" }}</td>
@@ -250,7 +251,7 @@
                                 <em>—</em>
                             {% endif %}
                         </td>
-                        <td>{{ s.created_by.username }}</td>
+                        <td>{{ s.created_by|short_name }}</td>
                         <td>
                             {% if user.profile.role == 'manager' %}
                                 <form method="post"

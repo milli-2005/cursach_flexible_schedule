@@ -521,6 +521,9 @@ function addSelectedFiles(files) {
   renderSelectedFiles();
 }
 
+
+// Когда ты заходишь на страницу чата:
+// JavaScript грузит список пользователей (GET /api/chat/users/) — чтобы искать с кем начать диалог
 async function loadUsers() {
   const data = await chatRequest('/api/chat/users/');
   ChatState.users = Array.isArray(data.users) ? data.users : [];
@@ -529,6 +532,8 @@ async function loadUsers() {
   renderManageGroupUsers('');
 }
 
+// Грузит список твоих диалогов (GET /api/chat/conversations/) — отображает слева
+// Если в URL есть ?c=<id> — сразу открывает тот диалог
 async function loadConversations(preferConversationId = null) {
   const previousUnreadMap = { ...ChatState.unreadMap };
   const data = await chatRequest('/api/chat/conversations/');
@@ -597,6 +602,11 @@ async function setActiveConversation(id) {
   await loadConversations(id);
 }
 
+
+// 3.Отправка сообщения:
+// Enter → POST /api/chat/messages/send/ → Django создаёт ChatMessage в БД
+// Сообщение сразу появляется у тебя в чате (без ожидания)
+// Файлы можно прикрепить (до 8 штук, до 20 МБ каждый) — отправляются как multipart/form-data
 async function sendCurrentMessage() {
   if (!ChatState.activeConversationId) {
     showGlobalNotification('Сначала выберите диалог.', 'error');

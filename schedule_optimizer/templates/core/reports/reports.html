@@ -5,727 +5,1128 @@
 
 {% block extra_css %}
 <style>
-    .report-page {
-        max-width: 1280px;
-        margin: 0 auto;
-    }
+/* ============================================================
+   REPORTS DASHBOARD — стеклянный дизайн, анимации, градиенты
+   ============================================================ */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
-    .report-head {
-        border: 1px solid var(--app-border);
-        border-radius: 16px;
-        padding: 1rem 1.1rem;
-        margin-bottom: 1rem;
-        background:
-            radial-gradient(900px 180px at -5% -40%, rgba(111, 66, 193, 0.18), transparent 62%),
-            linear-gradient(180deg, var(--app-surface-soft) 0%, var(--app-surface) 100%);
-    }
+:root {
+  --rpt-radius: 16px;
+  --rpt-radius-sm: 12px;
+  --rpt-glow: 0 8px 32px rgba(138, 107, 190, 0.12);
+  --rpt-glow-hover: 0 12px 48px rgba(138, 107, 190, 0.22);
+  --rpt-transition: all 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
 
-    .report-title {
-        margin: 0;
-        font-weight: 800;
-        letter-spacing: 0.01em;
-    }
+.report-page {
+  max-width: 1400px;
+  margin: 0 auto;
+  font-family: 'Inter', sans-serif;
+}
 
-    .report-subtitle {
-        margin: 0.3rem 0 0;
-        color: var(--app-text-muted);
-    }
+/* ===== GLASS CARD ===== */
+.glass-card {
+  background: linear-gradient(145deg, var(--app-surface-soft) 0%, var(--app-surface) 100%);
+  border: 1px solid var(--app-border);
+  border-radius: var(--rpt-radius);
+  box-shadow: var(--rpt-glow);
+  transition: var(--rpt-transition);
+  position: relative;
+  overflow: hidden;
+}
+.glass-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(138, 107, 190, 0.3), transparent);
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+.glass-card:hover::before { opacity: 1; }
+.glass-card:hover {
+  box-shadow: var(--rpt-glow-hover);
+  transform: translateY(-2px);
+  border-color: rgba(138, 107, 190, 0.25);
+}
+.glass-card-static { transform: none !important; }
 
-    .report-filters,
-    .report-card,
-    .report-table-wrap {
-        border: 1px solid var(--app-border);
-        border-radius: 14px;
-        background: linear-gradient(180deg, var(--app-surface-soft) 0%, var(--app-surface) 100%);
-        box-shadow: var(--app-shadow);
-    }
+/* ===== HEADER ===== */
+.report-header {
+  position: relative;
+  padding: 2rem 2rem 1.8rem;
+  margin-bottom: 1.5rem;
+  border-radius: var(--rpt-radius);
+  background: #ffffff;
+  border: 1px solid var(--app-border);
+  box-shadow: var(--rpt-glow);
+  overflow: hidden;
+}
+.report-header-content { position: relative; z-index: 1; }
+.report-title {
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0;
+  background: linear-gradient(135deg, var(--app-heading) 0%, var(--app-accent) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.report-subtitle {
+  margin: 0.4rem 0 0;
+  color: var(--app-text-muted);
+  font-size: 0.95rem;
+  font-weight: 400;
+}
+.report-period-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 1rem;
+  border-radius: 100px;
+  background: rgba(138, 107, 190, 0.12);
+  border: 1px solid rgba(138, 107, 190, 0.2);
+  font-size: 0.82rem;
+  color: var(--app-text-muted);
+  margin-top: 0.6rem;
+}
 
-    .report-filters {
-        padding: 1rem;
-        margin-bottom: 1rem;
-    }
+/* ===== FILTERS ===== */
+.report-filters {
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.5rem;
+  border-radius: var(--rpt-radius);
+  background: linear-gradient(135deg, var(--app-surface) 0%, var(--app-surface-soft) 100%);
+  border: 1px solid var(--app-border);
+  box-shadow: var(--rpt-glow);
+}
+.report-filters .form-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--app-text-muted);
+  margin-bottom: 0.25rem;
+}
+.report-filters .form-select,
+.report-filters .form-control {
+  font-size: 0.88rem;
+  border-radius: 10px;
+  background: var(--app-bg);
+  border: 1px solid var(--app-border);
+  color: var(--app-text);
+  transition: var(--rpt-transition);
+}
+.report-filters .form-select:focus,
+.report-filters .form-control:focus {
+  border-color: var(--app-accent);
+  box-shadow: 0 0 0 3px var(--app-accent-soft);
+}
 
-    .report-grid {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 14px;
-        margin-bottom: 1rem;
-    }
+/* ===== KPI ROW ===== */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 1.5rem;
+}
+@media (max-width: 1100px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 600px) { .kpi-grid { grid-template-columns: 1fr; } }
 
-    .report-kpi {
-        padding: 1rem;
-        border-radius: 12px;
-        border: 1px solid var(--app-border);
-        background: rgba(111, 66, 193, 0.06);
-    }
+.kpi-card {
+  padding: 1.25rem 1.5rem;
+  border-radius: var(--rpt-radius-sm);
+  background: linear-gradient(145deg, var(--app-surface-soft) 0%, var(--app-surface) 100%);
+  border: 1px solid var(--app-border);
+  box-shadow: var(--rpt-glow);
+  transition: var(--rpt-transition);
+  position: relative;
+  overflow: hidden;
+}
+.kpi-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--rpt-glow-hover);
+}
+.kpi-card::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 4px; height: 100%;
+  border-radius: 0 4px 4px 0;
+}
+.kpi-card.purple::after { background: linear-gradient(180deg, #8a6bbe, #6f42c1); }
+.kpi-card.green::after { background: linear-gradient(180deg, #2fbf8f, #1a9e73); }
+.kpi-card.blue::after { background: linear-gradient(180deg, #4aa3ff, #2b7fd6); }
+.kpi-card.orange::after { background: linear-gradient(180deg, #f1b43a, #d9942a); }
+.kpi-card.red::after { background: linear-gradient(180deg, #e56b6f, #c94d52); }
+.kpi-card.teal::after { background: linear-gradient(180deg, #46c6b8, #2ea89b); }
 
-    .report-kpi-value {
-        font-size: 1.5rem;
-        font-weight: 800;
-        color: var(--app-heading);
-        line-height: 1.1;
-    }
+.kpi-icon {
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  margin-bottom: 0.75rem;
+}
+.kpi-card.purple .kpi-icon { background: rgba(138, 107, 190, 0.15); color: #8a6bbe; }
+.kpi-card.green .kpi-icon { background: rgba(47, 191, 143, 0.15); color: #2fbf8f; }
+.kpi-card.blue .kpi-icon { background: rgba(74, 163, 255, 0.15); color: #4aa3ff; }
+.kpi-card.orange .kpi-icon { background: rgba(241, 180, 58, 0.15); color: #f1b43a; }
+.kpi-card.red .kpi-icon { background: rgba(229, 107, 111, 0.15); color: #e56b6f; }
+.kpi-card.teal .kpi-icon { background: rgba(70, 198, 184, 0.15); color: #46c6b8; }
 
-    .report-kpi-label {
-        margin-top: 0.3rem;
-        color: var(--app-text-muted);
-        font-size: 0.92rem;
-    }
+.kpi-value {
+  font-size: 1.85rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: var(--app-heading);
+}
+.kpi-label {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--app-text-muted);
+  margin-top: 0.2rem;
+}
+.kpi-trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-top: 0.4rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 100px;
+}
+.kpi-trend.up { color: #2fbf8f; background: rgba(47, 191, 143, 0.1); }
+.kpi-trend.down { color: #e56b6f; background: rgba(229, 107, 111, 0.1); }
 
-    .report-panels {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 14px;
-        margin-bottom: 1rem;
-    }
+/* ===== CHARTS GRID ===== */
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 1.5rem;
+}
+@media (max-width: 1100px) { .charts-grid { grid-template-columns: 1fr; } }
 
-    .report-card {
-        padding: 0.9rem;
-    }
+.chart-card {
+  padding: 1rem 1.1rem 0.8rem;
+  border-radius: var(--rpt-radius);
+  background: linear-gradient(145deg, var(--app-surface-soft) 0%, var(--app-surface) 100%);
+  border: 1px solid var(--app-border);
+  box-shadow: var(--rpt-glow);
+  transition: var(--rpt-transition);
+}
+.chart-card:hover {
+  box-shadow: var(--rpt-glow-hover);
+  border-color: rgba(138, 107, 190, 0.2);
+}
+.chart-card h3 {
+  margin: 0 0 0.65rem;
+  font-size: 0.92rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.chart-card h3 i {
+  color: var(--app-accent);
+  font-size: 0.85rem;
+}
+.chart-wrap {
+  height: 280px;
+  position: relative;
+}
+.chart-wrap canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
 
-    .report-card h3 {
-        margin: 0 0 0.55rem;
-        font-size: 1.02rem;
-        font-weight: 700;
-    }
+/* ===== STAFF ANALYTICS ===== */
+.staff-section {
+  margin-bottom: 1.5rem;
+  border-radius: var(--rpt-radius);
+  background: linear-gradient(145deg, var(--app-surface-soft) 0%, var(--app-surface) 100%);
+  border: 1px solid var(--app-border);
+  box-shadow: var(--rpt-glow);
+  overflow: hidden;
+}
+.staff-head {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--app-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.staff-head h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+.staff-head p {
+  margin: 0.15rem 0 0;
+  color: var(--app-text-muted);
+  font-size: 0.86rem;
+}
+.staff-body { padding: 1.25rem 1.5rem; }
 
-    .report-chart-wrap {
-        height: 260px;
-    }
+.staff-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  margin-bottom: 1rem;
+}
+@media (max-width: 900px) { .staff-kpi-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 600px) { .staff-kpi-grid { grid-template-columns: repeat(2, 1fr); } }
 
-    .report-chart-wrap canvas {
-        width: 100% !important;
-        height: 100% !important;
-    }
+.staff-kpi-item {
+  padding: 0.8rem 0.9rem;
+  border-radius: 10px;
+  border: 1px solid var(--app-border);
+  background: rgba(138, 107, 190, 0.04);
+  transition: var(--rpt-transition);
+}
+.staff-kpi-item:hover {
+  background: rgba(138, 107, 190, 0.08);
+  border-color: rgba(138, 107, 190, 0.2);
+}
+.staff-kpi-value {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--app-heading);
+  line-height: 1.1;
+}
+.staff-kpi-label {
+  margin-top: 0.15rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--app-text-muted);
+}
 
-    .report-table-wrap {
-        overflow: hidden;
-        margin-bottom: 1rem;
-    }
 
-    .report-table-head {
-        padding: 0.8rem 1rem;
-        border-bottom: 1px solid var(--app-border);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 0.6rem;
-    }
 
-    .report-table-head h3 {
-        margin: 0;
-        font-size: 1rem;
-        font-weight: 700;
-    }
+/* ===== DIRECTION SECTION ===== */
+.direction-section {
+  margin-bottom: 1.5rem;
+  border-radius: var(--rpt-radius);
+  background: linear-gradient(145deg, var(--app-surface-soft) 0%, var(--app-surface) 100%);
+  border: 1px solid var(--app-border);
+  box-shadow: var(--rpt-glow);
+  overflow: hidden;
+}
+.direction-head {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--app-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.direction-head h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+.direction-body { padding: 1.25rem 1.5rem; }
 
-    .report-table-head .help {
-        color: var(--app-text-muted);
-        font-size: 0.9rem;
-    }
+.direction-summary-grid {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+.dir-summary-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.9rem;
+  border-radius: 100px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border: 1px solid var(--app-border);
+  background: rgba(138, 107, 190, 0.06);
+}
+.dir-summary-chip i { font-size: 0.75rem; }
+.dir-summary-chip.covered { border-color: rgba(47, 191, 143, 0.3); color: #2fbf8f; }
+.dir-summary-chip.uncovered { border-color: rgba(229, 107, 111, 0.3); color: #e56b6f; }
+.dir-summary-chip.without { border-color: rgba(241, 180, 58, 0.3); color: #f1b43a; }
+.dir-summary-chip.total { border-color: rgba(138, 107, 190, 0.3); color: var(--app-accent); }
 
-    .report-table-wrap .table {
-        margin: 0;
-    }
+/* ===== TIMESHEET ===== */
+.timesheet-section {
+  margin-bottom: 1.5rem;
+  border-radius: var(--rpt-radius);
+  background: linear-gradient(145deg, var(--app-surface-soft) 0%, var(--app-surface) 100%);
+  border: 1px solid var(--app-border);
+  box-shadow: var(--rpt-glow);
+  overflow: hidden;
+}
+.timesheet-head {
+  padding: 0.9rem 1.25rem;
+  border-bottom: 1px solid var(--app-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.timesheet-head h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+.timesheet-head .rate-control {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+.timesheet-head .rate-control .form-control {
+  min-width: 80px;
+  font-size: 0.82rem;
+  border-radius: 8px;
+}
+.timesheet-head .rate-control .btn {
+  font-size: 0.82rem;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+.timesheet-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+.timesheet-body { padding: 0; }
 
-    .report-table-wrap .table th {
-        font-weight: 700;
-        white-space: nowrap;
-    }
+/* Styled table */
+.rpt-table {
+  margin: 0;
+  font-size: 0.84rem;
+}
+.rpt-table thead th {
+  background: rgba(138, 107, 190, 0.08) !important;
+  border-bottom: 2px solid var(--app-border) !important;
+  font-weight: 700;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--app-text-muted) !important;
+  white-space: nowrap;
+  padding: 0.6rem 0.5rem !important;
+}
+.rpt-table thead th .weekday {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: var(--app-text-muted);
+  margin-top: 0.1rem;
+}
+.rpt-table tbody td {
+  padding: 0.45rem 0.5rem !important;
+  vertical-align: middle;
+  font-weight: 500;
+}
+.rpt-table tbody tr {
+  transition: background 0.2s;
+}
+.rpt-table tbody tr:hover {
+  background: rgba(138, 107, 190, 0.04) !important;
+}
 
-    .staff-analytics {
-        border: 1px solid var(--app-border);
-        border-radius: 14px;
-        background: linear-gradient(180deg, var(--app-surface-soft) 0%, var(--app-surface) 100%);
-        box-shadow: var(--app-shadow);
-        margin-bottom: 1rem;
-        overflow: hidden;
-    }
+.rpt-table .emp-name {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.rpt-table .emp-name small {
+  font-weight: 400;
+  color: var(--app-text-muted);
+  font-size: 0.75rem;
+  display: block;
+}
 
-    .staff-analytics-head {
-        padding: 0.9rem 1rem;
-        border-bottom: 1px solid var(--app-border);
-    }
+.cell-worked {
+  background: rgba(138, 107, 190, 0.12) !important;
+  color: var(--app-heading) !important;
+  font-weight: 700 !important;
+  border-radius: 4px;
+}
+.cell-worked-high {
+  background: rgba(138, 107, 190, 0.25) !important;
+  color: var(--app-heading) !important;
+  font-weight: 700 !important;
+}
+.cell-worked-max {
+  background: rgba(138, 107, 190, 0.38) !important;
+  color: #fff !important;
+  font-weight: 800 !important;
+}
+.cell-empty {
+  color: var(--app-text-muted) !important;
+  opacity: 0.4;
+}
+.total-row td {
+  background: rgba(138, 107, 190, 0.1) !important;
+  font-weight: 700;
+  border-top: 2px solid var(--app-border) !important;
+}
 
-    .staff-analytics-title {
-        margin: 0;
-        font-size: 1.05rem;
-        font-weight: 800;
-    }
+/* ===== DATA TABLE (directions / staff) ===== */
+.data-table-wrap {
+  overflow-x: auto;
+}
+.data-table-wrap .table {
+  margin: 0;
+  font-size: 0.83rem;
+}
+.data-table-wrap .table thead th {
+  background: rgba(138, 107, 190, 0.06) !important;
+  border-bottom: 2px solid var(--app-border) !important;
+  font-weight: 700;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--app-text-muted) !important;
+  padding: 0.6rem 0.8rem !important;
+  white-space: nowrap;
+}
+.data-table-wrap .table tbody td {
+  padding: 0.5rem 0.8rem !important;
+  vertical-align: middle;
+}
+.data-table-wrap .table tbody tr {
+  transition: background 0.2s;
+}
+.data-table-wrap .table tbody tr:hover {
+  background: rgba(138, 107, 190, 0.04) !important;
+}
 
-    .staff-analytics-subtitle {
-        margin: 0.25rem 0 0;
-        color: var(--app-text-muted);
-        font-size: 0.92rem;
-    }
+/* ===== ANIMATIONS ===== */
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeSlideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(138, 107, 190, 0.2); }
+  50% { box-shadow: 0 0 0 6px rgba(138, 107, 190, 0); }
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes countUp {
+  from { opacity: 0.3; }
+  to { opacity: 1; }
+}
 
-    .staff-analytics-body {
-        padding: 1rem;
-    }
+.anim-fade-up {
+  animation: fadeSlideUp 0.5s ease forwards;
+}
+.anim-fade-down {
+  animation: fadeSlideDown 0.4s ease forwards;
+}
+.anim-scale {
+  animation: scaleIn 0.4s ease forwards;
+}
 
-    .staff-filters-grid {
-        display: grid;
-        grid-template-columns: 1.5fr repeat(3, minmax(160px, 1fr)) auto;
-        gap: 10px;
-        margin-bottom: 0.9rem;
-    }
+/* Stagger delays */
+.delay-1 { animation-delay: 0.05s; }
+.delay-2 { animation-delay: 0.1s; }
+.delay-3 { animation-delay: 0.15s; }
+.delay-4 { animation-delay: 0.2s; }
+.delay-5 { animation-delay: 0.25s; }
+.delay-6 { animation-delay: 0.3s; }
+.delay-7 { animation-delay: 0.35s; }
+.delay-8 { animation-delay: 0.4s; }
 
-    .staff-kpis {
-        display: grid;
-        grid-template-columns: repeat(5, minmax(0, 1fr));
-        gap: 10px;
-        margin-bottom: 0.9rem;
-    }
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+              transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
 
-    .staff-kpi-card {
-        border: 1px solid var(--app-border);
-        border-radius: 12px;
-        padding: 0.75rem 0.8rem;
-        background: rgba(111, 66, 193, 0.08);
-    }
+/* Pulse dot for status */
+.status-dot {
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  margin-right: 0.3rem;
+}
+.status-dot.active { background: #2fbf8f; box-shadow: 0 0 6px rgba(47, 191, 143, 0.5); }
+.status-dot.inactive { background: #e56b6f; }
+.status-dot.warning { background: #f1b43a; }
 
-    .staff-kpi-value {
-        font-size: 1.25rem;
-        font-weight: 800;
-        color: var(--app-heading);
-        line-height: 1.1;
-    }
+/* Small inline progress bar */
+.mini-bar {
+  height: 4px;
+  border-radius: 4px;
+  background: var(--app-border);
+  overflow: hidden;
+  margin-top: 0.25rem;
+}
+.mini-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.8s ease;
+}
 
-    .staff-kpi-label {
-        margin-top: 0.22rem;
-        font-size: 0.86rem;
-        color: var(--app-text-muted);
-    }
+/* Badge accent */
+.badge-accent {
+  background: rgba(138, 107, 190, 0.12);
+  color: var(--app-accent);
+  border: 1px solid rgba(138, 107, 190, 0.15);
+  font-weight: 600;
+  font-size: 0.72rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 100px;
+}
 
-    .staff-chart-wrap {
-        height: 290px;
-        border: 1px solid var(--app-border);
-        border-radius: 12px;
-        padding: 0.6rem;
-        background: rgba(111, 66, 193, 0.05);
-        margin-bottom: 0.9rem;
-    }
-
-    .staff-chart-wrap canvas {
-        width: 100% !important;
-        height: 100% !important;
-    }
-
-    .report-actions {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .rate-inline {
-        display: flex;
-        align-items: center;
-        gap: 0.45rem;
-        flex-wrap: nowrap;
-        margin: 0;
-    }
-
-    .rate-inline .form-control {
-        min-width: 92px;
-    }
-
-    .rate-inline .btn {
-        white-space: nowrap;
-    }
-
-    
-    .timesheet-table thead th {
-        color: #ffffff !important;
-        background: #2f2f36 !important;
-        border-color: rgba(255, 255, 255, 0.12) !important;
-    }
-
-    .timesheet-table thead .weekday {
-        display: block;
-        margin-top: 0.14rem;
-        font-size: 0.78rem;
-        line-height: 1.1;
-        font-weight: 700;
-        color: #d8c8ff !important;
-    }
-
-    .timesheet-table td.cell-worked,
-    .timesheet-table td.cell-worked-force {
-        background: #cfc1e6 !important;
-        background-color: #cfc1e6 !important;
-        --bs-table-bg-type: transparent !important;
-        --bs-table-bg-state: transparent !important;
-        box-shadow: inset 0 0 0 9999px #cfc1e6 !important;
-        color: #2a1d4a !important;
-        font-weight: 700;
-        border-color: rgba(76, 51, 125, 0.18) !important;
-    }
-
-    .timesheet-table td.cell-empty {
-        background: transparent !important;
-        color: var(--app-text) !important;
-    }
-
-    .timesheet-table tr.total-row td {
-        background: rgba(111, 66, 193, 0.2) !important;
-        color: #ffffff !important;
-        font-weight: 700;
-    }
-
-    html[data-theme='light'] .timesheet-table thead th {
-        color: #ffffff !important;
-        background: #2f2f36 !important;
-    }
-
-    html[data-theme='light'] .timesheet-table thead .weekday {
-        color: #e1d3ff !important;
-    }
-
-    html[data-theme='light'] .timesheet-table td.cell-worked,
-    html[data-theme='light'] .timesheet-table td.cell-worked-force {
-        background: #cfc1e6 !important;
-        background-color: #cfc1e6 !important;
-        --bs-table-bg-type: transparent !important;
-        --bs-table-bg-state: transparent !important;
-        box-shadow: inset 0 0 0 9999px #cfc1e6 !important;
-        color: #2a1d4a !important;
-    }
-
-    html[data-theme='light'] .timesheet-table td.cell-empty {
-        color: #2a2538 !important;
-    }
-
-    html[data-theme='light'] .timesheet-table tr.total-row td {
-        background: rgba(122, 91, 200, 0.2) !important;
-        color: #2a1d4a !important;
-    }
-
-    .timesheet-table.table-striped > tbody > tr > td.cell-worked,
-    .timesheet-table.table-striped > tbody > tr > td.cell-worked-force {
-        background: #cfc1e6 !important;
-        color: #2a1d4a !important;
-        font-weight: 700;
-    }
-
-    @media (max-width: 1200px) {
-        .report-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-
-        .report-panels {
-            grid-template-columns: 1fr;
-        }
-
-        .staff-filters-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-
-        .staff-kpis {
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-        }
-    }
-
-    @media (max-width: 768px) {
-        .report-grid {
-            grid-template-columns: 1fr;
-        }
-
-        .rate-inline {
-            flex-wrap: wrap;
-        }
-
-        .staff-filters-grid,
-        .staff-kpis {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-    }
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+  .report-header { padding: 1.25rem; }
+  .staff-head { flex-direction: column; align-items: flex-start; }
+  .staff-body { padding: 1rem; }
+  .direction-body { padding: 1rem; }
+  .kpi-value { font-size: 1.4rem; }
+  .chart-card { padding: 0.8rem; }
+  .chart-wrap { height: 220px; }
+}
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="report-page">
-    <section class="report-head">
-        <h2 class="report-title">Аналитика загрузки</h2>
-        <p class="report-subtitle">Период: {{ start_date|date:"d.m.Y" }} — {{ end_date|date:"d.m.Y" }}</p>
-    </section>
 
-    <form method="get" class="report-filters">
-        <div class="row g-3">
-            <div class="col-md-2">
-                <label class="form-label">Период</label>
-                <select name="period" class="form-select" onchange="toggleCustomDateFields(this.value); this.form.submit();">
-                    <option value="week" {% if period == 'week' %}selected{% endif %}>Неделя</option>
-                    <option value="month" {% if period == 'month' %}selected{% endif %}>Месяц</option>
-                    <option value="year" {% if period == 'year' %}selected{% endif %}>Год</option>
-                    <option value="custom" {% if period == 'custom' %}selected{% endif %}>Свой период</option>
-                </select>
-            </div>
-
-            <div id="custom-date-fields" class="col-md-2" style="display:none;">
-                <label class="form-label">С</label>
-                <input type="date" name="start_date" class="form-control" value="{% if start_date %}{{ start_date|date:'Y-m-d' }}{% endif %}">
-            </div>
-
-            <div id="custom-date-fields-end" class="col-md-2" style="display:none;">
-                <label class="form-label">По</label>
-                <input type="date" name="end_date" class="form-control" value="{% if end_date %}{{ end_date|date:'Y-m-d' }}{% endif %}">
-            </div>
-
-            <div class="col-md-2">
-                <label class="form-label">Тип занятия</label>
-                <select name="workout" class="form-select" onchange="this.form.submit()">
-                    <option value="all">Все</option>
-                    {% for wt in workout_types %}
-                        <option value="{{ wt.id }}" {% if workout_id|slugify == wt.id|slugify %}selected{% endif %}>{{ wt.name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            {% if is_manager %}
-                <div class="col-md-2">
-                    <label class="form-label">Сотрудник</label>
-                    <select name="employee" class="form-select" onchange="this.form.submit()">
-                        <option value="all">Все</option>
-                        {% for emp in all_employees %}
-                            <option value="{{ emp.id }}" {% if employee_id|slugify == emp.id|slugify %}selected{% endif %}>
-                                {{ emp.user.username }}
-                            </option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <div class="col-md-2">
-                    <label class="form-label">Направление (охват)</label>
-                    <select name="coverage_direction" class="form-select" onchange="this.form.submit()">
-                        <option value="all" {% if coverage_direction == 'all' %}selected{% endif %}>Все</option>
-                        {% for wt in workout_types %}
-                            <option value="{{ wt.id }}" {% if coverage_direction|slugify == wt.id|slugify %}selected{% endif %}>{{ wt.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <div class="col-md-3">
-                    <label class="form-label">Поиск</label>
-                    <input type="text" name="search" class="form-control" placeholder="Имя или тип..." value="{{ search_query }}">
-                </div>
-
-                <div class="col-md-3">
-                    <label class="form-label">Сортировка охвата</label>
-                    <select name="coverage_sort" class="form-select" onchange="this.form.submit()">
-                        <option value="trainers_desc" {% if coverage_sort == 'trainers_desc' %}selected{% endif %}>По числу тренеров (убывание)</option>
-                        <option value="trainers_asc" {% if coverage_sort == 'trainers_asc' %}selected{% endif %}>По числу тренеров (возрастание)</option>
-                        <option value="hours_desc" {% if coverage_sort == 'hours_desc' %}selected{% endif %}>По часам (убывание)</option>
-                        <option value="hours_asc" {% if coverage_sort == 'hours_asc' %}selected{% endif %}>По часам (возрастание)</option>
-                        <option value="name_asc" {% if coverage_sort == 'name_asc' %}selected{% endif %}>Название А-Я</option>
-                        <option value="name_desc" {% if coverage_sort == 'name_desc' %}selected{% endif %}>Название Я-А</option>
-                    </select>
-                </div>
-
-                <div class="col-md-2 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary w-100">Применить</button>
-                </div>
-            {% else %}
-                <div class="col-md-3 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary w-100">Применить</button>
-                </div>
-            {% endif %}
+  <!-- ===== HEADER ===== -->
+  <header class="report-header anim-fade-up">
+    <div class="report-header-content">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.8rem;">
+        <div>
+          <h1 class="report-title">Панель аналитики</h1>
+          <p class="report-subtitle">Данные о работе студии: загрузка, зарплата, направления, персонал</p>
         </div>
-    </form>
+        <div class="report-period-badge">
+          <i class="bi bi-calendar3"></i>
+          {{ start_date|date:"d.m.Y" }} — {{ end_date|date:"d.m.Y" }}
+        </div>
+      </div>
+    </div>
+  </header>
 
-    <section class="report-grid">
-        <div class="report-kpi">
-            <div class="report-kpi-value">{{ total_all_hours|floatformat:0 }} ч</div>
-            <div class="report-kpi-label">Всего часов</div>
-        </div>
-        <div class="report-kpi">
-            <div class="report-kpi-value">{% if salary_available %}{{ total_salary }} ₽{% else %}—{% endif %}</div>
-            <div class="report-kpi-label">Общая ЗП</div>
-        </div>
-        <div class="report-kpi">
-            <div class="report-kpi-value">{{ active_employees }}</div>
-            <div class="report-kpi-label">Сотрудников</div>
-        </div>
-        <div class="report-kpi">
-            <div class="report-actions">
-                <button type="button" class="btn btn-success w-100" onclick="exportExcel()">
-                    <i class="bi bi-file-earmark-excel me-2"></i>Экспорт Excel
-                </button>
-            </div>
-        </div>
-    </section>
+  <!-- ===== FILTERS ===== -->
+  <form method="get" class="report-filters anim-fade-up delay-1">
+    <div class="row g-3 align-items-end">
+      <div class="col-md-2">
+        <label class="form-label">Период</label>
+        <select name="period" class="form-select" onchange="toggleCustomDateFields(this.value); this.form.submit();">
+          <option value="week" {% if period == 'week' %}selected{% endif %}>Неделя</option>
+          <option value="month" {% if period == 'month' %}selected{% endif %}>Месяц</option>
+          <option value="year" {% if period == 'year' %}selected{% endif %}>Год</option>
+          <option value="custom" {% if period == 'custom' %}selected{% endif %}>Свой период</option>
+        </select>
+      </div>
 
-    <section class="report-panels">
-        <article class="report-card">
-            <h3>Загрузка по сотрудникам</h3>
-            <div class="report-chart-wrap"><canvas id="chart-emp"></canvas></div>
-        </article>
-        <article class="report-card">
-            <h3>Нагрузка по дням недели</h3>
-            <div class="report-chart-wrap"><canvas id="chart-days"></canvas></div>
-        </article>
-        <article class="report-card">
-            <h3>Распределение по типам занятий</h3>
-            <div class="report-chart-wrap"><canvas id="chart-workout"></canvas></div>
-        </article>
-        <article class="report-card">
-            <h3>Нагрузка по датам</h3>
-            <div class="report-chart-wrap"><canvas id="chart-dates"></canvas></div>
-        </article>
-        {% if is_manager %}
-        <article class="report-card">
-            <h3>Покрытие направлений тренерами</h3>
-            <div class="report-chart-wrap"><canvas id="chart-direction-coverage"></canvas></div>
-        </article>
-        <article class="report-card">
-            <h3>Количество направлений у сотрудников</h3>
-            <div class="report-chart-wrap"><canvas id="chart-employee-skills"></canvas></div>
-        </article>
+      <div id="custom-date-fields" class="col-md-2" style="display:none;">
+        <label class="form-label">С</label>
+        <input type="date" name="start_date" class="form-control" value="{% if start_date %}{{ start_date|date:'Y-m-d' }}{% endif %}" onchange="submitCustomPeriod()">
+      </div>
+
+      <div id="custom-date-fields-end" class="col-md-2" style="display:none;">
+        <label class="form-label">По</label>
+        <input type="date" name="end_date" class="form-control" value="{% if end_date %}{{ end_date|date:'Y-m-d' }}{% endif %}" onchange="submitCustomPeriod()">
+      </div>
+
+      {% if is_manager %}
+        <div class="col-md-2">
+          <label class="form-label">Сотрудник</label>
+          <select name="employee" class="form-select" onchange="this.form.submit()">
+            <option value="all">Все</option>
+            {% for emp in all_employees %}
+              <option value="{{ emp.id }}" {% if employee_id|slugify == emp.id|slugify %}selected{% endif %}>
+                {{ emp.user.get_full_name|default:emp.user.username }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-md-2">
+          <label class="form-label">Направление</label>
+          <select name="coverage_direction" class="form-select" onchange="this.form.submit()">
+            <option value="all">Все</option>
+            {% for wt in workout_types %}
+              <option value="{{ wt.id }}" {% if coverage_direction|slugify == wt.id|slugify %}selected{% endif %}>{{ wt.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-md-2">
+          <label class="form-label">Сортировка охвата</label>
+          <select name="coverage_sort" class="form-select" onchange="this.form.submit()">
+            <option value="trainers_desc" {% if coverage_sort == 'trainers_desc' %}selected{% endif %}>По числу тренеров ↓</option>
+            <option value="trainers_asc" {% if coverage_sort == 'trainers_asc' %}selected{% endif %}>По числу тренеров ↑</option>
+            <option value="hours_desc" {% if coverage_sort == 'hours_desc' %}selected{% endif %}>По часам ↓</option>
+            <option value="hours_asc" {% if coverage_sort == 'hours_asc' %}selected{% endif %}>По часам ↑</option>
+            <option value="name_asc" {% if coverage_sort == 'name_asc' %}selected{% endif %}>Название А-Я</option>
+            <option value="name_desc" {% if coverage_sort == 'name_desc' %}selected{% endif %}>Название Я-А</option>
+          </select>
+        </div>
+
+        <div class="col-md-2">
+          <label class="form-label">Поиск</label>
+          <input type="text" name="search" class="form-control" placeholder="Имя или тип..." value="{{ search_query }}">
+        </div>
+
+        <div class="col-md-2 d-flex align-items-end">
+          <a href="{% url 'reports' %}" class="btn btn-outline-secondary w-100" style="border-radius:10px;">
+            <i class="bi bi-x-circle me-1"></i> Сбросить фильтры
+          </a>
+        </div>
+      {% else %}
+        <div class="col-md-2 d-flex align-items-end">
+          <a href="{% url 'reports' %}" class="btn btn-outline-secondary w-100" style="border-radius:10px;">
+            <i class="bi bi-x-circle me-1"></i> Сбросить фильтры
+          </a>
+        </div>
+      {% endif %}
+    </div>
+  </form>
+
+  <!-- ===== KPI CARDS ===== -->
+  <section class="kpi-grid anim-fade-up delay-2">
+    <div class="kpi-card purple">
+      <div class="kpi-icon"><i class="bi bi-clock-history"></i></div>
+      <div class="kpi-value"><span class="kpi-counter" data-target="{{ total_all_hours|floatformat:0 }}">0</span> ч</div>
+      <div class="kpi-label">Всего часов за период</div>
+      {% if total_all_assignments %}
+        <div class="kpi-trend up"><i class="bi bi-arrow-up-short"></i>{{ total_all_assignments }} смен</div>
+      {% endif %}
+    </div>
+    <div class="kpi-card {% if salary_available %}green{% else %}orange{% endif %}">
+      <div class="kpi-icon"><i class="bi bi-cash-stack"></i></div>
+      <div class="kpi-value">
+        {% if salary_available %}
+          <span class="kpi-counter" data-target="{{ total_salary }}">0</span> ₽
+        {% else %}
+          —
         {% endif %}
-    </section>
+      </div>
+      <div class="kpi-label">Общий фонд оплаты</div>
+      {% if hour_rate is not None %}
+        <div class="kpi-trend up">{{ hour_rate|floatformat:0 }} ₽/ч × ставка</div>
+      {% endif %}
+    </div>
+    <div class="kpi-card blue">
+      <div class="kpi-icon"><i class="bi bi-people"></i></div>
+      <div class="kpi-value"><span class="kpi-counter" data-target="{{ active_employees }}">0</span></div>
+      <div class="kpi-label">Сотрудников задействовано</div>
+      {% if is_manager and direction_summary %}
+        <div class="kpi-trend up">{{ direction_summary.total_directions }} направлений</div>
+      {% endif %}
+    </div>
+    <div class="kpi-card teal">
+      <div class="kpi-icon"><i class="bi bi-file-earmark-excel"></i></div>
+      <div class="kpi-label" style="margin-top:0;">
+        <button type="button" class="btn btn-success w-100" onclick="exportExcel()" style="border-radius:10px;">
+          <i class="bi bi-download me-1"></i> Экспорт Excel
+        </button>
+      </div>
+      {% if is_manager and staff_summary %}
+        <div class="kpi-trend up" style="margin-top:0.5rem;display:flex;justify-content:center;">
+          <span>{{ staff_summary.trainers_count }} тренеров</span>
+        </div>
+      {% endif %}
+    </div>
+  </section>
 
+  <!-- ===== CHARTS GRID ===== -->
+  <section class="charts-grid">
+    <div class="chart-card reveal">
+      <h3><i class="bi bi-bar-chart-fill"></i> Загрузка по сотрудникам</h3>
+      <div class="chart-wrap"><canvas id="chart-emp"></canvas></div>
+    </div>
+    <div class="chart-card reveal">
+      <h3><i class="bi bi-calendar-week"></i> Нагрузка по дням недели</h3>
+      <div class="chart-wrap"><canvas id="chart-days"></canvas></div>
+    </div>
+    <div class="chart-card reveal">
+      <h3><i class="bi bi-pie-chart-fill"></i> Распределение по типам занятий</h3>
+      <div class="chart-wrap"><canvas id="chart-workout"></canvas></div>
+    </div>
+    <div class="chart-card reveal">
+      <h3><i class="bi bi-graph-up-arrow"></i> Нагрузка по датам</h3>
+      <div class="chart-wrap"><canvas id="chart-dates"></canvas></div>
+    </div>
     {% if is_manager %}
-    <section class="staff-analytics">
-        <div class="staff-analytics-head">
-            <h3 class="staff-analytics-title">Расширенная аналитика по персоналу</h3>
-            <p class="staff-analytics-subtitle">Часы, равномерность нагрузки, отказы согласования, частота подмен и пиковые дни по каждому тренеру.</p>
-        </div>
-        <div class="staff-analytics-body">
-            <form method="get">
-                {% for key, value in request.GET.items %}
-                    {% if key != 'staff_search' and key != 'staff_sort' and key != 'staff_peak_day' and key != 'staff_swap_level' %}
-                        <input type="hidden" name="{{ key }}" value="{{ value }}">
-                    {% endif %}
-                {% endfor %}
-                <div class="staff-filters-grid">
-                    <input type="text" class="form-control" name="staff_search" value="{{ staff_search }}" placeholder="Поиск по ФИО или логину">
-                    <select name="staff_sort" class="form-select" onchange="this.form.submit()">
-                        <option value="hours_desc" {% if staff_sort == 'hours_desc' %}selected{% endif %}>Сортировка: часы (убыв.)</option>
-                        <option value="hours_asc" {% if staff_sort == 'hours_asc' %}selected{% endif %}>Сортировка: часы (возр.)</option>
-                        <option value="uniformity_desc" {% if staff_sort == 'uniformity_desc' %}selected{% endif %}>Равномерность (лучшие)</option>
-                        <option value="uniformity_asc" {% if staff_sort == 'uniformity_asc' %}selected{% endif %}>Равномерность (худшие)</option>
-                        <option value="reject_desc" {% if staff_sort == 'reject_desc' %}selected{% endif %}>Отказы (больше)</option>
-                        <option value="swap_desc" {% if staff_sort == 'swap_desc' %}selected{% endif %}>Подмены (больше)</option>
-                        <option value="name_asc" {% if staff_sort == 'name_asc' %}selected{% endif %}>ФИО (А-Я)</option>
-                    </select>
-                    <select name="staff_peak_day" class="form-select" onchange="this.form.submit()">
-                        <option value="all" {% if staff_peak_filter == 'all' %}selected{% endif %}>Пиковый день: любой</option>
-                        <option value="Пн" {% if staff_peak_filter == 'Пн' %}selected{% endif %}>Пик: Пн</option>
-                        <option value="Вт" {% if staff_peak_filter == 'Вт' %}selected{% endif %}>Пик: Вт</option>
-                        <option value="Ср" {% if staff_peak_filter == 'Ср' %}selected{% endif %}>Пик: Ср</option>
-                        <option value="Чт" {% if staff_peak_filter == 'Чт' %}selected{% endif %}>Пик: Чт</option>
-                        <option value="Пт" {% if staff_peak_filter == 'Пт' %}selected{% endif %}>Пик: Пт</option>
-                        <option value="Сб" {% if staff_peak_filter == 'Сб' %}selected{% endif %}>Пик: Сб</option>
-                        <option value="Вс" {% if staff_peak_filter == 'Вс' %}selected{% endif %}>Пик: Вс</option>
-                    </select>
-                    <select name="staff_swap_level" class="form-select" onchange="this.form.submit()">
-                        <option value="all" {% if staff_swap_filter == 'all' %}selected{% endif %}>Подмены: все</option>
-                        <option value="none" {% if staff_swap_filter == 'none' %}selected{% endif %}>Без подмен</option>
-                        <option value="low" {% if staff_swap_filter == 'low' %}selected{% endif %}>Низкая частота (до 20%)</option>
-                        <option value="high" {% if staff_swap_filter == 'high' %}selected{% endif %}>Высокая частота (20%+)</option>
-                    </select>
-                    <button type="submit" class="btn btn-primary">Применить</button>
-                </div>
-            </form>
-
-            <div class="staff-kpis">
-                <div class="staff-kpi-card">
-                    <div class="staff-kpi-value">{{ staff_summary.trainers_count }}</div>
-                    <div class="staff-kpi-label">Тренеров в выборке</div>
-                </div>
-                <div class="staff-kpi-card">
-                    <div class="staff-kpi-value">{{ staff_summary.total_hours|floatformat:0 }} ч</div>
-                    <div class="staff-kpi-label">Суммарная нагрузка (часы)</div>
-                </div>
-                <div class="staff-kpi-card">
-                    <div class="staff-kpi-value">{{ staff_summary.avg_uniformity|floatformat:0 }}%</div>
-                    <div class="staff-kpi-label">Средняя равномерность</div>
-                </div>
-                <div class="staff-kpi-card">
-                    <div class="staff-kpi-value">{{ staff_summary.total_swaps }}</div>
-                    <div class="staff-kpi-label">Подмен за период</div>
-                </div>
-                <div class="staff-kpi-card">
-                    <div class="staff-kpi-value">{{ staff_summary.avg_rejection_pct|floatformat:0 }}%</div>
-                    <div class="staff-kpi-label">Средний % отказов</div>
-                </div>
-            </div>
-
-            <div class="staff-chart-wrap">
-                <canvas id="chart-staff-metrics"></canvas>
-            </div>
-
-            <div class="table-responsive">
-                <table class="table table-dark table-striped align-middle mb-0">
-                    <thead>
-                        <tr>
-                            <th>Тренер</th>
-                            <th>Часы</th>
-                            <th>Смены</th>
-                            <th>Рабочих дней</th>
-                            <th>Среднее в день</th>
-                            <th>Равномерность</th>
-                            <th>% отказов</th>
-                            <th>Подмены</th>
-                            <th>Частота подмен</th>
-                            <th>Пиковый день</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for row in staff_rows %}
-                        <tr>
-                            <td>
-                                <div class="fw-semibold">{{ row.name }}</div>
-                                <small class="text-muted">{{ row.username }}</small>
-                            </td>
-                            <td>{{ row.hours|floatformat:0 }} ч</td>
-                            <td>{{ row.shifts }}</td>
-                            <td>{{ row.worked_days }}</td>
-                            <td>{{ row.avg_per_day|floatformat:1 }} ч</td>
-                            <td>{{ row.uniformity|floatformat:0 }}%</td>
-                            <td>{{ row.rejection_pct|floatformat:0 }}% <small class="text-muted">({{ row.rejected_count }}/{{ row.responded_count }})</small></td>
-                            <td>{{ row.swap_count }} <small class="text-muted">↑{{ row.swap_sent }}/↓{{ row.swap_received }}</small></td>
-                            <td>{{ row.swap_frequency|floatformat:0 }}%</td>
-                            <td>{{ row.peak_day }}</td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="10" class="text-center text-muted">Нет данных по выбранным фильтрам.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </section>
+    <div class="chart-card reveal">
+      <h3><i class="bi bi-grid-3x3-gap-fill"></i> Покрытие направлений тренерами</h3>
+      <div class="chart-wrap"><canvas id="chart-direction-coverage"></canvas></div>
+    </div>
+    <div class="chart-card reveal">
+      <h3><i class="bi bi-person-workspace"></i> Количество направлений у сотрудников</h3>
+      <div class="chart-wrap"><canvas id="chart-employee-skills"></canvas></div>
+    </div>
     {% endif %}
+  </section>
 
-    {% if is_manager %}
-    <section class="report-table-wrap">
-        <div class="report-table-head">
-            <h3>Направления: кто ведет и фактическая нагрузка</h3>
-            <span class="help">Сводка по назначенным тренерам, часам и сменам за выбранный период</span>
+  <!-- ===== STAFF ANALYTICS (MANAGER ONLY) ===== -->
+  {% if is_manager %}
+  <section class="staff-section reveal">
+    <div class="staff-head">
+      <div>
+        <h3><i class="bi bi-people-fill me-2" style="color:var(--app-accent);"></i>Расширенная аналитика по персоналу</h3>
+        <p>Часы, равномерность нагрузки, отказы согласования, частота подмен и пиковые дни</p>
+      </div>
+    </div>
+    <div class="staff-body">
+      <!-- Staff filters -->
+      <form method="get" class="mb-3">
+        {% for key, value in request.GET.items %}
+          {% if key != 'staff_search' and key != 'staff_sort' and key != 'staff_peak_day' and key != 'staff_swap_level' %}
+            <input type="hidden" name="{{ key }}" value="{{ value }}">
+          {% endif %}
+        {% endfor %}
+        <div class="row g-2">
+          <div class="col-md-3">
+            <input type="text" class="form-control" name="staff_search" value="{{ staff_search }}" placeholder="Поиск по имени или логину...">
+          </div>
+          <div class="col-md-2">
+            <select name="staff_sort" class="form-select" onchange="this.form.submit()">
+              <option value="hours_desc" {% if staff_sort == 'hours_desc' %}selected{% endif %}>Часы ↓</option>
+              <option value="hours_asc" {% if staff_sort == 'hours_asc' %}selected{% endif %}>Часы ↑</option>
+              <option value="uniformity_desc" {% if staff_sort == 'uniformity_desc' %}selected{% endif %}>Равномерность ↓</option>
+              <option value="uniformity_asc" {% if staff_sort == 'uniformity_asc' %}selected{% endif %}>Равномерность ↑</option>
+              <option value="reject_desc" {% if staff_sort == 'reject_desc' %}selected{% endif %}>Отказы ↓</option>
+              <option value="swap_desc" {% if staff_sort == 'swap_desc' %}selected{% endif %}>Подмены ↓</option>
+              <option value="name_asc" {% if staff_sort == 'name_asc' %}selected{% endif %}>ФИО</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <select name="staff_peak_day" class="form-select" onchange="this.form.submit()">
+              <option value="all" {% if staff_peak_filter == 'all' %}selected{% endif %}>Пиковый день: любой</option>
+              <option value="Пн" {% if staff_peak_filter == 'Пн' %}selected{% endif %}>Пик: Пн</option>
+              <option value="Вт" {% if staff_peak_filter == 'Вт' %}selected{% endif %}>Пик: Вт</option>
+              <option value="Ср" {% if staff_peak_filter == 'Ср' %}selected{% endif %}>Пик: Ср</option>
+              <option value="Чт" {% if staff_peak_filter == 'Чт' %}selected{% endif %}>Пик: Чт</option>
+              <option value="Пт" {% if staff_peak_filter == 'Пт' %}selected{% endif %}>Пик: Пт</option>
+              <option value="Сб" {% if staff_peak_filter == 'Сб' %}selected{% endif %}>Пик: Сб</option>
+              <option value="Вс" {% if staff_peak_filter == 'Вс' %}selected{% endif %}>Пик: Вс</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <select name="staff_swap_level" class="form-select" onchange="this.form.submit()">
+              <option value="all" {% if staff_swap_filter == 'all' %}selected{% endif %}>Подмены: все</option>
+              <option value="none" {% if staff_swap_filter == 'none' %}selected{% endif %}>Без подмен</option>
+              <option value="low" {% if staff_swap_filter == 'low' %}selected{% endif %}>Низкая частота (≤20%)</option>
+              <option value="high" {% if staff_swap_filter == 'high' %}selected{% endif %}>Высокая частота (>20%)</option>
+            </select>
+          </div>
+          <div class="col-md-1">
+            <a href="{% url 'reports' %}" class="btn btn-outline-secondary w-100" style="border-radius:10px;"><i class="bi bi-x-circle"></i></a>
+          </div>
         </div>
-        <div class="table-responsive">
-            <table class="table table-dark table-striped align-middle mb-0">
-                <thead>
-                    <tr>
-                        <th>Направление</th>
-                        <th>Тренеров</th>
-                        <th>Кто ведет</th>
-                        <th>Часы</th>
-                        <th>Смены</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for row in direction_rows %}
-                    <tr>
-                        <td>{{ row.name }}</td>
-                        <td>{{ row.trainers_count }}</td>
-                        <td>
-                            {% if row.trainers %}
-                                {{ row.trainers|join:", " }}
-                            {% else %}
-                                <span class="text-danger">Нет назначенных тренеров</span>
-                            {% endif %}
-                        </td>
-                        <td>{{ row.hours|floatformat:1 }}</td>
-                        <td>{{ row.shifts }}</td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="5" class="text-center text-muted">Нет данных по выбранным фильтрам</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </section>
-    {% endif %}
+      </form>
 
-    <section class="report-table-wrap">
-        <div class="report-table-head">
-            <h3>Табель учета за период</h3>
-            <div class="rate-inline">
-                {% if is_manager %}
-                    <form method="get" class="rate-inline" id="hour-rate-form">
-                        {% for key, value in request.GET.items %}
-                            {% if key != 'hour_rate' and key != 'set_hour_rate' and key != 'reset_rate' %}
-                                <input type="hidden" name="{{ key }}" value="{{ value }}">
-                            {% endif %}
-                        {% endfor %}
-                        <span class="help">Ставка:</span>
-                        <input type="number" name="hour_rate" value="{% if hour_rate is not None %}{{ hour_rate|floatformat:0 }}{% endif %}" min="0" step="1" class="form-control form-control-sm" placeholder="₽/час">
-                        <button type="submit" name="set_hour_rate" class="btn btn-sm btn-primary">Сохранить</button>
-                        {% if hour_rate is not None %}
-                            <span class="help">
-                                Текущая: {{ hour_rate|floatformat:0 }} ₽/ч
-                                {% if rate_last_changed_at %}(с {{ rate_last_changed_at|date:"d.m.Y H:i" }}){% endif %}
-                            </span>
-                        {% endif %}
-                    </form>
+      <!-- Staff KPIs -->
+      <div class="staff-kpi-grid">
+        <div class="staff-kpi-item">
+          <div class="staff-kpi-value">{{ staff_summary.trainers_count }}</div>
+          <div class="staff-kpi-label">Тренеров</div>
+        </div>
+        <div class="staff-kpi-item">
+          <div class="staff-kpi-value">{{ staff_summary.total_hours|floatformat:0 }} ч</div>
+          <div class="staff-kpi-label">Всего часов</div>
+        </div>
+        <div class="staff-kpi-item">
+          <div class="staff-kpi-value">{{ staff_summary.avg_uniformity|floatformat:0 }}%</div>
+          <div class="staff-kpi-label">Равномерность</div>
+          <div class="mini-bar">
+            <div class="mini-bar-fill" style="width:{{ staff_summary.avg_uniformity|floatformat:0 }}%;background:linear-gradient(90deg,#8a6bbe,#2fbf8f);"></div>
+          </div>
+        </div>
+        <div class="staff-kpi-item">
+          <div class="staff-kpi-value">{{ staff_summary.total_swaps }}</div>
+          <div class="staff-kpi-label">Подмен</div>
+        </div>
+        <div class="staff-kpi-item">
+          <div class="staff-kpi-value">{{ staff_summary.avg_rejection_pct|floatformat:0 }}%</div>
+          <div class="staff-kpi-label">Отказов</div>
+          <div class="mini-bar">
+            <div class="mini-bar-fill" style="width:{{ staff_summary.avg_rejection_pct|floatformat:0 }}%;background:linear-gradient(90deg,#2fbf8f,#e56b6f);"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Staff table -->
+      <div class="data-table-wrap">
+        <table class="table align-middle rpt-table">
+          <thead>
+            <tr>
+              <th>Тренер</th>
+              <th>Часы</th>
+              <th>Раб. дней</th>
+              <th>Ср. в день</th>
+              <th>Равномерность</th>
+              <th>% отказов</th>
+              <th>Подмены</th>
+              <th>Частота подмен</th>
+              <th>Пик</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in staff_rows %}
+            <tr>
+              <td>
+                <div class="emp-name">{{ row.name }}
+                  <small>{{ row.username }}</small>
+                </div>
+              </td>
+              <td><strong>{{ row.hours|floatformat:0 }}</strong> ч</td>
+              <td>{{ row.worked_days }}</td>
+              <td>{{ row.avg_per_day|floatformat:0 }}</td>
+              <td>
+                <div style="display:flex;align-items:center;gap:0.4rem;">
+                  <span style="font-weight:700;color:{% if row.uniformity >= 80 %}#2fbf8f{% elif row.uniformity >= 50 %}#f1b43a{% else %}#e56b6f{% endif %};">{{ row.uniformity|floatformat:0 }}%</span>
+                  <div class="mini-bar" style="flex:1;min-width:40px;">
+                    <div class="mini-bar-fill" style="width:{{ row.uniformity|floatformat:0 }}%;background:{% if row.uniformity >= 80 %}linear-gradient(90deg,#8a6bbe,#2fbf8f){% elif row.uniformity >= 50 %}linear-gradient(90deg,#f1b43a,#e5a43a){% else %}#e56b6f{% endif %};"></div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <span style="color:{% if row.rejection_pct >= 30 %}#e56b6f{% elif row.rejection_pct >= 10 %}#f1b43a{% else %}#2fbf8f{% endif %};">
+                  {{ row.rejection_pct|floatformat:0 }}%
+                </span>
+                <small class="text-muted">({{ row.rejected_count }}/{{ row.responded_count }})</small>
+              </td>
+              <td>
+                {{ row.swap_count }}
+                <small class="text-muted">↑{{ row.swap_sent }}/↓{{ row.swap_received }}</small>
+              </td>
+              <td>
+                {% if row.swap_frequency > 0 %}
+                  <span class="badge-accent">{{ row.swap_frequency|floatformat:0 }}%</span>
                 {% else %}
-                    <div class="rate-inline">
-                        <span class="help">Ставка:</span>
-                        <strong>{% if hour_rate is not None %}{{ hour_rate|floatformat:0 }} ₽/ч{% else %}не задана{% endif %}</strong>
-                    </div>
+                  <span class="text-muted">—</span>
                 {% endif %}
-            </div>
+              </td>
+              <td><span class="badge-accent">{{ row.peak_day }}</span></td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="10" class="text-center text-muted py-4">Нет данных по выбранным фильтрам</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== DIRECTIONS COVERAGE ===== -->
+  <section class="direction-section reveal">
+    <div class="direction-head">
+      <h3><i class="bi bi-grid-3x3-gap me-2" style="color:var(--app-accent);"></i>Направления: кто ведет и фактическая нагрузка</h3>
+      <span class="text-muted" style="font-size:0.84rem;">Сводка по направлениям за выбранный период</span>
+    </div>
+    <div class="direction-body">
+      {% if is_manager %}
+      <div class="row g-2 mb-3 align-items-end">
+        <div class="col-md-3">
+          <label class="form-label" style="font-size:0.78rem;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:var(--app-text-muted);margin-bottom:0.25rem;">Покрытие</label>
+          <select id="filter-coverage-status" class="form-select" style="font-size:0.88rem;border-radius:10px;background:var(--app-bg);border:1px solid var(--app-border);color:var(--app-text);">
+            <option value="all">Все направления</option>
+            <option value="covered">Есть тренеры</option>
+            <option value="uncovered">Нет тренеров</option>
+          </select>
         </div>
-        <div class="table-responsive">
-            <table class="table table-dark table-striped text-center align-middle mb-0 timesheet-table">
-                <thead>
-                    <tr>
-                        <th>Сотрудник</th>
-                        {% for d in all_dates %}
-                            <th style="min-width:42px;">{{ d.day }}<span class="weekday">{{ d|date:"D" }}</span></th>
-                        {% endfor %}
-                        <th>Часов</th>
-                        <th>ЗП</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for emp in employees %}
-                        <tr>
-                            <td>{{ emp.user.username }}</td>
-                            {% for d in all_dates %}
-                                {% with hours=data|get_item:emp.id|get_item:d %}
-                                    <td class="{% if hours|is_positive %}cell-worked{% else %}cell-empty{% endif %}" {% if hours|is_positive %}style="background:#cfc1e6 !important; background-color:#cfc1e6 !important; box-shadow:inset 0 0 0 9999px #cfc1e6 !important; color:#2a1d4a !important; font-weight:700; border-color:rgba(76,51,125,0.18) !important;"{% endif %}>{% if hours|is_positive %}{{ hours|floatformat:0 }}{% else %}0{% endif %}</td>
-                                {% endwith %}
-                            {% endfor %}
-                            <td>{{ total_hours|get_item:emp.id|floatformat:0 }}</td>
-                            <td>
-                                {% if salary_available %}
-                                    {{ total_salary_per_emp|get_item:emp.id|floatformat:0 }}
-                                {% else %}
-                                    —
-                                {% endif %}
-                            </td>
-                        </tr>
-                    {% endfor %}
-                    <tr class="fw-bold total-row">
-                        <td>Итого по дням</td>
-                        {% for total in daily_totals %}
-                            <td>{{ total }}</td>
-                        {% endfor %}
-                        <td>{{ total_all_hours|floatformat:0 }}</td>
-                        <td>
-                            {% if salary_available %}
-                                {{ total_salary|floatformat:0 }}
-                            {% else %}
-                                —
-                            {% endif %}
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+        <div class="col-md-3">
+          <label class="form-label" style="font-size:0.78rem;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:var(--app-text-muted);margin-bottom:0.25rem;">Мин. часы</label>
+          <select id="filter-min-hours" class="form-select" style="font-size:0.88rem;border-radius:10px;background:var(--app-bg);border:1px solid var(--app-border);color:var(--app-text);">
+            <option value="0">Не важно</option>
+            <option value="10">> 10 ч</option>
+            <option value="50">> 50 ч</option>
+            <option value="100">> 100 ч</option>
+          </select>
         </div>
-    </section>
+      </div>
+      {% endif %}
+      {% if direction_summary %}
+      <div class="direction-summary-grid">
+        <span class="dir-summary-chip total"><i class="bi bi-layers"></i>{{ direction_summary.total_directions }} направлений</span>
+        <span class="dir-summary-chip covered"><i class="bi bi-check-circle"></i>{{ direction_summary.covered_directions }} покрыто</span>
+        <span class="dir-summary-chip uncovered"><i class="bi bi-exclamation-circle"></i>{{ direction_summary.uncovered_directions }} без тренера</span>
+        {% if direction_summary.employees_without_directions_count > 0 %}
+        <span class="dir-summary-chip without"><i class="bi bi-person-exclamation"></i>{{ direction_summary.employees_without_directions_count }} без направлений</span>
+        {% endif %}
+      </div>
+      {% endif %}
+      <div class="data-table-wrap">
+        <table class="table align-middle rpt-table">
+          <thead>
+            <tr>
+              <th>Направление</th>
+              <th>Тренеров</th>
+              <th>Кто ведет</th>
+              <th>Часы</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in direction_rows %}
+            <tr data-trainers="{{ row.trainers_count }}" data-hours="{{ row.hours }}">
+              <td><strong>{{ row.name }}</strong></td>
+              <td>
+                <span class="badge-accent">{{ row.trainers_count }}</span>
+              </td>
+              <td>
+                {% if row.trainers %}
+                  <span style="font-size:0.85rem;">{{ row.trainers|join:", " }}</span>
+                {% else %}
+                  <span class="text-danger"><i class="bi bi-exclamation-triangle me-1"></i>Нет назначенных тренеров</span>
+                {% endif %}
+              </td>
+              <td><strong>{{ row.hours|floatformat:0 }}</strong></td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="4" class="text-center text-muted py-4">Нет данных по выбранным фильтрам</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  <!-- ===== TIMESHEET ===== -->
+  <section class="timesheet-section reveal">
+    <div class="timesheet-head">
+      <h3><i class="bi bi-table me-2" style="color:var(--app-accent);"></i>Табель учета за период</h3>
+      <div class="timesheet-actions">
+        {% if is_manager %}
+        <form method="get" class="rate-control" id="hour-rate-form">
+          {% for key, value in request.GET.items %}
+            {% if key != 'hour_rate' and key != 'set_hour_rate' and key != 'reset_rate' %}
+              <input type="hidden" name="{{ key }}" value="{{ value }}">
+            {% endif %}
+          {% endfor %}
+          <span class="text-muted" style="font-size:0.82rem;">Ставка:</span>
+          <input type="number" name="hour_rate" value="{% if hour_rate is not None %}{{ hour_rate|floatformat:0 }}{% endif %}" min="0" step="1" class="form-control form-control-sm" placeholder="₽/час">
+          <button type="submit" name="set_hour_rate" class="btn btn-sm btn-primary" style="border-radius:8px;">
+            <i class="bi bi-check-lg"></i>
+          </button>
+          {% if hour_rate is not None %}
+            <span class="badge-accent" style="margin-left:0.25rem;">
+              {{ hour_rate|floatformat:0 }} ₽/ч
+              {% if rate_last_changed_at %}<span style="font-weight:400;">с {{ rate_last_changed_at|date:"d.m.Y" }}</span>{% endif %}
+            </span>
+          {% endif %}
+        </form>
+        {% else %}
+        <div class="rate-control">
+          <span class="text-muted" style="font-size:0.82rem;">Ставка:</span>
+          <strong>{% if hour_rate is not None %}{{ hour_rate|floatformat:0 }} ₽/ч{% else %}не задана{% endif %}</strong>
+        </div>
+        {% endif %}
+        <button type="button" class="btn btn-success btn-sm" onclick="exportExcel()" style="border-radius:8px;white-space:nowrap;">
+          <i class="bi bi-download me-1"></i> Скачать Excel
+        </button>
+      </div>
+    </div>
+    <div class="timesheet-body">
+      <div class="table-responsive">
+        <table class="table align-middle text-center mb-0 rpt-table">
+          <thead>
+            <tr>
+              <th style="text-align:left;min-width:110px;">Сотрудник</th>
+              {% for d in all_dates %}
+                <th style="min-width:38px;">{{ d.day }}<span class="weekday">{{ d|date:"D" }}</span></th>
+              {% endfor %}
+              <th>Часов</th>
+              <th>ЗП</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for emp in employees %}
+              <tr>
+                <td style="text-align:left;">
+                  <div class="emp-name">{{ emp.user.get_full_name|default:emp.user.username }}</div>
+                </td>
+                {% for d in all_dates %}
+                  {% with hours=data|get_item:emp.id|get_item:d %}
+                    <td class="{% if hours|is_positive %}cell-worked{% else %}cell-empty{% endif %}">
+                      {% if hours|is_positive %}{{ hours|floatformat:0 }}{% else %}—{% endif %}
+                    </td>
+                  {% endwith %}
+                {% endfor %}
+                <td><strong>{{ total_hours|get_item:emp.id|floatformat:0 }}</strong></td>
+                <td>
+                  {% if salary_available %}
+                    <strong>{{ total_salary_per_emp|get_item:emp.id|floatformat:0 }}</strong>
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+            <tr class="total-row">
+              <td style="text-align:left;font-weight:800;">Итого по дням</td>
+              {% for total in daily_totals %}
+                <td style="font-weight:700;">{{ total }}</td>
+              {% endfor %}
+              <td style="font-weight:800;">{{ total_all_hours|floatformat:0 }}</td>
+              <td style="font-weight:800;">
+                {% if salary_available %}
+                  {{ total_salary }}
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
 </div>
 
+<!-- ===== DATA (JSON) — оригинальный формат ===== -->
 <script id="report-data" type="application/json">{{ chart_data_json|safe }}</script>
-<script id="staff-data" type="application/json">{{ staff_chart_json|safe }}</script>
+
+
+<!-- ===== CDN CHART.JS (только одна библиотека) ===== -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <script>
+/* =============================================================
+   ОРИГИНАЛЬНАЯ ЛОГИКА ЧАРТОВ (рабочая) + новый дизайн
+   ============================================================= */
+
 document.addEventListener('DOMContentLoaded', function () {
+    /* ---------- Определение тёмной темы ---------- */
+    const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+
+    /* ---------- Читаем данные (как в оригинале) ---------- */
     const dataEl = document.getElementById('report-data');
     if (!dataEl) return;
 
@@ -737,48 +1138,66 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
     }
 
+    /* ---------- mountChart — в точности как в оригинале ---------- */
     function mountChart(id, config) {
         const el = document.getElementById(id);
         if (!el) return;
         new Chart(el.getContext('2d'), config);
     }
 
+    /* ---------- 1. Загрузка по сотрудникам ---------- */
     mountChart('chart-emp', {
         type: 'bar',
         data: {
             labels: data.empNames || [],
-            datasets: [{ label: 'Часов', data: data.empValues || [], backgroundColor: '#8a6bbe' }]
+            datasets: [{ label: 'Часов', data: data.empValues || [], backgroundColor: isDark ? '#b083e0' : '#8a6bbe' }]
         },
-        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + ctx.parsed.y + ' ч' } } },
+            scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+        }
     });
 
+    /* ---------- 2. Нагрузка по дням недели ---------- */
     mountChart('chart-days', {
         type: 'line',
         data: {
-            labels: data.dayLabels || [],
-            datasets: [{ label: 'Часов', data: data.dayValues || [], borderColor: '#4aa3ff', tension: 0.28, fill: false }]
+            labels: data.dayLabels || ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'],
+            datasets: [{ label: 'Часов', data: data.dayValues || [0,0,0,0,0,0,0], borderColor: '#4aa3ff', tension: 0.28, fill: false }]
         },
-        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + ctx.parsed.y + ' ч' } } },
+            scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+        }
     });
 
+    /* ---------- 3. Типы занятий ---------- */
     mountChart('chart-workout', {
         type: 'doughnut',
         data: {
             labels: data.workoutLabels || [],
             datasets: [{ data: data.workoutValues || [], backgroundColor: ['#8a6bbe','#4aa3ff','#2fbf8f','#f1b43a','#e56b6f','#6ecb63'] }]
         },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' }, tooltip: { callbacks: { label: ctx => ctx.label + ': ' + ctx.parsed + ' ч' } } } }
     });
 
+    /* ---------- 4. Нагрузка по датам ---------- */
     mountChart('chart-dates', {
         type: 'bar',
         data: {
             labels: data.dateLabels || [],
-            datasets: [{ label: 'Часов', data: data.dateValues || [], backgroundColor: '#6f42c1' }]
+            datasets: [{ label: 'Часов', data: data.dateValues || [], backgroundColor: isDark ? '#8e5fd6' : '#6f42c1' }]
         },
-        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + ctx.parsed.y + ' ч' } } },
+            scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+        }
     });
 
+    /* ===== MANAGER CHARTS ===== */
     {% if is_manager %}
     const directionLabels = [{% for row in direction_rows %}"{{ row.name|escapejs }}"{% if not forloop.last %}, {% endif %}{% endfor %}];
     const directionCoverage = [{% for row in direction_rows %}{{ row.trainers_count|default:0 }}{% if not forloop.last %}, {% endif %}{% endfor %}];
@@ -786,9 +1205,13 @@ document.addEventListener('DOMContentLoaded', function () {
         type: 'bar',
         data: {
             labels: directionLabels,
-            datasets: [{ label: 'Тренеров на направление', data: directionCoverage, backgroundColor: '#7a5bc8' }]
+            datasets: [{ label: 'Тренеров на направление', data: directionCoverage, backgroundColor: isDark ? '#9a7bd6' : '#7a5bc8' }]
         },
-        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, precision: 0 } } }
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + ctx.parsed.y } } },
+            scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+        }
     });
 
     const empSkillLabels = [{% for row in employees_direction_rows %}"{{ row.name|escapejs }}"{% if not forloop.last %}, {% endif %}{% endfor %}];
@@ -797,12 +1220,17 @@ document.addEventListener('DOMContentLoaded', function () {
         type: 'bar',
         data: {
             labels: empSkillLabels,
-            datasets: [{ label: 'Направлений у сотрудника', data: empSkillValues, backgroundColor: '#4f9cff' }]
+            datasets: [{ label: 'Направлений у сотрудника', data: empSkillValues, backgroundColor: isDark ? '#6bb3ff' : '#4f9cff' }]
         },
-        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, precision: 0 } } }
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + ctx.parsed.y } } },
+            scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+        }
     });
     {% endif %}
 
+    /* ===== ОРИГИНАЛЬНЫЙ ПОИСК (debounce) ===== */
     const searchInput = document.querySelector('input[name="search"]');
     if (searchInput) {
         searchInput.addEventListener('input', function () {
@@ -811,9 +1239,11 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    /* ===== toggleCustomDateFields ===== */
     const periodSelect = document.querySelector('select[name="period"]');
     if (periodSelect) toggleCustomDateFields(periodSelect.value);
 
+    /* ===== ПОДТВЕРЖДЕНИЕ СТАВКИ ===== */
     const hourRateForm = document.getElementById('hour-rate-form');
     if (hourRateForm) {
         hourRateForm.addEventListener('submit', async function (event) {
@@ -826,7 +1256,8 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    const timesheetRows = document.querySelectorAll('.timesheet-table tbody tr:not(.total-row)');
+    /* ===== ПОДСВЕТКА ТАБЕЛЯ (как в оригинале, но мягче) ===== */
+    const timesheetRows = document.querySelectorAll('.rpt-table tbody tr:not(.total-row)');
     timesheetRows.forEach((row) => {
         const cells = row.querySelectorAll('td');
         if (cells.length < 4) return;
@@ -840,35 +1271,71 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    const staffDataEl = document.getElementById('staff-data');
-    if (staffDataEl) {
-        try {
-            const staffData = JSON.parse(staffDataEl.textContent);
-            mountChart('chart-staff-metrics', {
-                type: 'bar',
-                data: {
-                    labels: staffData.labels || [],
-                    datasets: [
-                        { label: 'Часы', data: staffData.hours || [], backgroundColor: '#8a6bbe', yAxisID: 'y' },
-                        { label: 'Равномерность (%)', data: staffData.uniformity || [], backgroundColor: '#46a17d', yAxisID: 'y1' },
-                        { label: '% отказов', data: staffData.rejection || [], backgroundColor: '#d9796d', yAxisID: 'y1' },
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: { beginAtZero: true, position: 'left', title: { display: true, text: 'Часы' } },
-                        y1: { beginAtZero: true, position: 'right', max: 100, grid: { drawOnChartArea: false }, title: { display: true, text: 'Проценты' } }
+    /* ===== АНИМИРОВАННЫЕ СЧЁТЧИКИ KPI (безопасные, не ломают логику) ===== */
+    const counters = document.querySelectorAll('.kpi-counter');
+    if (counters.length) {
+        const counterObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const el = entry.target;
+                    const target = parseFloat(el.dataset.target);
+                    if (isNaN(target)) { el.textContent = '0'; return; }
+                    const isFloat = target % 1 !== 0;
+                    const duration = 1000;
+                    const start = performance.now();
+                    function update(now) {
+                        const progress = Math.min((now - start) / duration, 1);
+                        const eased = 1 - Math.pow(1 - progress, 3);
+                        const current = eased * target;
+                        el.textContent = isFloat ? current.toFixed(1) : Math.round(current).toString();
+                        if (progress < 1) requestAnimationFrame(update);
                     }
+                    requestAnimationFrame(update);
+                    counterObserver.unobserve(el);
                 }
             });
-        } catch (e) {
-            console.error('Ошибка данных аналитики персонала', e);
+        }, { threshold: 0.3 });
+        counters.forEach(c => counterObserver.observe(c));
+    }
+
+    /* ===== REVEAL ON SCROLL (безопасные анимации) ===== */
+    const reveals = document.querySelectorAll('.reveal');
+    if (reveals.length) {
+        const revealObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                    revealObserver.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+        reveals.forEach(r => revealObserver.observe(r));
+    }
+
+    /* ===== ФИЛЬТРЫ НАПРАВЛЕНИЙ (покрытие + мин. часы) ===== */
+    const coverageStatusEl = document.getElementById('filter-coverage-status');
+    const minHoursEl = document.getElementById('filter-min-hours');
+    if (coverageStatusEl && minHoursEl) {
+        function filterDirections() {
+            const statusVal = coverageStatusEl.value;
+            const minHours = parseFloat(minHoursEl.value) || 0;
+            const rows = document.querySelectorAll('.direction-section .rpt-table tbody tr');
+            rows.forEach(row => {
+                const trainers = parseInt(row.dataset.trainers) || 0;
+                const hours = parseFloat(row.dataset.hours) || 0;
+                const statusOk = statusVal === 'all' ||
+                    (statusVal === 'covered' && trainers > 0) ||
+                    (statusVal === 'uncovered' && trainers === 0);
+                const hoursOk = hours >= minHours;
+                row.style.display = (statusOk && hoursOk) ? '' : 'none';
+            });
         }
+        coverageStatusEl.addEventListener('change', filterDirections);
+        minHoursEl.addEventListener('change', filterDirections);
     }
 });
 
+/* ===== toggleCustomDateFields (глобальная, как в оригинале) ===== */
 function toggleCustomDateFields(value) {
     const customStart = document.getElementById('custom-date-fields');
     const customEnd = document.getElementById('custom-date-fields-end');
@@ -882,11 +1349,21 @@ function toggleCustomDateFields(value) {
     }
 }
 
+/* ===== exportExcel (глобальная, как в оригинале) ===== */
 function exportExcel() {
     const url = new URL(window.location.href);
     const params = url.searchParams;
     params.delete('set_hour_rate');
     window.location.href = '/reports/export/tabel/?' + params.toString();
+}
+
+/* ===== submitCustomPeriod — автосабмит при выборе двух дат ===== */
+function submitCustomPeriod() {
+    const start = document.querySelector('input[name="start_date"]');
+    const end = document.querySelector('input[name="end_date"]');
+    if (start && end && start.value && end.value) {
+        start.form.submit();
+    }
 }
 </script>
 {% endblock %}

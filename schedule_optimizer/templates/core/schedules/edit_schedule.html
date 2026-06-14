@@ -1,6 +1,5 @@
 {% extends "core/base.html" %}
-{% load static %}
-{% load dict_extras %}
+{% load static custom_filters %}
 
 {% block title %}Редактирование графика - {{ block.super }}{% endblock %}
 
@@ -24,6 +23,7 @@
 .cell-preview {
     min-height: 38px;
     margin-bottom: 0.35rem;
+    text-align: center;
 }
 
 .cell-controls {
@@ -66,7 +66,7 @@
                                 {% with assignment=date_assignments|get_item:time_key %}
                                 <div class="cell-preview">
                                     {% if assignment and assignment.employee %}
-                                        <span class="trainer-pill" data-employee-id="{{ assignment.employee.id }}">{{ assignment.employee.user.username }}</span><br>
+                                        <span class="trainer-pill" data-employee-id="{{ assignment.employee.id }}">{{ assignment.employee.user|short_name }}</span><br>
                                         <small class="workout-preview">{{ assignment.workout_type.name|default:"Работа" }}</small>
                                     {% else %}
                                         <span class="trainer-pill">—</span><br>
@@ -78,7 +78,7 @@
                                         <option value="">Выберите...</option>
                                         {% for emp in employees %}
                                             <option value="{{ emp.id }}" {% if assignment and assignment.employee.id == emp.id %}selected{% endif %}>
-                                                {{ emp.user.username }}
+                                                {{ emp.user|short_name }}
                                             </option>
                                         {% endfor %}
                                     </select>

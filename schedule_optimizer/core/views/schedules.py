@@ -1,6 +1,7 @@
 """Страницы просмотра, создания, редактирования и удаления графиков."""
 
 from .auth import *
+from django.http import HttpResponse
 from .distribution_rules import _generate_studio_slots, _serialize_active_distribution_rules
 
 @login_required
@@ -45,7 +46,7 @@ def create_schedule_view(request):
     for emp in employee_models_with_workouts:
         workouts = list(emp.workout_types.values('id', 'name', 'category'))
         user = emp.user_profile.user
-        display_name = user.get_full_name().strip() or user.username
+        display_name = ' '.join(p for p in (user.last_name, user.first_name) if p) or user.username
         employees_with_workouts.append({
             'id': emp.user_profile.id,
             'username': emp.user_profile.user.username,
@@ -310,7 +311,7 @@ def schedule_detail(request, schedule_id):
     for emp in employee_models_with_workouts:
         workouts = list(emp.workout_types.values('id', 'name', 'category'))
         user = emp.user_profile.user
-        display_name = user.get_full_name().strip() or user.username
+        display_name = ' '.join(p for p in (user.last_name, user.first_name) if p) or user.username
         employees_with_workouts.append({
             'id': emp.user_profile.id,
             'username': emp.user_profile.user.username,
@@ -351,7 +352,7 @@ def schedule_detail(request, schedule_id):
             manager_rejections.append({
                 'approval_id': appr.id,
                 'employee_id': appr.employee_id,
-                'employee_name': appr.employee.user.get_full_name() or appr.employee.user.username,
+                'employee_name': ' '.join(p for p in (appr.employee.user.last_name, appr.employee.user.first_name) if p) or appr.employee.user.username,
                 'responded_at': appr.responded_at,
                 'comment': appr.comment or '',
                 'slots': slots,
@@ -575,7 +576,215 @@ def employee_schedule(request):
 
 
 
-""" === ДОСТУПНОСТЬ === """
 
-# core/views.py
-from datetime import datetime, timedelta
+
+@login_required
+def schedule_pdf_export(request, schedule_id):
+    """Экспорт графика в PDF с названием и статусом."""
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib.units import mm
+    from reportlab.lib import colors as rl_colors
+    from reportlab.platypus import (
+        SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer,
+    )
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+    from io import BytesIO
+    import os
+
+    schedule = get_object_or_404(Schedule, id=schedule_id)
+
+    # Register Arial for Cyrillic
+    arial_path = r'C:\Windows\Fonts\Arial.ttf'
+    arialbd_path = r'C:\Windows\Fonts\Arialbd.ttf'
+    if os.path.exists(arial_path):
+        pdfmetrics.registerFont(TTFont('Arial', arial_path))
+        pdfmetrics.registerFont(TTFont('Arial-Bold', arialbd_path))
+        base_font = 'Arial'
+        bold_font = 'Arial-Bold'
+    else:
+        base_font = 'Helvetica'
+        bold_font = 'Helvetica-Bold'
+
+    days = []
+    current_date = schedule.start_date
+    while current_date <= schedule.end_date:
+        days.append(current_date)
+        current_date += timedelta(days=1)
+
+    all_slots = [f"{start}–{end}" for start, end in _generate_studio_slots()]
+
+    assignments = ShiftAssignment.objects.filter(
+        schedule=schedule, date__in=days
+    ).select_related('employee__user', 'workout_type')
+
+    assignment_dict = {}
+    for a in assignments:
+        time_key = a.start_time.strftime('%H:%M')
+        assignment_dict[(a.date, time_key)] = a
+
+    # Trainer colour palette
+    trainer_palettes = [
+        (rl_colors.Color(79/255, 111/255, 191/255), rl_colors.Color(111/255, 143/255, 221/255)),
+        (rl_colors.Color(110/255, 87/255, 165/255), rl_colors.Color(139/255, 115/255, 199/255)),
+        (rl_colors.Color(63/255, 143/255, 127/255), rl_colors.Color(94/255, 169/255, 150/255)),
+        (rl_colors.Color(181/255, 118/255, 72/255), rl_colors.Color(210/255, 142/255, 90/255)),
+        (rl_colors.Color(155/255, 95/255, 134/255), rl_colors.Color(185/255, 122/255, 163/255)),
+        (rl_colors.Color(59/255, 127/255, 165/255), rl_colors.Color(90/255, 155/255, 196/255)),
+        (rl_colors.Color(126/255, 135/255, 69/255), rl_colors.Color(156/255, 165/255, 96/255)),
+        (rl_colors.Color(124/255, 90/255, 71/255), rl_colors.Color(156/255, 121/255, 100/255)),
+    ]
+
+    n_rows = 1 + len(all_slots)
+    n_cols = 1 + len(days)
+
+    # Tight margins to maximise usable area
+    margin = 8 * mm
+    page_w, page_h = landscape(A4)
+    avail_w = page_w - 2 * margin
+    avail_h = page_h - 2 * margin
+
+    # Header block takes fixed space
+    header_h = 18 * mm
+
+    # Remaining height for the table
+    table_avail_h = avail_h - header_h - 4 * mm
+    row_h = table_avail_h / n_rows
+
+    # Pick font size based on available row height
+    font_size = max(7, min(11, int(row_h / 5.0)))
+    small_font = max(font_size - 2, 7)
+
+    # Column widths
+    time_col_w = 17 * mm
+    day_col_w = (avail_w - time_col_w) / max(len(days), 1)
+    col_widths = [time_col_w] + [day_col_w] * len(days)
+
+    buf = BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=landscape(A4),
+                            leftMargin=margin, rightMargin=margin,
+                            topMargin=margin, bottomMargin=margin)
+
+    # --- Paragraph styles ---
+    cell_emp = ParagraphStyle('CellEmp', fontName=base_font, fontSize=font_size,
+                              leading=font_size + 2, alignment=1)
+    cell_bold = ParagraphStyle('CellBold', fontName=bold_font, fontSize=font_size,
+                               leading=font_size + 2, alignment=1)
+    cell_time = ParagraphStyle('CellTime', fontName=base_font, fontSize=small_font,
+                               leading=small_font + 1, alignment=1)
+    cell_empty = ParagraphStyle('CellEmpty', fontName=base_font, fontSize=font_size,
+                                leading=font_size + 2, alignment=1,
+                                textColor=rl_colors.Color(0.75, 0.75, 0.75))
+
+    # --- Build table data ---
+    data_rows = []
+
+    # Header row
+    header = [Paragraph('<b>Время</b>', cell_bold)]
+    for d in days:
+        header.append(Paragraph(f'<b>{d:%d.%m}</b>', cell_bold))
+    data_rows.append(header)
+
+    # Data rows
+    for slot in all_slots:
+        start_time_str = slot.split('–')[0]
+        row_cells = [Paragraph(slot, cell_time)]
+        for day in days:
+            key = (day, start_time_str)
+            a = assignment_dict.get(key)
+            if a and a.employee:
+                emp_name = ' '.join(p for p in (a.employee.user.last_name, a.employee.user.first_name) if p) or a.employee.user.username
+                wt_name = a.workout_type.name if a.workout_type else ''
+                if wt_name:
+                    text = f'<b>{emp_name}</b><br/>{wt_name}'
+                else:
+                    text = f'<b>{emp_name}</b>'
+                row_cells.append(Paragraph(text, cell_emp))
+            else:
+                row_cells.append(Paragraph('—', cell_empty))
+        data_rows.append(row_cells)
+
+    table = Table(data_rows, colWidths=col_widths, repeatRows=1)
+
+    # --- Table styling ---
+    style_cmds = [
+        ('GRID', (0, 0), (-1, -1), 0.4, rl_colors.Color(0.75, 0.75, 0.75)),
+        ('BACKGROUND', (0, 0), (-1, 0), rl_colors.Color(0.88, 0.88, 0.88)),
+        ('TEXTCOLOR', (0, 0), (-1, 0), rl_colors.Color(0.1, 0.1, 0.1)),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('ALIGN', (0, 0), (0, -1), 'CENTER'),
+        ('ALIGN', (1, 1), (-1, -1), 'CENTER'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 2),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 2),
+        ('TOPPADDING', (0, 0), (-1, -1), 2),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+    ]
+
+    # Alternate row tint
+    for r_idx in range(1, n_rows):
+        if r_idx % 2 == 0:
+            style_cmds.append(
+                ('BACKGROUND', (0, r_idx), (-1, r_idx),
+                 rl_colors.Color(0.97, 0.97, 0.97))
+            )
+
+    # Trainer colours on assigned cells
+    for r_idx, slot in enumerate(all_slots):
+        start_time_str = slot.split('–')[0]
+        for c_idx, day in enumerate(days):
+            key = (day, start_time_str)
+            a = assignment_dict.get(key)
+            if a and a.employee:
+                pal = trainer_palettes[abs(a.employee_id) % len(trainer_palettes)]
+                style_cmds.append(
+                    ('BACKGROUND', (c_idx + 1, r_idx + 1), (c_idx + 1, r_idx + 1),
+                     rl_colors.Color(pal[0].red, pal[0].green, pal[0].blue, alpha=0.12))
+                )
+                style_cmds.append(
+                    ('BOX', (c_idx + 1, r_idx + 1), (c_idx + 1, r_idx + 1), 0.5, pal[1])
+                )
+
+    table.setStyle(TableStyle(style_cmds))
+
+    # --- Decorative header block ---
+    accent = rl_colors.Color(79/255, 111/255, 191/255)
+
+    title_style = ParagraphStyle('PDFTitle', fontName=bold_font, fontSize=18,
+                                 alignment=1, textColor=accent, spaceAfter=8*mm)
+    status_style = ParagraphStyle('PDFStatus', fontName=base_font, fontSize=11,
+                                  alignment=1,
+                                  textColor=rl_colors.Color(0.35, 0.35, 0.35))
+
+    status_line = f'Статус: {schedule.get_status_display()}'
+
+    elements = []
+
+    # Title
+    elements.append(Paragraph(f'{schedule.name}', title_style))
+    # Status
+    elements.append(Paragraph(status_line, status_style))
+    # Thin decorative line
+    line_data = [['']]
+    line_table = Table(line_data, colWidths=[avail_w * 0.4])
+    line_table.setStyle(TableStyle([
+        ('LINEBELOW', (0, 0), (-1, 0), 1.5, accent),
+        ('LEFTPADDING', (0, 0), (-1, -1), 0),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+        ('TOPPADDING', (0, 0), (-1, -1), 0),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+    ]))
+    elements.append(line_table)
+    elements.append(Spacer(1, 3*mm))
+
+    elements.append(table)
+
+    doc.build(elements)
+    pdf_data = buf.getvalue()
+    buf.close()
+
+    safe_name = re.sub(r'[^\w\-_\. ]', '_', schedule.name)
+    filename = f"{safe_name}.pdf"
+    response = HttpResponse(pdf_data, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
