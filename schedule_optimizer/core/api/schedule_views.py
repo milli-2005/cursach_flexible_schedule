@@ -20,6 +20,7 @@ from django.views.decorators.http import require_http_methods
 
 from ..error_utils import api_error_response, humanize_exception
 from ..email_utils import send_mail_with_fallback
+from ..services.rule_ai_parser import try_parse_rule_with_ai
 from ..models import (
     Availability,
     Employee,

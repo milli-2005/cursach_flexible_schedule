@@ -172,6 +172,24 @@ EXAMPLES = [
             "confidence": 0.92,
         },
     },
+    {
+        "text": "у одного тренера не может быть одинаковых тренировок за смену",
+        "json": {
+            "rule_type": "daily_duplicate_limit",
+            "severity": "hard",
+            "name": "Запрет одинаковых тренировок за смену",
+            "params_json": {
+                "scope": "trainer",
+                "max_per_bucket_per_day": 1,
+                "buckets": [
+                    {"name": "morning", "start": "09:00", "end": "14:00"},
+                    {"name": "evening", "start": "16:00", "end": "21:00"},
+                ],
+            },
+            "explanation": "У одного тренера за смену не может быть двух одинаковых тренировок",
+            "confidence": 0.95,
+        },
+    },
 ]
 
 
@@ -249,6 +267,7 @@ def try_parse_rule_with_ai(rule_text: str, retry: bool = True):
 
     api_key = getattr(settings, "OPENAI_API_KEY", "")
     model = getattr(settings, "OPENAI_MODEL", "gpt-4o-mini")
+    base_url = getattr(settings, "OPENAI_BASE_URL", None)
     if not api_key:
         return {"success": False, "error": "Не задан OPENAI_API_KEY.", "source": "ai"}
 
@@ -270,7 +289,10 @@ def try_parse_rule_with_ai(rule_text: str, retry: bool = True):
 
     for i, current_prompt in enumerate(attempts):
         try:
-            client = OpenAI(api_key=api_key)
+            client_kwargs = {"api_key": api_key}
+            if base_url:
+                client_kwargs["base_url"] = base_url
+            client = OpenAI(**client_kwargs)
             response = client.chat.completions.create(
                 model=model,
                 messages=[

@@ -102,6 +102,7 @@ USE_POSTGRES = _env_bool('USE_POSTGRES', default=False)
 RULE_AI_ENABLED = _env_bool('RULE_AI_ENABLED', default=True)
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '').strip()
 OPENAI_MODEL = os.getenv('OPENAI_MODEL', 'gpt-4o-mini').strip() or 'gpt-4o-mini'
+OPENAI_BASE_URL = os.getenv('OPENAI_BASE_URL', '').strip() or None
 
 if USE_POSTGRES:
     DATABASES = {

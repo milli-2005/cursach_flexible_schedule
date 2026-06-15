@@ -4,102 +4,271 @@
 
 {% block extra_css %}
 <style>
+/* ===== Страница заявок на обмен ===== */
 .swap-page {
     max-width: 1200px;
     margin: 0 auto;
 }
 
 .swap-header {
-    margin-bottom: 1rem;
-    padding: 1rem 1.1rem;
-    border-radius: 16px;
-    border: 1px solid rgba(111, 66, 193, 0.34);
-    background:
-        radial-gradient(900px 180px at -5% -40%, rgba(111, 66, 193, 0.18), transparent 62%),
-        linear-gradient(180deg, var(--app-surface-soft) 0%, var(--app-surface) 100%);
+    margin-bottom: 1.25rem;
+    padding: 1.1rem 1.25rem;
+    border-radius: 14px;
+    border: 1px solid var(--app-border);
+    background: var(--app-surface);
 }
-
 .swap-title {
     margin: 0;
     font-weight: 700;
+    color: var(--app-heading);
 }
-
 .swap-subtitle {
     margin: 0.35rem 0 0;
     color: var(--app-text-muted);
+    font-size: 0.9rem;
 }
 
+/* Фильтры */
+.swap-filters {
+    border: 1px solid var(--app-border);
+    border-radius: 12px;
+    padding: 0.7rem 0.9rem;
+    margin-bottom: 1rem;
+    background: var(--app-surface);
+}
+.swap-filters .filter-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    align-items: center;
+}
+.swap-filters .filter-item {
+    min-width: 160px;
+    flex: 1 1 0;
+}
+.swap-filters .filter-item select {
+    background: var(--app-surface-strong);
+    border: 1px solid var(--app-border);
+    color: var(--app-text);
+    font-size: 0.82rem;
+    border-radius: 8px;
+    padding: 0.4rem 1.6rem 0.4rem 0.65rem;
+    height: auto;
+    min-height: 32px;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23999'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.55rem center;
+    width: 100%;
+    transition: border-color 0.12s;
+}
+.swap-filters .filter-item select:focus {
+    border-color: var(--app-accent);
+    box-shadow: 0 0 0 0.12rem var(--app-accent-soft);
+    outline: none;
+}
+.swap-filters .filter-item select option {
+    background: var(--app-surface);
+    color: var(--app-text);
+}
+.swap-filters .btn-reset-filters {
+    background: transparent;
+    border: 1px solid var(--app-border);
+    color: var(--app-text-muted);
+    font-size: 0.82rem;
+    border-radius: 8px;
+    padding: 0.35rem 0.8rem;
+    min-height: 32px;
+    white-space: nowrap;
+    transition: all 0.12s;
+    cursor: pointer;
+}
+.swap-filters .btn-reset-filters:hover {
+    background: var(--app-hover);
+    color: var(--app-heading);
+    border-color: var(--app-accent);
+}
+
+/* Таблица */
 .swap-table-wrap {
     border: 1px solid var(--app-border);
     border-radius: 14px;
     overflow: hidden;
+    background: var(--app-surface);
 }
-
 .swap-table {
     margin-bottom: 0;
 }
-
-.swap-table thead th {
+.swap-table > thead > tr > th {
     font-weight: 700;
+    font-size: 0.85rem;
+    color: #fff !important;
+    background: var(--app-accent-strong);
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+    padding: 0.7rem 0.75rem;
+    letter-spacing: 0.01em;
+}
+html[data-theme='light'] .swap-table > thead > tr > th {
+    color: #fff !important;
+}
+.swap-table tbody td {
+    padding: 0.7rem 0.75rem;
+    vertical-align: middle;
+    font-size: 0.88rem;
+    border-color: var(--app-border);
+    color: var(--app-text);
+}
+.swap-table tbody tr {
+    transition: background 0.12s;
+}
+.swap-table tbody tr:hover {
+    background: var(--app-hover);
 }
 
-.swap-slots {
-    display: grid;
-    gap: 0.35rem;
+/* Ячейка "Кому" — поиск + селект */
+.candidate-wrap {
+    display: flex;
+    gap: 0.3rem;
+    align-items: center;
 }
-
-.swap-slot {
-    padding: 0.35rem 0.5rem;
+.candidate-wrap .candidate-select {
+    background: var(--app-surface-strong);
+    border: 1px solid var(--app-border);
+    color: var(--app-text);
+    font-size: 0.82rem;
+    border-radius: 8px;
+    padding: 0.3rem 0.55rem;
+    height: auto;
+    min-height: 30px;
+    flex: 1;
+    min-width: 120px;
+    max-width: 200px;
+    transition: border-color 0.12s;
+}
+.candidate-wrap .candidate-select:focus {
+    border-color: var(--app-accent);
+    box-shadow: 0 0 0 0.12rem var(--app-accent-soft);
+    outline: none;
+}
+.candidate-wrap .candidate-select option {
+    background: var(--app-surface);
+    color: var(--app-text);
+}
+.btn-candidate-search {
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     border: 1px solid var(--app-border);
     border-radius: 8px;
-    background: rgba(111, 66, 193, 0.06);
-    font-size: 0.9rem;
+    background: transparent;
+    color: var(--app-text-muted);
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.12s;
+    flex-shrink: 0;
+    padding: 0;
+}
+.btn-candidate-search:hover {
+    background: var(--app-hover);
+    color: var(--app-accent);
+    border-color: var(--app-accent);
+}
+.btn-candidate-search:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+.swap-to-assigned {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 8px;
+    background: rgba(25, 135, 84, 0.1);
+    border: 1px solid rgba(25, 135, 84, 0.2);
+    color: #2ecc71;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+.swap-to-assigned i {
+    font-size: 0.8rem;
 }
 
+/* Смены */
+.swap-slots {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+.swap-slot {
+    padding: 0.25rem 0.5rem;
+    border: 1px solid var(--app-border);
+    border-radius: 8px;
+    background: var(--app-accent-soft);
+    font-size: 0.8rem;
+    color: var(--app-text);
+    line-height: 1.4;
+}
+
+/* Статусы */
 .status-badge {
     display: inline-flex;
     align-items: center;
-    padding: 0.24rem 0.5rem;
+    gap: 0.25rem;
+    padding: 0.2rem 0.6rem;
     border-radius: 999px;
     font-size: 0.78rem;
     font-weight: 700;
+    white-space: nowrap;
 }
+.status-badge::before {
+    content: "";
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0.5;
+}
+.status-pending { background: rgba(255, 193, 7, 0.1); color: #d4a72c; border: 1px solid rgba(255, 193, 7, 0.2); }
+.status-employee { background: rgba(13, 202, 240, 0.08); color: #36b5cc; border: 1px solid rgba(13, 202, 240, 0.16); }
+.status-approved { background: rgba(46, 204, 113, 0.08); color: #2ecc71; border: 1px solid rgba(46, 204, 113, 0.18); }
+.status-rejected { background: rgba(220, 53, 69, 0.08); color: #e65a6e; border: 1px solid rgba(220, 53, 69, 0.18); }
 
-.status-pending { background: rgba(255, 193, 7, 0.22); color: #a36e00; border: 1px solid rgba(255, 193, 7, 0.45); }
-.status-employee { background: rgba(13, 202, 240, 0.2); color: #0b6e84; border: 1px solid rgba(13, 202, 240, 0.4); }
-.status-approved { background: rgba(25, 135, 84, 0.18); color: #2c8f5a; border: 1px solid rgba(25, 135, 84, 0.36); }
-.status-rejected { background: rgba(220, 53, 69, 0.16); color: #b53446; border: 1px solid rgba(220, 53, 69, 0.38); }
-
+/* Действия */
 .swap-actions {
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.45rem;
+    flex-wrap: nowrap;
+    gap: 0.3rem;
+    align-items: center;
+}
+.swap-actions .btn-sm {
+    font-size: 0.78rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 8px;
+    white-space: nowrap;
 }
 
+/* Пусто */
 .swap-empty {
     border: 1px solid var(--app-border);
     border-radius: 14px;
-    background: linear-gradient(180deg, var(--app-surface-soft) 0%, var(--app-surface) 100%);
-    padding: 1rem;
+    background: var(--app-surface);
+    padding: 1.25rem;
     color: var(--app-text-muted);
+    text-align: center;
 }
 
 @media (max-width: 992px) {
     .swap-table-wrap {
         overflow-x: auto;
     }
-
     .swap-table {
-        min-width: 900px;
+        min-width: 1000px;
     }
-}
-
-.swap-filters {
-    border: 1px solid var(--app-border);
-    border-radius: 12px;
-    padding: 0.85rem;
-    margin-bottom: 0.9rem;
-    background: linear-gradient(180deg, var(--app-surface-soft) 0%, var(--app-surface) 100%);
 }
 </style>
 {% endblock %}
@@ -113,9 +282,9 @@
 
     {% if swap_requests %}
         <div class="swap-filters">
-            <div class="d-flex flex-wrap gap-2">
-                <div style="min-width: 200px;">
-                    <select id="swap-status-filter" class="form-select">
+            <div class="filter-group">
+                <div class="filter-item">
+                    <select id="swap-status-filter">
                         <option value="">Все статусы</option>
                         <option value="pending">На рассмотрении</option>
                         <option value="approved_by_employee">Одобрено сотрудником</option>
@@ -124,33 +293,33 @@
                         <option value="rejected">Отклонено</option>
                     </select>
                 </div>
-                <div style="min-width: 220px;">
-                    <select id="swap-from-filter" class="form-select">
+                <div class="filter-item">
+                    <select id="swap-from-filter">
                         <option value="">От кого: все</option>
                     </select>
                 </div>
-                <div style="min-width: 220px;">
-                    <select id="swap-to-filter" class="form-select">
+                <div class="filter-item">
+                    <select id="swap-to-filter">
                         <option value="">Кому: все</option>
                     </select>
                 </div>
-                <div style="min-width: 220px;">
-                    <select id="swap-sort" class="form-select">
-                        <option value="created_desc">Сортировка: новые сверху</option>
-                        <option value="created_asc">Сортировка: старые сверху</option>
-                        <option value="status_asc">Сортировка: по статусу</option>
-                        <option value="from_asc">Сортировка: от кого (А-Я)</option>
-                        <option value="to_asc">Сортировка: кому (А-Я)</option>
+                <div class="filter-item">
+                    <select id="swap-sort">
+                        <option value="created_desc">Новые сверху</option>
+                        <option value="created_asc">Старые сверху</option>
+                        <option value="status_asc">По статусу</option>
+                        <option value="from_asc">От кого (А-Я)</option>
+                        <option value="to_asc">Кому (А-Я)</option>
                     </select>
                 </div>
                 <div>
-                    <button type="button" id="swap-reset-filters" class="btn btn-outline-secondary">Сбросить</button>
+                    <button type="button" id="swap-reset-filters" class="btn-reset-filters">Сбросить</button>
                 </div>
             </div>
         </div>
 
         <div class="swap-table-wrap management-table">
-            <table class="table table-dark table-striped align-middle swap-table">
+            <table class="table align-middle swap-table">
                 <thead>
                     <tr>
                         <th>От кого</th>
@@ -169,30 +338,40 @@
                         data-status="{{ req.status }}"
                         data-from="{{ req.from_employee.user_profile.user.get_full_name|default:req.from_employee.user_profile.user.username|lower }}"
                         data-to="{% if req.to_employee %}{{ req.to_employee.user_profile.user.get_full_name|default:req.to_employee.user_profile.user.username|lower }}{% endif %}"
+                        data-to-employee-id="{% if req.to_employee %}{{ req.to_employee.id }}{% endif %}"
                         data-reason="{{ req.reason|default:''|lower }}"
                         data-created="{{ req.created_at|date:'c' }}">
-                        <td>{{ req.from_employee.user_profile.user.get_full_name }}</td>
-                        <td>
+                        <td class="fw-semibold" style="color:var(--app-heading);">{{ req.from_employee.user_profile.user.get_full_name }}</td>
+                        <td class="swap-to-cell">
                             {% if req.to_employee %}
-                                {{ req.to_employee.user_profile.user.get_full_name }}
+                                <span class="swap-to-assigned">
+                                    <i class="bi bi-person-check"></i>
+                                    {{ req.to_employee.user_profile.user.get_full_name }}
+                                </span>
                             {% else %}
-                                <span class="text-muted">Выбирает руководитель</span>
+                                <div class="candidate-wrap">
+                                    <select class="candidate-select" data-swap-id="{{ req.id }}">
+                                        <option value="">Нажмите «Поиск»</option>
+                                    </select>
+                                    <button class="btn-candidate-search" onclick="loadSwapCandidates({{ req.id }}, this)" title="Подобрать кандидатов">
+                                        <i class="bi bi-search"></i>
+                                    </button>
+                                </div>
                             {% endif %}
                         </td>
                         <td>
                             <div class="swap-slots">
                                 {% for s in req.shifts.all %}
                                     <div class="swap-slot">
-                                        {{ s.shift_assignment.date|date:"d E Y" }}
-                                        <br>
+                                        {{ s.shift_assignment.date|date:"d.m.Y" }}
                                         {{ s.shift_assignment.start_time|time:"H:i" }}-{{ s.shift_assignment.end_time|time:"H:i" }}
                                     </div>
                                 {% empty %}
-                                    <span>—</span>
+                                    <span class="text-muted" style="font-size:0.82rem;">Нет данных</span>
                                 {% endfor %}
                             </div>
                         </td>
-                        <td>{{ req.reason|default:"—"|truncatewords:16 }}</td>
+                        <td style="max-width:200px;font-size:0.85rem;color:var(--app-text-muted);">{{ req.reason|default:"—"|truncatewords:14 }}</td>
                         <td>
                             {% if req.status == 'pending' %}
                                 <span class="status-badge status-pending">На рассмотрении</span>
@@ -206,25 +385,19 @@
                                 <span class="status-badge">{{ req.get_status_display }}</span>
                             {% endif %}
                         </td>
-                        <td>{{ req.created_at|date:"d.m.Y H:i" }}</td>
+                        <td style="font-size:0.82rem;color:var(--app-text-muted);">{{ req.created_at|date:"d.m.Y H:i" }}</td>
                         <td>
                             {% if req.status == 'pending' or req.status == 'approved_by_employee' %}
                                 <div class="swap-actions">
-                                    <button class="btn btn-sm btn-outline-light" onclick="loadSwapCandidates({{ req.id }}, this)">
-                                        Подобрать
-                                    </button>
-                                    <select class="form-select form-select-sm candidate-select" data-swap-id="{{ req.id }}" style="min-width: 220px;">
-                                        <option value="">Сначала нажмите «Подобрать»</option>
-                                    </select>
                                     <button class="btn btn-sm btn-success" onclick="approveSwap({{ req.id }}, this)">
-                                        Утвердить
+                                        <i class="bi bi-check-lg"></i> Утв.
                                     </button>
                                     <button class="btn btn-sm btn-danger" onclick="rejectSwap({{ req.id }})">
-                                        Отклонить
+                                        <i class="bi bi-x-lg"></i> Откл.
                                     </button>
                                 </div>
                             {% else %}
-                                <span>—</span>
+                                <span class="text-muted" style="font-size:0.85rem;">—</span>
                             {% endif %}
                         </td>
                     </tr>
@@ -371,7 +544,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
 function approveSwap(swapId) {
     const select = document.querySelector(`.candidate-select[data-swap-id="${swapId}"]`);
-    const selectedEmployeeId = select?.value || '';
+    const row = document.querySelector(`.swap-row[data-swap-id="${swapId}"]`);
+    const assignedId = row?.dataset?.toEmployeeId || '';
+    let selectedEmployeeId = select?.value || '';
+    if (!selectedEmployeeId && assignedId) {
+        selectedEmployeeId = assignedId;
+    }
     if (!selectedEmployeeId) {
         showGlobalNotification('Сначала подберите и выберите сотрудника на замену.', 'error');
         return;

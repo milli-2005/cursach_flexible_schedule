@@ -20,6 +20,8 @@
   6. API: parse / save / toggle / delete / update / test
 """
 
+import re
+from ..services.rule_ai_parser import try_parse_rule_with_ai
 from .auth import *
 
 # ═══════════════════════════════════════════════════════════
@@ -115,6 +117,16 @@ def _extract_category_from_text(src: str):
         if key in src:
             return value
     return None
+
+def _extract_categories_from_text(src: str):
+    """Возвращает список ВСЕХ категорий, найденных в тексте, в порядке упоминания."""
+    matches = []
+    for key, value in WORKOUT_CATEGORY_ALIASES.items():
+        pos = src.find(key)
+        if pos != -1 and value not in [m[1] for m in matches]:
+            matches.append((pos, value))
+    matches.sort(key=lambda x: x[0])
+    return [m[1] for m in matches]
 
 
 def _parse_distribution_rule_text(text: str):
@@ -242,33 +254,22 @@ def _parse_distribution_rule_text(text: str):
         }
         return payload, None
 
-    # ── Шаблон 3: «силовые и кардио должны чередоваться» ──
-    if 'силов' in src and 'кардио' in src and ('черед' in src):
-        payload = {
-            'rule_type': 'alternation',
-            'severity': 'hard',
-            'name': 'Чередование силовых и кардио',
-            'params_json': {
-                'weekdays': [1, 3, 4, 5, 6],  # вт, чт, пт, сб, вс
-                'categories': ['strength', 'cardio'],
-                'mode': 'strict_alternate',
+    # ── Шаблон 3: чередование (извлекаем категории из текста) ──
+    if 'черед' in src:
+        cats = _extract_categories_from_text(src)
+        if len(cats) >= 2:
+            cat_display = ', '.join(cats)
+            payload = {
+                'rule_type': 'alternation',
+                'severity': 'hard',
+                'name': f'Чередование {cat_display}',
+                'params_json': {
+                    'weekdays': [0, 1, 2, 3, 4, 5, 6],
+                    'categories': cats,
+                    'mode': 'strict_alternate',
+                }
             }
-        }
-        return payload, None
-
-    # ── Шаблон 3.1: «силовые и спокойные должны чередоваться» ──
-    if 'силов' in src and 'спокой' in src and ('черед' in src):
-        payload = {
-            'rule_type': 'alternation',
-            'severity': 'hard',
-            'name': 'Чередование силовых и спокойных',
-            'params_json': {
-                'weekdays': [0, 1, 2, 3, 4, 5, 6],
-                'categories': ['strength', 'calm'],
-                'mode': 'strict_alternate',
-            }
-        }
-        return payload, None
+            return payload, None
 
     # ── Шаблон 4: «не ставь две силовые подряд» ──
     if ('силов' in src or 'спокой' in src) and 'подряд' in src and ('не' in src or 'запрет' in src):
@@ -337,7 +338,23 @@ def _parse_distribution_rule_text(text: str):
         }
         return payload, None
 
-    return None, 'Не удалось распознать правило. Сейчас поддерживаются 4 шаблона из примеров.'
+    # ── Шаблон 7: «одинаковые тренировки не повторяются за смену» ──
+    if ('одинаков' in src or 'повтор' in src) and ('трениров' in src or 'занят' in src):
+        payload = {
+            'rule_type': 'daily_duplicate_limit',
+            'severity': 'hard',
+            'name': 'Запрет одинаковых тренировок за смену',
+            'params_json': {
+                'scope': 'trainer',
+                'max_per_bucket_per_day': 1,
+                'buckets': [
+                    {'name': 'full_day', 'start': '09:00', 'end': '21:00'},
+                ],
+            }
+        }
+        return payload, None
+
+    return None, 'Не удалось распознать правило. Сейчас поддерживаются шаблоны: лимит в неделю, чередование, запрет дублей в день, ограничение подряд.'
 
 
 # ═══════════════════════════════════════════════════════════
@@ -591,9 +608,8 @@ def api_parse_distribution_rule(request):
     POST-эндпоинт для распознавания текста правила.
 
     Алгоритм:
-      1. Пытаемся распознать через ИИ (try_parse_rule_with_ai)
-      2. Если ИИ не справился — пробуем fallback-парсер (_parse_distribution_rule_text)
-      3. Если оба не смогли — возвращаем ошибку
+      1. Пробуем шаблонный парсер (_parse_distribution_rule_text)
+      2. Если не смог — возвращаем ошибку
 
     Возвращает JSON с parsed (структура правила), source (ai/fallback_regex),
     explanation, confidence.
@@ -622,16 +638,14 @@ def api_parse_distribution_rule(request):
     # Шаг 2: fallback-regex
     parsed, error = _parse_distribution_rule_text(text)
     if error:
-        ai_error = ai_result.get('error')
-        suffix = f" AI: {ai_error}" if ai_error else ""
-        return JsonResponse({'success': False, 'error': f'{error}{suffix}'}, status=400)
+        return JsonResponse({'success': False, 'error': error}, status=400)
 
     return JsonResponse({
         'success': True,
         'parsed': parsed,
         'source': 'fallback_regex',
         'explanation': 'Распознано резервным шаблонным парсером.',
-        'confidence': 0.72,
+        'confidence': 0.92,
     })
 
 

@@ -4,121 +4,304 @@
 
 {% block extra_css %}
 <style>
+/* ===== Страница обменов сменами (сотрудник) ===== */
 .swap-page {
     max-width: 1200px;
     margin: 0 auto;
 }
 
+/* --- Шапка --- */
 .swap-header {
-    margin-bottom: 1rem;
-    padding: 1rem 1.1rem;
-    border-radius: 16px;
-    border: 1px solid rgba(111, 66, 193, 0.34);
-    background:
-        radial-gradient(900px 180px at -5% -40%, rgba(111, 66, 193, 0.18), transparent 62%),
-        linear-gradient(180deg, var(--app-surface-soft) 0%, var(--app-surface) 100%);
+    margin-bottom: 1.5rem;
+    padding: 1.2rem 1.5rem;
+    border-radius: 14px;
+    border: 1px solid var(--app-border);
+    background: var(--app-surface);
 }
-
 .swap-title {
     margin: 0;
     font-weight: 700;
+    font-size: 1.3rem;
+    color: var(--app-heading);
+}
+.swap-title .emoji {
+    margin-right: 0.4rem;
+}
+.swap-subtitle {
+    margin: 0.4rem 0 0;
+    color: var(--app-text-muted);
+    font-size: 0.9rem;
+    line-height: 1.5;
 }
 
-.swap-subtitle {
-    margin: 0.35rem 0 0;
+/* --- Выбранные смены --- */
+.swap-selected-panel {
+    margin-bottom: 1.25rem;
+    padding: 1.1rem 1.25rem;
+    border: 1px solid var(--app-border);
+    border-radius: 14px;
+    background: var(--app-surface);
+}
+.swap-selected-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--app-heading);
+}
+.swap-selected-header .count-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: var(--app-accent-soft);
+    color: var(--app-accent);
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+.swap-slots {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+.swap-slot {
+    padding: 0.3rem 0.6rem;
+    border: 1px solid var(--app-border);
+    border-radius: 8px;
+    background: var(--app-accent-soft);
+    font-size: 0.82rem;
+    color: var(--app-text);
+    line-height: 1.5;
+    white-space: nowrap;
+}
+
+/* --- Форма заявки --- */
+.swap-form-wrap {
+    margin-bottom: 1.5rem;
+    padding: 1.25rem 1.4rem;
+    border: 1px solid var(--app-border);
+    border-radius: 14px;
+    background: var(--app-surface);
+}
+.swap-form-wrap .form-label {
+    color: var(--app-heading);
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+.swap-form-wrap textarea {
+    background: var(--app-surface-strong);
+    border: 1px solid var(--app-border);
+    color: var(--app-text);
+    font-size: 0.88rem;
+    border-radius: 10px;
+    padding: 0.7rem 0.85rem;
+    resize: vertical;
+    width: 100%;
+    box-sizing: border-box;
+    transition: border-color 0.15s;
+}
+.swap-form-wrap textarea:focus {
+    border-color: var(--app-accent);
+    box-shadow: 0 0 0 0.2rem var(--app-accent-soft);
+    outline: none;
+}
+.swap-form-wrap textarea::placeholder {
+    color: var(--app-text-muted);
+    opacity: 0.5;
+}
+.swap-form-wrap .form-actions {
+    display: flex;
+    gap: 0.6rem;
+    align-items: center;
+    margin-top: 1rem;
+}
+.swap-form-wrap .btn-send {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 1.3rem;
+    border: none;
+    border-radius: 10px;
+    background: var(--app-accent-strong);
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.swap-form-wrap .btn-send:hover {
+    background: var(--app-accent);
+    box-shadow: 0 4px 14px rgba(111,66,193,0.3);
+}
+.swap-form-wrap .btn-send:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+.swap-form-wrap .form-hint {
+    font-size: 0.8rem;
     color: var(--app-text-muted);
 }
 
-.swap-selected-panel,
-.swap-form-wrap,
-.swap-table-wrap,
-.swap-empty {
+/* --- Таблица заявок --- */
+.swap-table-wrap {
     border: 1px solid var(--app-border);
     border-radius: 14px;
-    background: linear-gradient(180deg, var(--app-surface-soft) 0%, var(--app-surface) 100%);
-}
-
-.swap-selected-panel {
-    padding: 1rem;
-    margin-bottom: 1rem;
-}
-
-.swap-form-wrap {
-    padding: 1rem;
-    margin-bottom: 1rem;
-}
-
-.swap-table-wrap {
     overflow: hidden;
+    background: var(--app-surface);
 }
-
 .swap-table {
     margin-bottom: 0;
 }
-
 .swap-table thead th {
     font-weight: 700;
+    font-size: 0.85rem;
+    color: #fff !important;
+    background: var(--app-accent-strong);
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+    padding: 0.75rem 0.85rem;
+    user-select: none;
+}
+html[data-theme='light'] .swap-table thead th {
+    color: #fff !important;
+}
+.swap-table tbody td {
+    padding: 0.75rem 0.85rem;
+    vertical-align: middle;
+    font-size: 0.88rem;
+    border-bottom: 1px solid var(--app-border);
+    color: var(--app-text);
+}
+.swap-table tbody tr:last-child td {
+    border-bottom: none;
+}
+.swap-table tbody tr {
+    transition: background 0.1s;
+}
+.swap-table tbody tr:hover {
+    background: var(--app-hover);
+}
+.swap-table .req-reason {
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--app-text-muted);
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+.swap-table .req-date {
+    color: var(--app-text-muted);
+    font-size: 0.82rem;
+    white-space: nowrap;
 }
 
-.swap-slots {
-    display: grid;
+/* Ячейка "Кому" */
+.swap-to-cell {
+    min-width: 150px;
+}
+.swap-to-assigned {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 8px;
+    background: rgba(46, 204, 113, 0.08);
+    border: 1px solid rgba(46, 204, 113, 0.18);
+    color: #2ecc71;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+.swap-to-assigned i { font-size: 0.75rem; }
+.swap-to-manager {
+    font-size: 0.85rem;
+    color: var(--app-text-muted);
+    font-style: italic;
+}
+
+/* --- Смены внутри таблицы --- */
+.swap-table .swap-slots {
     gap: 0.35rem;
 }
-
-.swap-slot {
-    padding: 0.35rem 0.5rem;
-    border: 1px solid var(--app-border);
-    border-radius: 8px;
-    background: rgba(111, 66, 193, 0.06);
-    font-size: 0.9rem;
+.swap-table .swap-slot {
+    font-size: 0.78rem;
+    padding: 0.25rem 0.5rem;
+    color: var(--app-text);
+}
+.swap-table .swap-slot strong {
+    color: var(--app-heading);
+    font-weight: 600;
 }
 
+/* --- Статусы --- */
 .status-badge {
     display: inline-flex;
     align-items: center;
-    padding: 0.24rem 0.5rem;
+    gap: 0.25rem;
+    padding: 0.2rem 0.65rem;
     border-radius: 999px;
     font-size: 0.78rem;
     font-weight: 700;
+    white-space: nowrap;
 }
+.status-badge::before {
+    content: "";
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0.5;
+}
+.status-pending { background: rgba(255, 193, 7, 0.1); color: #d4a72c; border: 1px solid rgba(255, 193, 7, 0.2); }
+.status-employee { background: rgba(13, 202, 240, 0.08); color: #36b5cc; border: 1px solid rgba(13, 202, 240, 0.16); }
+.status-approved { background: rgba(46, 204, 113, 0.08); color: #2ecc71; border: 1px solid rgba(46, 204, 113, 0.18); }
+.status-rejected { background: rgba(220, 53, 69, 0.08); color: #e65a6e; border: 1px solid rgba(220, 53, 69, 0.18); }
 
-.status-pending { background: rgba(255, 193, 7, 0.22); color: #a36e00; border: 1px solid rgba(255, 193, 7, 0.45); }
-.status-employee { background: rgba(13, 202, 240, 0.2); color: #0b6e84; border: 1px solid rgba(13, 202, 240, 0.4); }
-.status-approved { background: rgba(25, 135, 84, 0.18); color: #2c8f5a; border: 1px solid rgba(25, 135, 84, 0.36); }
-.status-rejected { background: rgba(220, 53, 69, 0.16); color: #b53446; border: 1px solid rgba(220, 53, 69, 0.38); }
-
+/* --- Пусто --- */
 .swap-empty {
-    padding: 1rem;
+    border: 1px dashed var(--app-border);
+    border-radius: 14px;
+    background: var(--app-surface);
+    padding: 2rem 1.5rem;
+    text-align: center;
     color: var(--app-text-muted);
+    font-size: 0.9rem;
 }
 
+/* --- Адаптивность --- */
 @media (max-width: 992px) {
-    .swap-table-wrap {
-        overflow-x: auto;
-    }
-
-    .swap-table {
-        min-width: 900px;
-    }
+    .swap-table-wrap { overflow-x: auto; }
+    .swap-table { min-width: 900px; }
 }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="swap-page">
+
+    <!-- Шапка -->
     <div class="swap-header">
-        <h2 class="swap-title">Обмены сменами</h2>
-        <p class="swap-subtitle">Выбирайте смены в «Мой график», отправляйте заявку и отслеживайте ее статус.</p>
+        <h2 class="swap-title"><span class="emoji">🔄</span>Обмены сменами</h2>
+        <p class="swap-subtitle">Выбирайте смены в разделе «Мой график», отправляйте заявку руководителю и отслеживайте её статус.</p>
     </div>
 
+    <!-- Выбранные смены + форма -->
     {% if selected_shifts %}
         <div class="swap-selected-panel">
-            <div class="fw-semibold mb-2">Вы выбрали для обмена: {{ selected_shifts|length }} смен(ы)</div>
+            <div class="swap-selected-header">
+                <span>Выбрано для обмена</span>
+                <span class="count-badge">{{ selected_shifts|length }}</span>
+            </div>
             <div class="swap-slots">
                 {% for shift in selected_shifts %}
                     <div class="swap-slot">
-                        {{ shift.date|date:"d.m.Y" }} |
-                        {{ shift.start_time|time:"H:i" }}-{{ shift.end_time|time:"H:i" }} |
+                        {{ shift.date|date:"d.m.Y" }} &nbsp;|&nbsp;
+                        {{ shift.start_time|time:"H:i" }}–{{ shift.end_time|time:"H:i" }} &nbsp;|&nbsp;
                         {{ shift.workout_type.name|default:"Работа" }}
                     </div>
                 {% endfor %}
@@ -129,27 +312,27 @@
             {% csrf_token %}
             <input type="hidden" name="shift_ids" value="{{ shift_ids_json }}">
 
-            <div class="row g-3">
-                <div class="col-md-12">
-                    <label class="form-label fw-semibold">Причина</label>
-                    <textarea
-                        name="reason"
-                        class="form-control"
-                        rows="3"
-                        placeholder="Например: не смогу выйти по личным обстоятельствам. Укажите дату и время проблемных смен."
-                        required
-                    ></textarea>
-                </div>
-                <div class="col-md-12">
-                    <button type="submit" class="btn btn-primary">Отправить заявку</button>
-                </div>
+            <div class="form-label">Причина обмена</div>
+            <textarea
+                name="reason"
+                rows="3"
+                placeholder="Например: не смогу выйти по личным обстоятельствам. Укажите дату и время проблемных смен."
+                required
+            ></textarea>
+
+            <div class="form-actions">
+                <button type="submit" class="btn-send">
+                    <span>→</span> Отправить заявку
+                </button>
+                <span class="form-hint">Руководитель рассмотрит и утвердит замену</span>
             </div>
         </form>
     {% endif %}
 
+    <!-- Мои заявки -->
     {% if my_requests %}
-        <div class="swap-table-wrap management-table">
-            <table class="table table-dark table-striped align-middle swap-table">
+        <div class="swap-table-wrap">
+            <table class="table align-middle swap-table">
                 <thead>
                     <tr>
                         <th>Смены</th>
@@ -166,21 +349,27 @@
                                 <div class="swap-slots">
                                     {% for s in req.shifts.all %}
                                         <div class="swap-slot">
-                                            {{ s.shift_assignment.date|date:"d.m.Y" }}
-                                            <br>
-                                            {{ s.shift_assignment.start_time|time:"H:i" }}-{{ s.shift_assignment.end_time|time:"H:i" }}
+                                            <strong>{{ s.shift_assignment.date|date:"d.m.Y" }}</strong>
+                                            {{ s.shift_assignment.start_time|time:"H:i" }}–{{ s.shift_assignment.end_time|time:"H:i" }}
                                         </div>
+                                    {% empty %}
+                                        <span class="text-muted" style="font-size:0.82rem;">Нет данных</span>
                                     {% endfor %}
                                 </div>
                             </td>
-                            <td>
+                            <td class="swap-to-cell">
                                 {% if req.to_employee %}
-                                    {{ req.to_employee.user_profile.user.get_full_name|default:req.to_employee.user_profile.user.username }}
+                                    <span class="swap-to-assigned">
+                                        <i class="bi bi-person-check"></i>
+                                        {{ req.to_employee.user_profile.user.get_full_name|default:req.to_employee.user_profile.user.username }}
+                                    </span>
                                 {% else %}
-                                    <span class="text-muted">Выбирает руководитель</span>
+                                    <span class="swap-to-manager">Выбирает руководитель</span>
                                 {% endif %}
                             </td>
-                            <td>{{ req.reason|default:"—"|truncatewords:16 }}</td>
+                            <td>
+                                <div class="req-reason">{{ req.reason|default:"—"|truncatewords:16 }}</div>
+                            </td>
                             <td>
                                 {% if req.status == 'pending' %}
                                     <span class="status-badge status-pending">На рассмотрении</span>
@@ -194,7 +383,7 @@
                                     <span class="status-badge">{{ req.get_status_display }}</span>
                                 {% endif %}
                             </td>
-                            <td>{{ req.created_at|date:"d.m.Y H:i" }}</td>
+                            <td><span class="req-date">{{ req.created_at|date:"d.m.Y H:i" }}</span></td>
                         </tr>
                     {% endfor %}
                 </tbody>
@@ -203,11 +392,16 @@
     {% else %}
         <div class="swap-empty">У вас пока нет заявок на обмен сменами.</div>
     {% endif %}
+
 </div>
 
 <script>
 document.getElementById('swapForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const btn = e.target.querySelector('.btn-send');
+    btn.disabled = true;
+    btn.textContent = 'Отправка…';
+
     const formData = new FormData(e.target);
     const data = Object.fromEntries(formData);
 
@@ -227,9 +421,13 @@ document.getElementById('swapForm')?.addEventListener('submit', async (e) => {
             setTimeout(() => window.location.href = '{% url "shift_swaps" %}', 450);
         } else {
             showGlobalNotification('Ошибка: ' + (result.error || 'Не удалось отправить заявку.'), 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<span>→</span> Отправить заявку';
         }
     } catch (_) {
         showGlobalNotification('Ошибка сети. Попробуйте еще раз.', 'error');
+        btn.disabled = false;
+        btn.innerHTML = '<span>→</span> Отправить заявку';
     }
 });
 </script>
