@@ -49,7 +49,7 @@
         </div>
     </div>
 
-    {% if pending_next_week_approvals_count > 0 and pending_next_week_first_schedule_url %}
+    {% if pending_next_week_approvals_count > 0 and pending_next_week_first_schedule_url and request.resolver_match.view_name != 'schedule_detail' %}
         <div id="scheduleApprovalNudge" class="schedule-approval-nudge" role="status" aria-live="polite">
             <button type="button" class="schedule-approval-nudge-close" aria-label="Закрыть"
                     onclick="document.getElementById('scheduleApprovalNudge')?.remove()">
@@ -62,13 +62,13 @@
             <div class="schedule-approval-nudge-text">
                 У вас {{ pending_next_week_approvals_count }} график(а) на следующую неделю. Откройте и утвердите или отклоните.
             </div>
-            <a href="{{ pending_next_week_first_schedule_url }}" class="schedule-approval-nudge-btn">
+            <a href="{{ pending_next_week_first_schedule_url }}" class="schedule-approval-nudge-btn" data-dismiss="scheduleApprovalNudge">
                 Открыть согласование
             </a>
         </div>
     {% endif %}
 
-    {% if manager_feedback_total_count > 0 and manager_feedback_target_url %}
+    {% if manager_feedback_total_count > 0 and manager_feedback_target_url and request.resolver_match.view_name != 'schedule_detail' %}
         <div id="managerFeedbackNudge" class="schedule-approval-nudge" role="status" aria-live="polite" style="top: 8.7rem;">
             <button type="button" class="schedule-approval-nudge-close" aria-label="Закрыть"
                     onclick="document.getElementById('managerFeedbackNudge')?.remove()">
@@ -95,7 +95,7 @@
                     {% endfor %}
                 </div>
             {% endif %}
-            <a href="{{ manager_feedback_target_url }}" class="schedule-approval-nudge-btn">
+            <a href="{{ manager_feedback_target_url }}" class="schedule-approval-nudge-btn" data-dismiss="managerFeedbackNudge">
                 Открыть и отреагировать
             </a>
         </div>
@@ -129,11 +129,6 @@
                             <li><a href="{% url 'employee_schedule' %}" class="nav-link text-white"><i class="bi bi-calendar-event"></i> Мой график</a></li>
                             <li><a href="{% url 'reports' %}" class="nav-link text-white"><i class="bi bi-file-earmark-bar-graph"></i> Отчеты</a></li>
                             <li><a href="{% url 'shift_swaps' %}" class="nav-link text-white"><i class="bi bi-arrow-left-right"></i> Обмены сменами</a></li>
-                        {% elif user.profile.role == 'studio_admin' %}
-                            <li><a href="{% url 'profile_view' %}" class="nav-link text-white"><i class="bi bi-person-circle"></i> Профиль</a></li>
-                            <li><a href="{% url 'schedule_view' %}" class="nav-link text-white"><i class="bi bi-calendar-week"></i> Управление графиками</a></li>
-                            <li><a href="{% url 'reports' %}" class="nav-link text-white"><i class="bi bi-file-earmark-bar-graph"></i> Отчеты</a></li>
-
                         {% elif user.profile.role == 'manager' %}
                             <li><a href="{% url 'profile_view' %}" class="nav-link text-white"><i class="bi bi-person-circle"></i> Профиль</a></li>
                             <li><a href="{% url 'schedule_view' %}" class="nav-link text-white"><i class="bi bi-calendar-week"></i> Управление графиками</a></li>
@@ -253,11 +248,17 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/imask"></script>
     <script src="/static/js/base_script.js?v=20260601-theme-fix-1"></script>
     {% block extra_js %}{% endblock %}
-
-    <!-- IMask — маска телефона -->
-    <script src="https://unpkg.com/imask"></script>
+    <script>
+    document.addEventListener('click', function(e) {
+        var btn = e.target.closest('[data-dismiss]');
+        if (!btn) return;
+        var el = document.getElementById(btn.getAttribute('data-dismiss'));
+        if (el) el.remove();
+    });
+    </script>
 </body>
 </html>
 

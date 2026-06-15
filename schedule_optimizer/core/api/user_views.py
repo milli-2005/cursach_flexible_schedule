@@ -18,6 +18,7 @@ from core.forms import UserInvitationForm
 import json
 import secrets
 import string
+import threading
 from django.views.decorators.http import require_http_methods
 from core.models import WorkoutType
 
@@ -151,7 +152,7 @@ def api_invite_user(request):
             workout_types = WorkoutType.objects.filter(id__in=workout_type_ids)
             employee.workout_types.set(workout_types)
 
-        send_user_invitation(user, raw_password)
+        threading.Thread(target=send_user_invitation, args=[user, raw_password], daemon=True).start()
         return JsonResponse({'success': True})
     except Exception as e:
         logger.error(f"Ошибка создания пользователя: {e}")

@@ -39,7 +39,7 @@ def is_manager(user):
     """Проверяет, есть ли у пользователя роль руководителя для доступа к управленческим разделам."""
     if not hasattr(user, 'profile'):
         return False
-    return user.profile.role in ['manager', 'studio_admin']
+    return user.profile.role == 'manager'
 
 
 def _assert_schedule_editable(schedule: Schedule):
@@ -367,8 +367,14 @@ def _build_candidate_rows(shift_date, time_slot, workout_type_id=None, schedule_
             else:
                 score -= 8
                 if workout_ids:
-                    suggested_workout_type_id = workout_ids[0]
-                    suggested_workout_type_name = workout_objects[0].name
+                    # Ищем направление той же категории
+                    same_category = [wt for wt in workout_objects if wt.category == workout_type.category]
+                    if same_category:
+                        suggested_workout_type_id = same_category[0].id
+                        suggested_workout_type_name = same_category[0].name
+                    else:
+                        suggested_workout_type_id = workout_ids[0]
+                        suggested_workout_type_name = workout_objects[0].name
                     reasons.append(
                         f'потребуется смена направления с «{workout_type.name}» на «{suggested_workout_type_name}»'
                     )
@@ -534,30 +540,6 @@ def api_update_schedule(request, schedule_id):
 
     except Exception as exc:
         return api_error_response(exc, status=400)
-def copy_availability_from_previous_week(employee, current_week_start):
-    """Копирует доступность сотрудника с предыдущей недели на текущую."""
-    prev_week_start = current_week_start - timedelta(weeks=1)
-    prev_avail = Availability.objects.filter(
-        employee=employee,
-        date__gte=prev_week_start,
-        date__lt=prev_week_start + timedelta(days=7),
-    )
-
-    new_records = []
-    for availability in prev_avail:
-        new_records.append(
-            Availability(
-                employee=employee,
-                date=availability.date + timedelta(weeks=1),
-                start_time=availability.start_time,
-                end_time=availability.end_time,
-                is_available=True,
-            )
-        )
-
-    if new_records:
-        Availability.objects.bulk_create(new_records, ignore_conflicts=True)
-
 
 @login_required
 @user_passes_test(is_manager)

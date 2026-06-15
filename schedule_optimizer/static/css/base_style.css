@@ -938,11 +938,6 @@ img {
     font-weight: 500;
 }
 
-.invalid-feedback {
-    color: #FFCDD2;
-    font-size: 0.85rem;
-}
-
 /* === Убираем пустое пространство сверху и делаем контент компактнее === */
 
 .main-content {

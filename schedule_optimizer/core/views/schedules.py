@@ -229,7 +229,7 @@ def schedule_detail(request, schedule_id):
 
     if (
         hasattr(request.user, 'profile')
-        and request.user.profile.role in ['manager', 'studio_admin']
+        and request.user.profile.role == 'manager'
         and not schedule_versions
     ):
         bootstrap_version = ScheduleVersion.objects.create(
@@ -336,11 +336,11 @@ def schedule_detail(request, schedule_id):
     schedule_edit_locked = False
     can_edit_schedule = (
         hasattr(request.user, 'profile')
-        and request.user.profile.role in ['manager', 'studio_admin']
+        and request.user.profile.role == 'manager'
     )
 
     manager_rejections = []
-    if hasattr(request.user, 'profile') and request.user.profile.role in ['manager', 'studio_admin']:
+    if hasattr(request.user, 'profile') and request.user.profile.role == 'manager':
         rejected_approvals = (
             ScheduleApproval.objects
             .filter(schedule=schedule, approved=False)
@@ -459,7 +459,7 @@ def delete_schedule_view(request, schedule_id):
         messages.success(request, f'График "{schedule_name}" успешно удалён.')
         return redirect('schedule_view')  # Перенаправление на список графиков
     # Если кто-то попытается GET — перенаправим на просмотр
-    return redirect('view_schedule', schedule_id=schedule_id)
+    return redirect('schedule_detail', schedule_id=schedule_id)
 
 
 

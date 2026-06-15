@@ -64,14 +64,7 @@
                 type="checkbox"
                 name="{{ key }}"
                 id="slot_{{ key }}"
-                {%
-                if
-                key
-                in
-                checked_keys
-                %}checked{%
-                endif
-                %}
+                {% if key in checked_keys %}checked{% endif %}
               />
               {% endwith %}
             </td>
@@ -89,13 +82,21 @@
 </div>
 
 <script>
+  // prevData — JSON-массив объектов { date: "2026-06-15", time: "09:00" },
+  // полученный из availability.py: он содержит доступность сотрудника за прошлую
+  // неделю, но с датами, сдвинутыми на 7 дней вперёд (текущая неделя).
   const prevData = {{ prev_avail_json|safe }};
 
+  // Обработчик кнопки «Взять данные с прошлой недели»
   document.getElementById('copy-prev-week').addEventListener('click', function () {
+      // 1. Сбрасываем ВСЕ чекбоксы на странице (на всякий случай)
       document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+      // 2. Проходим по каждой записи из prevData
       prevData.forEach(item => {
+          // Имя чекбокса хранится в формате "ГГГГ-ММ-ДД_ЧЧ:ММ" (например "2026-06-15_09:00").
+          // Такое же имя генерируется в шаблоне через day_str|add:"_"|add:start_str.
           const checkbox = document.querySelector(`input[name="${item.date}_${item.time}"]`);
-          if (checkbox) checkbox.checked = true;
+          if (checkbox) checkbox.checked = true;  // если чекбокс найден — отмечаем его
       });
       showGlobalNotification('Данные с прошлой недели загружены.', 'succes');
   });

@@ -97,6 +97,12 @@
                 {% if shifts_by_date|get_item:d %}
                     <div class="my-day-block">
                         <div class="my-day-title">{{ d|date:"l, d F Y" }}</div>
+                        <div class="mb-1">
+                            <label class="form-check form-check-inline">
+                                <input class="form-check-input day-select-all" type="checkbox" data-date="{{ d|date:'Y-m-d' }}">
+                                <span class="form-check-label small">Выбрать все за день</span>
+                            </label>
+                        </div>
                         <div class="my-day-list">
                             {% for shift in shifts_by_date|get_item:d %}
                                 <div class="my-shift-item">
@@ -303,7 +309,13 @@ function showShifts(dateStr) {
         return;
     }
 
-    list.innerHTML = shifts.map((shift) => {
+    const hasFuture = shifts.some(s => !s.is_past);
+    list.innerHTML = (hasFuture
+        ? '<div class="mb-2"><label class="form-check form-check-inline">' +
+          '<input class="form-check-input" type="checkbox" id="popup-select-all">' +
+          '<span class="form-check-label small">Выбрать все за день</span></label></div>'
+        : ''
+    ) + shifts.map((shift) => {
         const selected = selectedSwapShiftIds.has(String(shift.id));
         const controls = shift.is_past
             ? '<span class="small text-muted">Прошедшая</span>'
@@ -327,6 +339,16 @@ function showShifts(dateStr) {
             onSwapCheckboxChange(this);
         });
     });
+
+    const popupSelectAll = document.getElementById('popup-select-all');
+    if (popupSelectAll) {
+        popupSelectAll.addEventListener('change', function () {
+            document.querySelectorAll('#shiftsList .swap-checkbox').forEach((cb) => {
+                cb.checked = this.checked;
+                onSwapCheckboxChange(cb);
+            });
+        });
+    }
 }
 
 function onSwapCheckboxChange(checkbox) {
@@ -346,9 +368,21 @@ function syncSwapCheckboxes(shiftId, checked) {
     });
 }
 
+function onSelectAllChange(checkbox) {
+    const dayBlock = checkbox.closest('.my-day-block');
+    if (!dayBlock) return;
+    dayBlock.querySelectorAll('.swap-checkbox').forEach((cb) => {
+        cb.checked = checkbox.checked;
+        onSwapCheckboxChange(cb);
+    });
+}
+
 function clearSwapSelection() {
     selectedSwapShiftIds.clear();
     document.querySelectorAll('.swap-checkbox[data-shift-id]').forEach((cb) => {
+        cb.checked = false;
+    });
+    document.querySelectorAll('.day-select-all').forEach((cb) => {
         cb.checked = false;
     });
     updateSwapActions();
@@ -389,6 +423,12 @@ document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('#fullSchedule .swap-checkbox').forEach((cb) => {
         cb.addEventListener('change', function () {
             onSwapCheckboxChange(this);
+        });
+    });
+
+    document.querySelectorAll('.day-select-all').forEach((cb) => {
+        cb.addEventListener('change', function () {
+            onSelectAllChange(this);
         });
     });
 

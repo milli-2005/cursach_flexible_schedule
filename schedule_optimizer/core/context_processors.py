@@ -58,7 +58,7 @@ def manager_schedule_feedback_notice(request):
         return {}
 
     profile = getattr(request.user, "profile", None)
-    if not profile or profile.role not in {"manager", "studio_admin"}:
+    if not profile or profile.role != "manager":
         return {}
 
     today = timezone.localdate()

@@ -68,6 +68,28 @@
     line-height: 1.25;
 }
 
+.own-slot { cursor: pointer; }
+.own-slot:hover { outline: 2px dashed rgba(173, 130, 255, 0.7); outline-offset: -2px; }
+
+/* подсветка выбранных ячеек при отклонении графика */
+.schedule-cell.reject-selected {
+    outline: 3px solid #dc3545;
+    outline-offset: -2px;
+    box-shadow: inset 0 0 0 9999px rgba(220, 53, 69, 0.12);
+    cursor: pointer;
+}
+/* пунктир при наведении на любую ячейку с данными */
+#view-schedule-table td[data-day][data-time]:hover {
+    outline: 2px dashed rgba(220, 53, 69, 0.5);
+    outline-offset: -2px;
+}
+
+.version-list .version-row { transition: background 0.15s; }
+.version-list .version-row:hover { background: rgba(255,255,255,0.04); }
+.version-badge-pill { font-size: 0.8rem; padding: 0.2rem 0.6rem; }
+.compare-change-row { background: rgba(255,255,255,0.02); }
+.compare-change-row:hover { background: rgba(255,255,255,0.06); }
+
 .save-wrap {
     margin-top: 0.85rem;
 }
@@ -755,7 +777,7 @@ html[data-theme='light'] .approved-edit-body { color: #2f1d5d; }
                 {% endif %}
                 <div class="schedule-status-block">
                     <span class="meta-chip"><strong>Статус</strong>
-                        {% if user.profile.role == 'manager' or user.profile.role == 'studio_admin' %}
+                        {% if user.profile.role == 'manager' %}
                         <select id="schedule-status-select" class="form-select form-select-sm d-inline-block" style="width:auto;padding:0.1rem 1.5rem 0.1rem 0.5rem;font-size:0.85rem;border-radius:6px;">
                             <option value="draft" {% if schedule.status == 'draft' %}selected{% endif %}>Черновик</option>
                             <option value="pending" {% if schedule.status == 'pending' %}selected{% endif %}>На согласовании</option>
@@ -858,77 +880,57 @@ html[data-theme='light'] .approved-edit-body { color: #2f1d5d; }
                     <span class="badge text-bg-secondary">Всего: {{ schedule_versions|length }}</span>
                 </div>
                 <div id="versions-panel-body" class="panel-body">
-                <div class="version-panel">
-                <div class="row g-2 align-items-end mb-2">
-                    <div class="col-md-4">
-                        <label class="form-label small mb-1">Версия 1</label>
-                        <select id="version-left-select" class="form-select form-select-sm">
-                            {% for v in schedule_versions %}
-                                <option value="{{ v.id }}">
-                                    v{{ v.version_number }} • {{ v.created_at|date:"d.m.Y H:i" }}
-                                </option>
-                            {% endfor %}
-                        </select>
+                    <div class="d-flex flex-wrap gap-2 mb-3">
+                        <button id="compare-versions-btn" type="button" class="btn btn-sm btn-outline-light">
+                            <i class="bi bi-arrows-expand"></i> Сравнить версии
+                        </button>
                     </div>
-                    <div class="col-md-4">
-                        <label class="form-label small mb-1">Версия 2</label>
-                        <select id="version-right-select" class="form-select form-select-sm">
-                            {% for v in schedule_versions %}
-                                <option value="{{ v.id }}" {% if forloop.first %}{% elif forloop.counter == 2 %}selected{% endif %}>
-                                    v{{ v.version_number }} • {{ v.created_at|date:"d.m.Y H:i" }}
-                                </option>
-                            {% endfor %}
-                        </select>
+                    <div id="version-compare-area" class="d-none mb-3">
+                        <div class="row g-2 align-items-end mb-2">
+                            <div class="col-md-4">
+                                <label class="form-label small mb-1">Версия 1</label>
+                                <select id="version-left-select" class="form-select form-select-sm">
+                                    {% for v in schedule_versions %}
+                                        <option value="{{ v.id }}">v{{ v.version_number }} • {{ v.created_at|date:"d.m.Y H:i" }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small mb-1">Версия 2</label>
+                                <select id="version-right-select" class="form-select form-select-sm">
+                                    {% for v in schedule_versions %}
+                                        <option value="{{ v.id }}" {% if forloop.counter == 2 %}selected{% endif %}>v{{ v.version_number }} • {{ v.created_at|date:"d.m.Y H:i" }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <button id="compare-versions-exec-btn" type="button" class="btn btn-sm btn-primary w-100">Сравнить</button>
+                            </div>
+                        </div>
+                        <div id="version-compare-result"></div>
                     </div>
-                    <div class="col-md-4 d-flex gap-2">
-                        <button id="compare-versions-btn" type="button" class="btn btn-sm btn-outline-light w-100">Сравнить версии</button>
-                    </div>
-                </div>
-                <div id="version-compare-result" class="compare-result-box d-none"></div>
 
-                <div class="table-responsive mt-2 version-table-wrap">
-                    <table class="table table-sm table-dark version-table mb-0">
-                        <thead>
-                            <tr>
-                                <th>Версия</th>
-                                <th>Дата</th>
-                                <th>Кто сохранил</th>
-                                <th>Комментарий</th>
-                                <th>Действия</th>
-                            </tr>
-                        </thead>
-                        <tbody>
+                    <div class="version-list">
                         {% for v in schedule_versions %}
-                            <tr>
-                                <td><span class="badge text-bg-primary">v{{ v.version_number }}</span></td>
-                                <td>{{ v.created_at|date:"d.m.Y H:i" }}</td>
-                                <td>
-                                    {% if v.created_by %}
-                                        {{ v.created_by|short_name }}
-                                    {% else %}
-                                        system
-                                    {% endif %}
-                                </td>
-                                <td>{{ v.change_note|default:"—" }}</td>
-                                <td>
-                                    <button type="button"
-                                            class="btn btn-sm btn-outline-warning restore-version-btn"
-                                            data-version-id="{{ v.id }}"
-                                            data-version-number="{{ v.version_number }}">
-                                        Откатить к v{{ v.version_number }}
-                                    </button>
-                                </td>
-                            </tr>
+                            <div class="version-row d-flex flex-wrap align-items-center gap-2 p-2 border rounded mb-1">
+                                <span class="badge text-bg-primary version-badge-pill">v{{ v.version_number }}</span>
+                                <span class="small text-muted">{{ v.created_at|date:"d.m.Y H:i" }}</span>
+                                <span class="small">
+                                    {% if v.created_by %}{{ v.created_by|short_name }}{% else %}system{% endif %}
+                                </span>
+                                <span class="small text-muted flex-fill">{{ v.change_note|default:"—" }}</span>
+                                <button type="button" class="btn btn-sm btn-outline-warning restore-version-btn"
+                                        data-version-id="{{ v.id }}" data-version-number="{{ v.version_number }}">
+                                    Откатить
+                                </button>
+                            </div>
                         {% empty %}
-                            <tr><td colspan="5" class="text-center text-muted">Версий пока нет</td></tr>
+                            <div class="text-muted small">Версий пока нет</div>
                         {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+                    </div>
                 </div>
             </div>
-            </div>
-        {% elif user.profile.role == 'manager' or user.profile.role == 'studio_admin' %}
+        {% elif user.profile.role == 'manager' %}
             <div class="alert alert-warning mt-3 mb-0">
                 <i class="bi bi-lock-fill me-1"></i>
                 Редактирование отключено: период этого графика уже завершился.
@@ -1007,11 +1009,11 @@ html[data-theme='light'] .approved-edit-body { color: #2f1d5d; }
 
 </div>
 
-{% if schedule.status == 'pending' and user.profile.role == 'manager' or schedule.status == 'pending' and user.profile.role == 'studio_admin' %}
+{% if schedule.status == 'pending' and user.profile.role == 'manager' %}
     <div class="mt-4">
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
             <h4 class="mb-0">Замечания сотрудников и быстрые замены:</h4>
-            <button type="button" id="manager-apply-all-best-btn" class="btn btn-sm btn-outline-warning">
+            <button type="button" id="manager-apply-all-best-btn" class="btn btn-sm btn-outline-warning d-none">
                 Применить все лучшие замены
             </button>
         </div>
@@ -1027,32 +1029,39 @@ html[data-theme='light'] .approved-edit-body { color: #2f1d5d; }
                     {% endif %}
                     {% if item.slots %}
                         <div class="d-flex flex-column gap-2">
-                            {% for slot in item.slots %}
-                                <div class="border rounded p-2">
-                                    <div class="small fw-semibold mb-1">
-                                        {{ slot.date }} {{ slot.time_slot }} — {{ slot.workout_type }}
-                                    </div>
-                                    <div class="d-flex flex-wrap gap-2 align-items-center">
-                                        <button type="button"
-                                                class="btn btn-sm btn-outline-light manager-load-candidates-btn"
-                                                data-employee-id="{{ item.employee_id }}"
-                                                data-date="{{ slot.date }}"
-                                                data-time-slot="{{ slot.time_slot }}"
-                                                data-workout-name="{{ slot.workout_type }}">
-                                            Подобрать кандидатов
-                                        </button>
-                                        <select class="form-select form-select-sm manager-candidates-select" style="max-width: 360px;">
-                                            <option value="">Сначала нажмите «Подобрать кандидатов»</option>
-                                        </select>
-                                        <button type="button"
-                                                class="btn btn-sm btn-primary manager-apply-candidate-btn"
-                                                data-date="{{ slot.date }}"
-                                                data-time-slot="{{ slot.time_slot }}">
-                                            Применить в график
-                                        </button>
-                                    </div>
-                                </div>
-                            {% endfor %}
+                            <table class="table table-sm table-dark table-bordered mb-0 swap-candidates-table">
+                                <thead>
+                                    <tr>
+                                        <th>Дата</th>
+                                        <th>Время</th>
+                                        <th>Занятие</th>
+                                        <th style="width:40px;text-align:center;">→</th>
+                                        <th>Подходящий сотрудник</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for slot in item.slots %}
+                                        <tr class="swap-slot-row" data-employee-id="{{ item.employee_id }}" data-date="{{ slot.date }}" data-time-slot="{{ slot.time_slot }}" data-workout-name="{{ slot.workout_type }}">
+                                            <td class="small">{{ slot.date }}</td>
+                                            <td class="small">{{ slot.time_slot }}</td>
+                                            <td class="small">{{ slot.workout_type }}</td>
+                                            <td style="text-align:center;font-size:1.2rem;color:var(--bs-primary);">→</td>
+                                            <td>
+                                                <select class="form-select form-select-sm swap-candidate-select" style="max-width:320px;">
+                                                    <option value="">Загрузка...</option>
+                                                </select>
+                                            </td>
+                                            <td>
+                                                <button type="button" class="btn btn-sm btn-primary swap-apply-btn"
+                                                        data-date="{{ slot.date }}" data-time-slot="{{ slot.time_slot }}">
+                                                    Применить
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
                         </div>
                     {% else %}
                         <div class="small text-muted">Слоты не указаны, только комментарий.</div>
@@ -1068,58 +1077,59 @@ html[data-theme='light'] .approved-edit-body { color: #2f1d5d; }
 {% if request.user.profile.role == 'employee' and schedule.status == 'pending' %}
     {% with approval=approval_for_user %}
         {% if approval and approval.approved is None %}
-            <div class="card mb-4 border-purple shadow-sm">
-                <div class="card-body">
-                    <h5 class="card-title">Требуется ваше подтверждение</h5>
-                    <p class="text-grey-400 small">График: {{ schedule.name }}</p>
-                    <form id="approval-form" class="mt-3">
+            <div class="card mb-4 border-purple shadow-sm" style="border-radius:14px;overflow:hidden;">
+                <div class="card-header d-flex align-items-center gap-2" style="background:rgba(111,66,193,0.12);border-bottom:1px solid rgba(111,66,193,0.25);padding:0.75rem 1rem;">
+                    <i class="bi bi-pencil-square" style="color:#c9b3ff;"></i>
+                    <span class="fw-semibold" style="color:#fff;">Требуется ваше подтверждение</span>
+                    <span class="badge text-bg-light ms-auto" style="font-size:0.7rem;color:#6f42c1;">{{ schedule.name }}</span>
+                </div>
+                <div class="card-body" style="padding:1rem;">
+                    <form id="approval-form">
                         <input type="hidden" name="schedule_id" value="{{ schedule.id }}">
-                        <div class="form-check mb-2">
-                            <input class="form-check-input" type="radio" name="decision" value="approve" id="approve" required>
-                            <label class="form-check-label" for="approve">Утвердить</label>
+                        <div class="d-flex gap-3 mb-3">
+                            <label style="cursor:pointer;flex:1;" for="approve">
+                                <input class="d-none" type="radio" name="decision" value="approve" id="approve" required>
+                                <div class="d-flex align-items-center justify-content-center gap-2 p-3 rounded text-center" style="border:2px solid var(--app-border);transition:all 0.15s;background:var(--app-surface-soft);"
+                                     onmouseover="this.style.borderColor='#198754';this.style.background='rgba(25,135,84,0.08)'"
+                                     onmouseout="this.style.borderColor='var(--app-border)';this.style.background='var(--app-surface-soft)'">
+                                    <i class="bi bi-check-circle" style="font-size:1.3rem;color:#198754;"></i>
+                                    <span class="fw-semibold">Утвердить</span>
+                                </div>
+                            </label>
+                            <label style="cursor:pointer;flex:1;" for="reject">
+                                <input class="d-none" type="radio" name="decision" value="reject" id="reject" required>
+                                <div class="d-flex align-items-center justify-content-center gap-2 p-3 rounded text-center" style="border:2px solid var(--app-border);transition:all 0.15s;background:var(--app-surface-soft);"
+                                     onmouseover="this.style.borderColor='#dc3545';this.style.background='rgba(220,53,69,0.08)'"
+                                     onmouseout="this.style.borderColor='var(--app-border)';this.style.background='var(--app-surface-soft)'">
+                                    <i class="bi bi-x-circle" style="font-size:1.3rem;color:#dc3545;"></i>
+                                    <span class="fw-semibold">Отклонить</span>
+                                </div>
+                            </label>
                         </div>
-                        <div class="form-check mb-3">
-                            <input class="form-check-input" type="radio" name="decision" value="reject" id="reject" required>
-                            <label class="form-check-label" for="reject">Отклонить</label>
-                        </div>
-                        <div class="mb-3 d-none" id="comment-group">
-                            <label for="comment">Комментарий (обязателен при отклонении)</label>
+                        <div class="mb-3 d-none p-3 rounded" id="comment-group" style="background:rgba(220,53,69,0.06);border:1px solid rgba(220,53,69,0.2);">
+                            <label for="comment" class="form-label small fw-semibold">Комментарий (обязателен при отклонении)</label>
                             <textarea class="form-control form-control-sm" id="comment" rows="2" placeholder="Например: не могу работать в выходные"></textarea>
-
-                            <div id="reject-mode-area" class="mt-3 d-none">
-                                <div class="small fw-semibold mb-2">Как указать проблемные смены</div>
-                                <div class="reject-mode-tabs" role="tablist" aria-label="Режим отклонения">
-                                    <button type="button" class="reject-mode-tab active" id="reject-mode-manual-btn" data-mode="manual">Выбор слотов</button>
-                                    <button type="button" class="reject-mode-tab" id="reject-mode-ai-btn" data-mode="ai">Только текст (AI)</button>
-                                </div>
-
-                                <div id="reject-mode-manual-panel">
-                                    <div class="d-flex justify-content-between align-items-center mb-2">
-                                        <div class="small text-muted">Отметьте смены, на которые вы не сможете выйти</div>
-                                        <button type="button" id="reject-select-all-btn" class="btn btn-sm btn-outline-secondary">Выбрать все</button>
-                                    </div>
-                                    <div id="reject-slots-list" class="reject-slots-list"></div>
-                                </div>
-
-                                <div id="reject-mode-ai-panel" class="d-none">
-                                    <label for="reject-ai-text" class="form-label form-label-sm">Опишите текстом (пример: «во вторник вечером не смогу»)</label>
-                                    <textarea id="reject-ai-text" class="form-control form-control-sm" rows="2" placeholder="Напишите, когда вы не сможете работать"></textarea>
-                                </div>
-
+                            <div class="d-flex justify-content-between align-items-center mt-2">
+                                <small class="text-muted">Кликните по ячейкам с вашими сменами в таблице выше</small>
+                                <span class="badge text-bg-danger">Выбрано: <span id="reject-count">0</span></span>
                             </div>
                         </div>
-                        <button type="submit" class="btn btn-primary btn-sm">Отправить решение</button>
+                        <button type="submit" class="btn btn-primary w-100 py-2 d-flex align-items-center justify-content-center gap-2" style="font-size:1.05rem;">
+                            <i class="bi bi-send"></i> Отправить решение
+                        </button>
                     </form>
                 </div>
             </div>
         {% elif approval and approval.approved %}
-            <div class="alert alert-success mb-4">
-                <i class="bi bi-check-circle"></i> Вы утвердили этот график.
+            <div class="alert alert-success mb-4 d-flex align-items-center gap-2" style="border-radius:12px;">
+                <i class="bi bi-check-circle-fill"></i> Вы утвердили этот график.
             </div>
         {% elif approval and approval.approved == False %}
-            <div class="alert alert-danger mb-4">
-                <i class="bi bi-x-circle"></i> Вы отклонили этот график.<br>
-                <small style="white-space: pre-line;">Комментарий: {{ approval.comment }}</small>
+            <div class="alert alert-danger mb-4" style="border-radius:12px;">
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <i class="bi bi-x-circle-fill"></i> <strong>Вы отклонили этот график.</strong>
+                </div>
+                <small style="white-space:pre-line;opacity:0.9;">Комментарий: {{ approval.comment }}</small>
             </div>
         {% endif %}
     {% endwith %}
@@ -1158,6 +1168,7 @@ let SCHEDULE_STATUS = '{{ schedule.status }}';
 let APPROVED_EDIT_CONFIRMED = false;
 const DATE_STRINGS = {{ date_strings|safe }};
 const SCHEDULE_ID = {{ schedule.id }};
+const CURRENT_PROFILE_ID = {{ request.user.profile.id }};
 const SUBSTITUTE_API_URL = '/api/schedule/substitute-candidates/';
 const COMPARE_VERSIONS_API_URL = `/api/schedule/${SCHEDULE_ID}/versions/compare/`;
 const RESTORE_VERSION_API_BASE = `/api/schedule/${SCHEDULE_ID}/versions/`;
@@ -1177,10 +1188,9 @@ const EMPLOYEE_WORKOUT_MAP = {};
 EMPLOYEES_WITH_WORKOUTS.forEach(emp => {
     EMPLOYEE_WORKOUT_MAP[emp.id] = emp.workout_types.map(wt => wt.id);
 });
-let IS_MULTI_SELECT_MODE = false;
-const SELECTED_CELLS = new Set();
-let REJECT_MODE = 'manual';
-let SCHEDULE_VARIANTS_CACHE = [];
+    let IS_MULTI_SELECT_MODE = false;
+    const SELECTED_CELLS = new Set();
+    let SCHEDULE_VARIANTS_CACHE = [];
 
 function colorForTrainer(employeeId) {
     const n = parseInt(employeeId, 10);
@@ -1360,47 +1370,52 @@ function workoutIdByName(workoutName) {
     return found ? parseInt(found.id, 10) : null;
 }
 
-async function loadCandidatesForManagerButton(button, select) {
-    const date = button.dataset.date || '';
-    const timeSlot = button.dataset.timeSlot || '';
-    const workoutName = button.dataset.workoutName || '';
-    const excludeEmployeeId = parseInt(button.dataset.employeeId || '0', 10) || null;
+async function loadCandidatesForSlot(row) {
+    const date = row.dataset.date || '';
+    const timeSlot = row.dataset.timeSlot || '';
+    const workoutName = row.dataset.workoutName || '';
+    const excludeEmployeeId = parseInt(row.dataset.employeeId || '0', 10) || null;
+    const select = row.querySelector('.swap-candidate-select');
+    if (!select) return;
     const workoutTypeId = workoutIdByName(workoutName);
-
-    select.innerHTML = '<option value="">Ищу кандидатов...</option>';
-    const response = await fetch(SUBSTITUTE_API_URL, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
-        },
-        body: JSON.stringify({
-            schedule_id: SCHEDULE_ID,
-            date: date,
-            time_slot: String(timeSlot).split(/[–-]/)[0].trim(),
-            workout_type_id: workoutTypeId,
-            exclude_employee_id: excludeEmployeeId,
-            limit: 5
-        })
-    });
-    const data = await response.json();
-    if (!response.ok || data.success === false) {
-        throw new Error(data.error || 'Не удалось подобрать кандидатов.');
+    try {
+        const response = await fetch(SUBSTITUTE_API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+            },
+            body: JSON.stringify({
+                schedule_id: SCHEDULE_ID,
+                date: date,
+                time_slot: String(timeSlot).split(/[–-]/)[0].trim(),
+                workout_type_id: workoutTypeId,
+                exclude_employee_id: excludeEmployeeId,
+                limit: 5
+            })
+        });
+        const data = await response.json();
+        if (!response.ok || data.success === false) {
+            select.innerHTML = '<option value="">Ошибка загрузки</option>';
+            return;
+        }
+        const candidates = Array.isArray(data.candidates) ? data.candidates : [];
+        if (!candidates.length) {
+            select.innerHTML = '<option value="">Нет подходящих</option>';
+            return;
+        }
+        select.innerHTML = '';
+        candidates.forEach((c, i) => {
+            const opt = document.createElement('option');
+            opt.value = String(c.employee_id);
+            opt.textContent = c.display_name + (c.reasons?.length ? ' (' + c.reasons[0] + ')' : '');
+            opt.dataset.workoutTypeId = c.suggested_workout_type_id ? String(c.suggested_workout_type_id) : '';
+            if (i === 0) opt.selected = true;
+            select.appendChild(opt);
+        });
+    } catch (e) {
+        select.innerHTML = '<option value="">Ошибка сети</option>';
     }
-    const candidates = Array.isArray(data.candidates) ? data.candidates : [];
-    if (!candidates.length) {
-        select.innerHTML = '<option value="">Подходящих кандидатов нет</option>';
-        return 0;
-    }
-    select.innerHTML = '<option value="">Выберите кандидата...</option>';
-    candidates.forEach(c => {
-        const opt = document.createElement('option');
-        opt.value = String(c.employee_id);
-        opt.textContent = c.display_name;
-        opt.dataset.workoutTypeId = c.suggested_workout_type_id ? String(c.suggested_workout_type_id) : '';
-        select.appendChild(opt);
-    });
-    return candidates.length;
 }
 
 function syncBulkWorkoutOptions() {
@@ -1637,54 +1652,38 @@ function renderVersionCompareResult(payload) {
     if (!box) return;
     const changes = Array.isArray(payload?.changes) ? payload.changes : [];
     const header = `
-        <div class="mb-2 text-light">
-            Сравнение <strong>v${payload.left_version.number}</strong> и <strong>v${payload.right_version.number}</strong>.
-            Изменений: <strong>${payload.changes_count}</strong>
+        <div class="mb-2 text-light fw-semibold">
+            Сравнение <strong>v${payload.left_version.number}</strong> и <strong>v${payload.right_version.number}</strong>
+            <span class="badge text-bg-secondary ms-2">${payload.changes_count} изменений</span>
         </div>
     `;
     if (!changes.length) {
         box.innerHTML = header + '<div class="text-success">Различий нет.</div>';
-        box.classList.remove('d-none');
         return;
     }
 
-    const rows = changes.slice(0, 200).map(item => {
+    const cards = changes.slice(0, 200).map(item => {
+        const typeLabel = item.change_type === 'added'
+            ? '<span class="badge bg-success">Добавлено</span>'
+            : item.change_type === 'removed'
+                ? '<span class="badge bg-danger">Удалено</span>'
+                : '<span class="badge bg-warning text-dark">Изменено</span>';
         const before = item.left ? `${item.left.employee_name} • ${item.left.workout_name}` : '—';
         const after = item.right ? `${item.right.employee_name} • ${item.right.workout_name}` : '—';
-        const typeLabel = item.change_type === 'added'
-            ? 'Добавлено'
-            : item.change_type === 'removed'
-                ? 'Удалено'
-                : 'Изменено';
         return `
-            <tr>
-                <td>${item.date}</td>
-                <td>${item.time}</td>
-                <td>${typeLabel}</td>
-                <td>${before}</td>
-                <td>${after}</td>
-            </tr>
+            <div class="compare-change-row d-flex flex-wrap align-items-center gap-2 p-2 border rounded mb-1">
+                <div class="small fw-bold" style="min-width:80px;">${item.date}<br><span class="fw-normal">${item.time}</span></div>
+                ${typeLabel}
+                <div class="small text-muted flex-fill">
+                    <span class="text-danger text-decoration-line-through">${before}</span>
+                    <span class="mx-1">→</span>
+                    <span class="text-success">${after}</span>
+                </div>
+            </div>
         `;
     }).join('');
 
-    box.innerHTML = `
-        ${header}
-        <div class="table-responsive">
-            <table class="table table-sm table-dark mb-0">
-                <thead>
-                    <tr>
-                        <th>Дата</th>
-                        <th>Время</th>
-                        <th>Тип</th>
-                        <th>Было</th>
-                        <th>Стало</th>
-                    </tr>
-                </thead>
-                <tbody>${rows}</tbody>
-            </table>
-        </div>
-    `;
-    box.classList.remove('d-none');
+    box.innerHTML = header + cards;
 }
 
 function renderAvailabilityDayGrid(employeeId = '') {
@@ -1847,7 +1846,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const bulkClearBtn = document.getElementById('bulk-clear-btn');
         const bulkEmployeeSelect = document.getElementById('bulk-employee-select');
         const scheduleNameInput = document.getElementById('schedule-name-input');
-        const compareVersionsBtn = document.getElementById('compare-versions-btn');
+        const compareVersionsToggleBtn = document.getElementById('compare-versions-btn');
+        const compareVersionsExecBtn = document.getElementById('compare-versions-exec-btn');
         const leftVersionSelect = document.getElementById('version-left-select');
         const rightVersionSelect = document.getElementById('version-right-select');
         const availabilityEmployeeSelect = document.getElementById('availability-employee-select');
@@ -1937,8 +1937,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 applyAvailabilityHighlight('');
             });
         }
-                if (compareVersionsBtn && leftVersionSelect && rightVersionSelect) {
-            compareVersionsBtn.addEventListener('click', async function () {
+        if (compareVersionsToggleBtn) {
+            compareVersionsToggleBtn.addEventListener('click', function () {
+                const area = document.getElementById('version-compare-area');
+                if (!area) return;
+                area.classList.toggle('d-none');
+                compareVersionsToggleBtn.innerHTML = area.classList.contains('d-none')
+                    ? '<i class="bi bi-arrows-expand"></i> Сравнить версии'
+                    : '<i class="bi bi-dash-circle"></i> Скрыть сравнение';
+            });
+        }
+                if (compareVersionsExecBtn && leftVersionSelect && rightVersionSelect) {
+            compareVersionsExecBtn.addEventListener('click', async function () {
                 const leftId = leftVersionSelect.value;
                 const rightId = rightVersionSelect.value;
                 if (!leftId || !rightId) {
@@ -2070,48 +2080,27 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    const applyAllBestBtn = document.getElementById('manager-apply-all-best-btn');
-    if (applyAllBestBtn) {
-        applyAllBestBtn.addEventListener('click', async function () {
-            if (!await ensureApprovedEditConfirmation()) return;
-            this.disabled = true;
-            let applied = 0;
-            let skipped = 0;
-            const rows = Array.from(document.querySelectorAll('.manager-load-candidates-btn'));
-            for (const loadBtn of rows) {
-                const rowWrap = loadBtn.closest('.d-flex');
-                const select = rowWrap ? rowWrap.querySelector('.manager-candidates-select') : null;
-                const applyBtn = rowWrap ? rowWrap.querySelector('.manager-apply-candidate-btn') : null;
-                if (!select || !applyBtn) { skipped += 1; continue; }
-                try {
-                    await loadCandidatesForManagerButton(loadBtn, select);
-                    if (!select.options || select.options.length < 2) { skipped += 1; continue; }
-                    select.selectedIndex = 1; // лучший кандидат
-                    applyBtn.click();
-                    applied += 1;
-                } catch (_) {
-                    skipped += 1;
-                }
-            }
-            showGlobalNotification(`Готово: применено ${applied}, пропущено ${skipped}. Проверьте и сохраните график.`, applied > 0 ? 'success' : 'info');
-            this.disabled = false;
-        });
-    }
+    // Авто-загрузка кандидатов для каждого слота замены
+    document.querySelectorAll('.swap-slot-row').forEach(row => {
+        loadCandidatesForSlot(row);
+    });
 
-    document.querySelectorAll('.manager-apply-candidate-btn').forEach(btn => {
+    // Кнопка "Применить" в таблице замен
+    document.querySelectorAll('.swap-apply-btn').forEach(btn => {
         btn.addEventListener('click', async function () {
             if (!await ensureApprovedEditConfirmation()) return;
-            const rowWrap = this.closest('.d-flex');
-            const select = rowWrap ? rowWrap.querySelector('.manager-candidates-select') : null;
+            const row = this.closest('.swap-slot-row');
+            if (!row) return;
+            const select = row.querySelector('.swap-candidate-select');
             if (!select || !select.value) {
-                showGlobalNotification('Сначала выберите кандидата.', 'error');
+                showGlobalNotification('Выберите кандидата.', 'error');
                 return;
             }
             const date = this.dataset.date || '';
             const timeSlot = this.dataset.timeSlot || '';
             const cell = findScheduleCellByDateAndSlot(date, timeSlot);
             if (!cell) {
-                showGlobalNotification('Не найден соответствующий слот в таблице.', 'error');
+                showGlobalNotification('Не найден слот в таблице.', 'error');
                 return;
             }
             const employeeSelect = cell.querySelector('.employee-select');
@@ -2120,86 +2109,99 @@ document.addEventListener('DOMContentLoaded', function() {
                 showGlobalNotification('Этот слот нельзя изменить.', 'error');
                 return;
             }
-
             employeeSelect.value = select.value;
             constrainCellWorkoutByTrainer(cell);
             const suggestedWorkoutId = select.options[select.selectedIndex]?.dataset?.workoutTypeId || '';
-            if (suggestedWorkoutId) workoutSelect.value = suggestedWorkoutId;
+            if (suggestedWorkoutId) {
+                const hasOriginal = EMPLOYEE_WORKOUT_MAP[select.value]?.includes(parseInt(suggestedWorkoutId, 10));
+                if (hasOriginal) {
+                    workoutSelect.value = suggestedWorkoutId;
+                } else {
+                    workoutSelect.value = suggestedWorkoutId;
+                }
+            }
             updateCellPreview(cell);
-            showGlobalNotification('Замена применена в таблицу. Нажмите «Сохранить изменения».', 'success');
+            showGlobalNotification('Замена применена. Нажмите «Сохранить изменения».', 'success');
         });
+    });
+
+    // Отклонение графика — выделение ячеек кликом
+    const rejectSelected = new Set();
+    function toggleRejectCell(cell) {
+        const key = cell.dataset.day + '|' + cell.dataset.time;
+        if (rejectSelected.has(key)) {
+            rejectSelected.delete(key);
+            cell.classList.remove('reject-selected');
+        } else {
+            rejectSelected.add(key);
+            cell.classList.add('reject-selected');
+        }
+        const counter = document.getElementById('reject-count');
+        if (counter) counter.textContent = rejectSelected.size;
+    }
+
+    function updateRejectCount() {
+        const counter = document.getElementById('reject-count');
+        if (counter) counter.textContent = rejectSelected.size;
+    }
+
+    document.addEventListener('click', function(e) {
+        const cell = e.target.closest('#view-schedule-table td[data-day][data-time]');
+        if (!cell) return;
+        // проверяем, что ячейка принадлежит текущему сотруднику
+        const pill = cell.querySelector('.trainer-pill[data-employee-id]');
+        if (!pill || parseInt(pill.dataset.employeeId) !== CURRENT_PROFILE_ID) return;
+        const rejectRadio = document.getElementById('reject');
+        if (!rejectRadio) return;
+        if (!rejectRadio.checked) {
+            rejectRadio.checked = true;
+            syncDecisionVisual();
+        }
+        // показать блок комментария если скрыт
+        const commentGroup = document.getElementById('comment-group');
+        if (commentGroup && commentGroup.classList.contains('d-none')) {
+            commentGroup.classList.remove('d-none');
+            const ta = commentGroup.querySelector('textarea');
+            if (ta) ta.required = true;
+        }
+        toggleRejectCell(cell);
     });
 
     const approveRadio = document.getElementById('approve');
     const rejectRadio = document.getElementById('reject');
     const commentGroup = document.getElementById('comment-group');
-    const rejectModeArea = document.getElementById('reject-mode-area');
-    const manualBtn = document.getElementById('reject-mode-manual-btn');
-    const aiBtn = document.getElementById('reject-mode-ai-btn');
-    const manualPanel = document.getElementById('reject-mode-manual-panel');
-    const aiPanel = document.getElementById('reject-mode-ai-panel');
-    const slotsList = document.getElementById('reject-slots-list');
-    const selectAllBtn = document.getElementById('reject-select-all-btn');
-    const rejectAiText = document.getElementById('reject-ai-text');
 
-    function renderRejectSlots() {
-        if (!slotsList) return;
-        if (!APPROVAL_OWN_SLOTS || APPROVAL_OWN_SLOTS.length === 0) {
-            slotsList.innerHTML = '<div class="small text-muted">Ваших смен в этом графике не найдено.</div>';
-            return;
-        }
-        slotsList.innerHTML = APPROVAL_OWN_SLOTS.map((slot, idx) => `
-            <label class="form-check mb-2 d-block">
-                <input class="form-check-input reject-slot-checkbox" type="checkbox"
-                       value="${slot.date}|${slot.start_time}" ${idx < 2 ? 'checked' : ''}>
-                <span class="form-check-label">
-                    ${slot.date_label} ${slot.time_slot} — ${slot.workout_name}
-                </span>
-            </label>
-        `).join('');
-    }
-
-    function getSelectedRejectSlots() {
-        return Array.from(document.querySelectorAll('.reject-slot-checkbox:checked')).map(cb => {
-            const [date, start_time] = cb.value.split('|');
-            return { date, start_time };
+    function syncDecisionVisual() {
+        if (!approveRadio || !rejectRadio) return;
+        const labels = document.querySelectorAll('label[for="approve"], label[for="reject"]');
+        labels.forEach(lbl => {
+            const radio = document.getElementById(lbl.getAttribute('for'));
+            const div = lbl.querySelector('div');
+            if (!radio || !div) return;
+            if (radio.checked) {
+                const color = radio.value === 'approve' ? '#198754' : '#dc3545';
+                div.style.borderColor = color;
+                div.style.background = radio.value === 'approve'
+                    ? 'rgba(25,135,84,0.12)'
+                    : 'rgba(220,53,69,0.12)';
+            } else {
+                div.style.borderColor = 'var(--app-border)';
+                div.style.background = 'var(--app-surface-soft)';
+            }
         });
     }
 
-    function setRejectMode(mode) {
-        REJECT_MODE = mode === 'ai' ? 'ai' : 'manual';
-        if (manualBtn) manualBtn.classList.toggle('active', REJECT_MODE === 'manual');
-        if (aiBtn) aiBtn.classList.toggle('active', REJECT_MODE === 'ai');
-        if (manualPanel) manualPanel.classList.toggle('d-none', REJECT_MODE !== 'manual');
-        if (aiPanel) aiPanel.classList.toggle('d-none', REJECT_MODE !== 'ai');
-    }
-
     if (approveRadio && rejectRadio) {
-        renderRejectSlots();
-        setRejectMode('manual');
-
-        if (manualBtn) manualBtn.addEventListener('click', () => setRejectMode('manual'));
-        if (aiBtn) aiBtn.addEventListener('click', () => setRejectMode('ai'));
-        if (selectAllBtn) {
-            selectAllBtn.addEventListener('click', () => {
-                const boxes = Array.from(document.querySelectorAll('.reject-slot-checkbox'));
-                const allChecked = boxes.length > 0 && boxes.every(x => x.checked);
-                boxes.forEach(x => { x.checked = !allChecked; });
-                selectAllBtn.textContent = allChecked ? 'Выбрать все' : 'Снять все';
-            });
-        }
-
         [approveRadio, rejectRadio].forEach(radio => {
             radio.addEventListener('change', function() {
-                const isReject = this.value === 'reject';
+                syncDecisionVisual();
+                const isReject = this.value === 'reject' && this.checked;
                 if (isReject) {
                     commentGroup.classList.remove('d-none');
                     commentGroup.querySelector('textarea').required = true;
-                    if (rejectModeArea) rejectModeArea.classList.remove('d-none');
                 } else {
                     commentGroup.classList.add('d-none');
                     commentGroup.querySelector('textarea').required = false;
-                    if (rejectModeArea) rejectModeArea.classList.add('d-none');
                 }
             });
         });
@@ -2218,14 +2220,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     showGlobalNotification('Пожалуйста, укажите причину отклонения.', 'error');
                     return;
                 }
-                if (!approved && REJECT_MODE === 'manual' && getSelectedRejectSlots().length === 0) {
-                    showGlobalNotification('Выберите хотя бы один слот.', 'error');
+                if (!approved && rejectSelected.size === 0) {
+                    showGlobalNotification('Кликните по ячейкам, которые хотите заменить.', 'error');
                     return;
                 }
-                if (!approved && REJECT_MODE === 'ai' && !(rejectAiText?.value || '').trim()) {
-                    showGlobalNotification('Опишите проблему текстом для AI-режима.', 'error');
-                    return;
-                }
+
+                const selectedSlots = Array.from(rejectSelected).map(key => {
+                    const [date, start_time] = key.split('|');
+                    return { date, start_time };
+                });
 
                 fetch(`/api/schedule/${scheduleId}/approve/`, {
                     method: 'POST',
@@ -2236,9 +2239,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     body: JSON.stringify({
                         approved,
                         comment,
-                        reject_mode: approved ? null : REJECT_MODE,
-                        selected_slots: approved ? [] : getSelectedRejectSlots(),
-                        ai_text: approved ? '' : (rejectAiText?.value || '')
+                        selected_slots: approved ? [] : selectedSlots
                     })
                 })
                 .then(r => r.json())

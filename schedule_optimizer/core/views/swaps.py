@@ -40,7 +40,7 @@ def shift_swaps(request):
 
 
 @login_required
-@user_passes_test(lambda u: u.profile.role in ['manager', 'studio_admin'])
+@user_passes_test(lambda u: u.profile.role == 'manager')
 def manager_swap_requests(request):
     """Страница для менеджера: просмотр и одобрение всех заявок"""
     swap_requests = ShiftSwapRequest.objects.select_related(

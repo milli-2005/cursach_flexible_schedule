@@ -109,20 +109,24 @@ def my_availability(request):
 
     last_updated = availabilities.order_by('-updated_at').first()
 
-    # === Previous-week data for JS ===
+    # === Загружаем доступность с прошлой недели для JS ===
+    # Вычисляем понедельник предыдущей недели: отнимаем 7 дней
     prev_week_start = week_start - timedelta(weeks=1)
+    # Запрашиваем все записи доступности за предыдущую неделю для этого сотрудника
     prev_avail = Availability.objects.filter(
         employee=user_profile,
         date__gte=prev_week_start,
         date__lt=week_start
     )
+    # Сериализуем записи в список словарей для передачи в JSON
     prev_avail_list = []
     for a in prev_avail:
-        # Сдвигаем дату на неделю вперёд
+        # Сдвигаем дату каждой записи на 7 дней вперёд — чтобы
+        # доступность прошлой недели совпадала с днями текущей недели
         new_date = a.date + timedelta(weeks=1)
         prev_avail_list.append({
-            'date': new_date.strftime('%Y-%m-%d'),
-            'time': a.start_time.strftime('%H:%M')
+            'date': new_date.strftime('%Y-%m-%d'),   # новая дата (текущая неделя)
+            'time': a.start_time.strftime('%H:%M'),  # время начала слота (без изменений)
         })
 
     prev_week = (week_start - timedelta(weeks=1)).strftime('%Y-%m-%d')

@@ -1,38 +1,20 @@
-"""Страницы авторизации, профиля, дашбордов, управления пользователями и оптимизации."""
-
-# core/views.py
-import secrets
-import string
+"""Страницы авторизации, профиля, дашбордов, управления пользователями."""
 import json
-import re
+import logging
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth import login, logout
 from django.contrib import messages
 from django.contrib.auth.forms import AuthenticationForm
-from django.core.mail import send_mail
-from django.template.loader import render_to_string
-from django.utils.html import strip_tags
 from django.conf import settings
 from django.http import JsonResponse
-from ..error_utils import humanize_exception
-from ..services.rule_ai_parser import try_parse_rule_with_ai
 from ..email_utils import send_mail_with_fallback
 from ..models import *
-from ..forms import UserInvitationForm, UserProfileEditForm
+from ..forms import UserProfileEditForm
 from django.contrib.auth.models import User
-import logging
-from django.utils import timezone #для времени сброса пароля
+from django.utils import timezone
 from datetime import datetime, timedelta
-from django.shortcuts import render, get_object_or_404
-from ..models import Schedule, UserProfile, WorkoutType
-
-from django.shortcuts import render
-from ..models import Schedule, ShiftAssignment
 from collections import defaultdict
-
-from django.shortcuts import redirect
-from django.contrib import messages
 
 
 
@@ -45,49 +27,6 @@ def is_manager(user):
     if not hasattr(user, 'profile'):
         return False
     return user.profile.role == 'manager'
-
-
-def generate_random_password(length=12):
-    """Генерирует случайный безопасный пароль."""
-    alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
-    password = ''.join(secrets.choice(alphabet) for _ in range(length))
-    return password
-
-def send_user_invitation(user, raw_password):
-    """Отправляет приглашение новому пользователю с паролем."""
-    subject = 'Приглашение в систему планирования смен'
-    # HTML сообщение
-    html_message = render_to_string('core/emails/user_invitation.html', {
-        'user': user,
-        'raw_password': raw_password,
-        'site_url': 'http://localhost:8000',  # Замените на ваш домен
-        'login_url': 'http://localhost:8000/login/',
-    })
-
-    # !!! ВАЖНО: замените на ваш публичный URL (например, от ngrok).
-    # site_url = getattr(settings, 'PUBLIC_SITE_URL', 'http://localhost:8000')  # Используем переменную из settings
-    # html_message = render_to_string('core/emails/user_invitation.html', {
-    #     'user': user,
-    #     'raw_password': raw_password,
-    #     'site_url': site_url,
-    #     'login_url': f'{site_url}/login/',
-    #     'change_password_url': f'{site_url}/profile/change-password/'  # Ссылка на смену пароля
-    # })
-
-
-    # Текстовое сообщение (для клиентов без поддержки HTML)
-    plain_message = strip_tags(html_message)
-
-    # Отправляем email
-    send_mail(
-        subject,
-        plain_message,
-        settings.DEFAULT_FROM_EMAIL,
-        [user.email], # Отправляем на email нового пользователя
-        html_message=html_message,
-        fail_silently=False,
-    )
-
 
 
 def is_admin(user):
@@ -161,12 +100,6 @@ def dashboard(request):
         except Employee.DoesNotExist:
             pass
         return render(request, 'core/dashboard/dashboard_employee.html', context)
-    elif profile.role == 'studio_admin':
-        # Для администратора студии
-        # Здесь можно добавить логику для получения графиков, отчетов и т.д.
-        schedules = Schedule.objects.all()[:5]  # Пример
-        context['schedules'] = schedules
-        return render(request, 'core/dashboard/dashboard_studio_admin.html', context)
     elif profile.role == 'manager':
         # Для менеджера
         schedules = Schedule.objects.all()[:5]  # Пример
@@ -175,7 +108,7 @@ def dashboard(request):
     else:
         # На всякий случай, если роль неизвестна
         messages.error(request, "Неизвестная роль пользователя.")
-        return redirect('index')
+        return redirect('dashboard')
 
 
 
@@ -255,157 +188,9 @@ def change_password(request):
     }
     return render(request, 'core/profile/change_password.html', context)
 
-# Управление пользователями
-@login_required
-@user_passes_test(is_admin)
-def invite_user(request):
-    """
-    Страница для приглашения нового пользователя.
-    Доступна только администраторам.
-    """
-    if request.method == 'POST':
-        form = UserInvitationForm(request.POST)
-        if form.is_valid():
-            try:
-                # Генерируем случайный пароль
-                raw_password = generate_random_password()
-                # Создаем пользователя
-                user = User.objects.create_user(
-                    username=form.cleaned_data['username'],
-                    email=form.cleaned_data['email'],
-                    password=raw_password, # Устанавливаем сгенерированный пароль
-                    first_name=form.cleaned_data.get('first_name', ''),
-                    last_name=form.cleaned_data.get('last_name', ''),
-                )
-                # Профиль создаётся автоматически сигналом в apps.py,
-                # но мы должны обновить его атрибуты после создания
-                profile = user.profile # Получаем связанный профиль
-                profile.role = form.cleaned_data['role']
-                # profile.position = form.cleaned_data.get('position', '')
-                profile.phone = form.cleaned_data.get('phone', '')
-
-                # Set temporary timestamp
-                profile.invitation_timestamp = timezone.now()
-                profile.save()
-
-                # Отправляем приглашение на email
-                try:
-                    send_user_invitation(user, raw_password)
-                    messages.success(
-                        request,
-                        f'Пользователь {user.username} успешно создан. '
-                        f'Приглашение отправлено на {user.email}.'
-                    )
-                    logger.info(f'Администратор {request.user.username} создал пользователя {user.username}')
-                except Exception as e:
-                    # Если email не отправился, всё равно создаём пользователя
-                    # и показываем пароль администратору
-                    messages.warning(
-                        request,
-                        f'Пользователь {user.username} создан, но email не отправлен. '
-                        f'Ошибка: {humanize_exception(e)}. Пароль пользователя: {raw_password}'
-                    )
-                    logger.error(f'Ошибка отправки email для пользователя {user.username}: {humanize_exception(e)}')
-
-                return redirect('user_management') # Перенаправляем после успешного создания
-            except Exception as e:
-                messages.error(request, f'Ошибка при создании пользователя: {humanize_exception(e)}')
-                logger.error(f'Ошибка создания пользователя: {humanize_exception(e)}')
-    else:
-        form = UserInvitationForm()
-
-    return render(request, 'core/invite_user.html', {'form': form})
-
-
-
-""" USER CRUD """
 @login_required
 @user_passes_test(is_admin)
 def user_management(request):
     """Открывает страницу управления пользователями для руководителя или администратора."""
     context = {}
     return render(request, 'core/dashboard/user_management.html', context)
-
-
-@login_required
-@user_passes_test(is_admin)
-def reset_user_password(request, user_id):
-    """Сброс пароля пользователя и отправка нового на email."""
-    try:
-        user = get_object_or_404(User, id=user_id)
-        if request.method == 'POST':
-            # Генерируем новый случайный пароль
-            raw_password = generate_random_password()
-            # Устанавливаем новый пароль
-            user.set_password(raw_password)
-            user.save()
-
-            # Set temporary timestamp for reset
-            profile = user.profile
-            profile.invitation_timestamp = timezone.now()
-            profile.save()
-
-            # Отправляем email с новым паролем
-            try:
-                send_user_invitation(user, raw_password)
-                messages.success(
-                    request,
-                    f'Новый пароль для пользователя {user.username} отправлен на {user.email}.'
-                )
-                logger.info(f'Администратор {request.user.username} сбросил пароль для {user.username}')
-            except Exception as e:
-                # Если email не отправился, показываем пароль администратору
-                messages.warning(
-                    request,
-                    f'Пароль сброшен, но email не отправлен. '
-                    f'Ошибка: {humanize_exception(e)}. Новый пароль: {raw_password}'
-                )
-            return redirect('user_management')
-
-        context = {
-            'user': user,
-        }
-        return render(request, 'profile/reset_password_confirm.html', context)
-    except User.DoesNotExist:
-        messages.error(request, 'Пользователь не найден.')
-        return redirect('user_management')
-
-# Простые страницы дашбордов
-def dashboard_employee(request):
-    """Показывает отдельную страницу кабинета сотрудника, если она вызывается напрямую."""
-    # Логика для дашборда сотрудника
-    return render(request, 'core/dashboard_employee.html')
-
-def dashboard_studio_admin(request):
-    """Показывает отдельную страницу кабинета администратора студии, если она вызывается напрямую."""
-    # Логика для дашборда админа студии
-    return render(request, 'core/dashboard_studio_admin.html')
-
-def dashboard_manager(request):
-    """Показывает отдельную страницу кабинета руководителя, если она вызывается напрямую."""
-    # Логика для дашборда менеджера
-    return render(request, 'core/dashboard_manager.html')
-
-# Оптимизация
-@login_required
-def optimization_view(request):
-    """Страница оптимизации графиков."""
-
-    # Проверяем права доступа
-    if not hasattr(request.user, 'profile'):
-        messages.error(request, "Профиль пользователя не найден.")
-        return redirect('dashboard')
-
-    user_profile = request.user.profile
-    current_role = user_profile.current_role or user_profile.role
-
-    # Только планировщики и админы могут использовать оптимизацию
-    if current_role not in ['manager']:
-        messages.error(request, "У вас нет доступа к этому разделу.")
-        return redirect('dashboard')
-
-    rules = OptimizationRule.objects.filter(is_active=True)
-    context = {
-        'rules': rules,
-    }
-    return render(request, 'core/optimization.html', context)

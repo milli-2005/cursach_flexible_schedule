@@ -88,7 +88,7 @@
                 <div class="alert alert-danger mb-3 d-none" id="global-error-box">
                     <strong>Ошибка:</strong> <span id="global-error-text"></span>
                 </div>
-                <form id="createUserForm">
+                <form id="createUserForm" novalidate>
                     {% csrf_token %}
                     <div class="row">
                         <div class="col-md-6">
@@ -320,6 +320,14 @@
 <script>
     let allUsers = [];
 
+    document.getElementById('createUserForm').addEventListener('submit', function (e) {
+    e.preventDefault(); submitCreateUser();
+});
+
+    document.getElementById('editUserForm').addEventListener('submit', function (e) {
+    e.preventDefault(); submitEditUser();
+});
+
     document.getElementById('createUserModal').addEventListener('show.bs.modal', function () {
     loadWorkoutTypes('workoutTypesCreate');
 });
@@ -335,6 +343,14 @@
         const phoneInput = document.getElementById('id_phone');
         if (phoneInput) {
             IMask(phoneInput, {
+                mask: '+{7} (000) 000-00-00',
+                lazy: false,
+                placeholderChar: '_'
+            });
+        }
+        const editPhoneInput = document.getElementById('editPhone');
+        if (editPhoneInput) {
+            IMask(editPhoneInput, {
                 mask: '+{7} (000) 000-00-00',
                 lazy: false,
                 placeholderChar: '_'
@@ -556,6 +572,10 @@ function loadWorkoutTypes(containerId) {
         const globalError = document.getElementById('global-error-box');
         if (globalError) globalError.classList.add('d-none');
 
+        // Блокируем кнопку
+        const btn = document.querySelector('button[onclick="submitCreateUser()"]');
+        if (btn) { btn.disabled = true; btn.textContent = 'Отправка...'; }
+
         const data = {};
     ['username', 'email', 'first_name', 'last_name', 'patronymic', 'role', 'phone']
         .forEach(field => {
@@ -578,21 +598,22 @@ function loadWorkoutTypes(containerId) {
     })
     .then(r => r.json())
     .then(res => {
+        if (btn) { btn.disabled = false; btn.textContent = 'Пригласить'; }
         if (res.success) {
             showGlobalNotification('Пользователь успешно приглашён.', 'success');
             bootstrap.Modal.getInstance(document.getElementById('createUserModal')).hide();
             document.getElementById('createUserForm').reset();
             loadUsers();
         } else {
-                if (data.errors?.__all__) {
+                if (res.errors?.__all__) {
                     const box = document.getElementById('global-error-box');
                     const text = document.getElementById('global-error-text');
                     if (box && text) {
-                        text.textContent = data.errors.__all__[0];
+                        text.textContent = res.errors.__all__[0];
                         box.classList.remove('d-none');
                     }
                 }
-                for (const [field, msgs] of Object.entries(data.errors || {})) {
+                for (const [field, msgs] of Object.entries(res.errors || {})) {
                     if (field === '__all__') continue;
                     const errEl = document.getElementById(`error-${field}`);
                     const inpEl = document.getElementById(`id_${field}`);
@@ -605,6 +626,7 @@ function loadWorkoutTypes(containerId) {
             }
         })
         .catch(() => {
+            if (btn) { btn.disabled = false; btn.textContent = 'Пригласить'; }
             showGlobalNotification('Ошибка сети', 'error');
         });
     }
