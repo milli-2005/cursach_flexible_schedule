@@ -6,14 +6,16 @@
 {% block extra_css %}
 <style>
 .trainer-pill {
-    display: inline-block;
-    padding: 0.12rem 0.45rem;
+    display: inline-flex; flex-direction: column; align-items: center;
+    line-height: 1.2; text-align: center;
+    padding: 0.2rem 0.7rem;
     border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.25);
+    border: 1.5px solid rgba(255, 255, 255, 0.5);
     color: #fff;
     font-weight: 700;
     margin-bottom: 0.25rem;
 }
+
 
 .assigned-cell {
     box-shadow: inset 0 0 0 9999px var(--trainer-tint, rgba(179, 157, 219, 0.08));
@@ -66,7 +68,11 @@
                                 {% with assignment=date_assignments|get_item:time_key %}
                                 <div class="cell-preview">
                                     {% if assignment and assignment.employee %}
-                                        <span class="trainer-pill" data-employee-id="{{ assignment.employee.id }}">{{ assignment.employee.user|short_name }}</span><br>
+                                        <span class="trainer-pill" data-employee-id="{{ assignment.employee.id }}">
+                                            {% with name_lines=assignment.employee.user|name_lines %}
+                                                {% for line in name_lines %}<span style="display:block;color:#fff;">{{ line }}</span>{% endfor %}
+                                            {% endwith %}
+                                        </span><br>
                                         <small class="workout-preview">{{ assignment.workout_type.name|default:"Работа" }}</small>
                                     {% else %}
                                         <span class="trainer-pill">—</span><br>
@@ -127,6 +133,11 @@ function colorForTrainer(employeeId) {
     return TRAINER_COLORS[Math.abs(n) % TRAINER_COLORS.length];
 }
 
+function setPillName(pill, name) {
+    pill.innerHTML = name ? name.split(' ').map(function (w) { return '<span style="display:block;color:#fff;">' + w + '</span>'; }).join('') : '—';
+    if (!name) pill.removeAttribute('data-employee-id');
+}
+
 function updateCellPreview(cell) {
     const employeeSelect = cell.querySelector('.employee-select');
     const workoutSelect = cell.querySelector('.workout-select');
@@ -139,9 +150,11 @@ function updateCellPreview(cell) {
         trainerPill = cell.querySelector('.trainer-pill');
     }
 
-    trainerPill.textContent = employeeSelect.value
-        ? employeeSelect.options[employeeSelect.selectedIndex].text
-        : '—';
+    if (employeeSelect.value) {
+        setPillName(trainerPill, employeeSelect.options[employeeSelect.selectedIndex].text);
+    } else {
+        setPillName(trainerPill, null);
+    }
 
     workoutPreview.textContent = workoutSelect.value
         ? workoutSelect.options[workoutSelect.selectedIndex].text

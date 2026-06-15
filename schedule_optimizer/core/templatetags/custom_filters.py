@@ -69,6 +69,16 @@ def short_name(user):
         # Если список непустой — склеиваем "Фамилия Имя", иначе берём логин.
 
 
+# name_lines — возвращает список [фамилия, имя] для отображения на двух строках
+# {{ user|name_lines }} → ["Иванов", "Иван"]
+@register.filter
+def name_lines(user):
+    if not user:
+        return []
+    lines = [p for p in (user.last_name, user.first_name) if p]
+    return lines if lines else [user.username]
+
+
 # is_positive — проверяет, что число > 0
 # {{ число|is_positive }} → True/False. Нужно для {% if число|is_positive %}.
 @register.filter

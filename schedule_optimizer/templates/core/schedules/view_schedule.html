@@ -7,15 +7,17 @@
 {% block extra_css %}
 <style>
 .trainer-pill {
-    display: inline-block;
-    padding: 0.12rem 0.45rem;
+    display: inline-flex; flex-direction: column; align-items: center;
+    line-height: 1.2; text-align: center;
+    padding: 0.2rem 0.7rem;
     border-radius: 999px;
-    border: 1px solid var(--app-border);
+    border: 1.5px solid var(--app-accent);
     background: var(--app-accent-soft);
     color: #fff;
     font-weight: 700;
-    margin-bottom: 0.2rem;
+    margin-bottom: 0.25rem;
 }
+
 
 .assigned-cell {
     box-shadow: inset 0 0 0 9999px var(--trainer-tint, rgba(179, 157, 219, 0.08));
@@ -1437,7 +1439,11 @@ html[data-theme='light'] .approved-edit-body { color: #2f1d5d; }
                         {% if can_edit_schedule %}
                             <div class="cell-preview">
                                 {% if cell.assignment and cell.assignment.employee %}
-                                    <span class="trainer-pill" data-employee-id="{{ cell.assignment.employee.id }}">{{ cell.assignment.employee.user|short_name }}</span><br>
+                                    <span class="trainer-pill" data-employee-id="{{ cell.assignment.employee.id }}">
+                                        {% with name_lines=cell.assignment.employee.user|name_lines %}
+                                            {% for line in name_lines %}<span style="display:block;color:#fff;">{{ line }}</span>{% endfor %}
+                                        {% endwith %}
+                                    </span><br>
                                     <small class="workout-preview">{{ cell.assignment.workout_type.name|default:"Работа" }}</small>
                                 {% else %}
                                     <span class="trainer-pill">—</span><br>
@@ -1472,7 +1478,11 @@ html[data-theme='light'] .approved-edit-body { color: #2f1d5d; }
                         {% else %}
                             <div class="cell-preview">
                             {% if cell.assignment %}
-                                <span class="trainer-pill" data-employee-id="{{ cell.assignment.employee.id }}">{{ cell.assignment.employee.user|short_name }}</span><br>
+                                <span class="trainer-pill" data-employee-id="{{ cell.assignment.employee.id }}">
+                                    {% with name_lines=cell.assignment.employee.user|name_lines %}
+                                        {% for line in name_lines %}<span style="display:block;color:#fff;">{{ line }}</span>{% endfor %}
+                                    {% endwith %}
+                                </span><br>
                                 <small>{{ cell.assignment.workout_type.name|default:"Работа" }}</small>
                             {% else %}
                                 <em>—</em>
@@ -2080,10 +2090,10 @@ function updateCellPreview(cell) {
     }
 
     if (employeeSelect && employeeSelect.value) {
-        trainerPill.textContent = employeeSelect.options[employeeSelect.selectedIndex].text;
+        trainerPill.innerHTML = employeeSelect.options[employeeSelect.selectedIndex].text.split(' ').map(function (w) { return '<span style="display:block;color:#fff;">' + w + '</span>'; }).join('');
         trainerPill.dataset.employeeId = employeeSelect.value;
     } else {
-        trainerPill.textContent = '—';
+        trainerPill.innerHTML = '—';
         trainerPill.removeAttribute('data-employee-id');
     }
 

@@ -1539,7 +1539,10 @@ html[data-theme='light'] .bulk-actions-panel {
     background: #ffffff !important;
 }
 
-html[data-theme='light'] .trainer-pill {
+html[data-theme='light'] .trainer-pill,
+html[data-theme='light'] .trainer-pill span,
+html[data-theme='light'] .trainer-name,
+html[data-theme='light'] .trainer-name span {
     color: #fff !important;
 }
 
@@ -1702,7 +1705,9 @@ html[data-theme='light'] .management-table td * {
 }
 
 html[data-theme='light'] .table-dark tbody td .trainer-name,
-html[data-theme='light'] .table-dark tbody td .trainer-pill {
+html[data-theme='light'] .table-dark tbody td .trainer-name span,
+html[data-theme='light'] .table-dark tbody td .trainer-pill,
+html[data-theme='light'] .table-dark tbody td .trainer-pill span {
     color: #ffffff !important;
 }
 

@@ -11,10 +11,14 @@
 .shift-cell { cursor: pointer; }
 .cell-view { min-height: 38px; text-align: center; }
 .cell-view .trainer-name {
-    display: inline-block; font-weight: 700; color: #fff; padding: 0.12rem 0.45rem;
-    border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.25);
-    line-height: 1.2; margin-bottom: 0.25rem;
+    display: inline-flex; flex-direction: column; align-items: center;
+    font-weight: 700; color: #fff; padding: 0.2rem 0.7rem;
+    border-radius: 999px; border: 1.5px solid rgba(255, 255, 255, 0.5);
+    line-height: 1.2; margin-bottom: 0.3rem;
+    text-align: center;
 }
+.cell-view .trainer-name .name-line { display: block; color: #fff; }
+.cell-view .trainer-name .name-gap { display: block; font-size: 0.65rem; line-height: 0.2; }
 .cell-view .workout-name { display: block; color: #d0d0d0; font-size: 0.82rem; text-align: center; }
 .cell-controls { display: none; margin-top: 0.45rem; }
 .shift-cell.is-editing .cell-controls { display: block; }
@@ -431,7 +435,20 @@ function normalizeWorkoutNameForRule(name) {
         'силовые': 'strength',
         'кардио': 'cardio',
     };
-    return aliases[n] || n;
+    if (aliases[n]) return aliases[n];
+    // Пробуем найти алиас по подстроке
+    for (const alias in aliases) {
+        if (alias.indexOf(n) !== -1 || n.indexOf(alias) !== -1) return aliases[alias];
+    }
+    // Пробуем отбросить окончание (табату → табат → табата)
+    const stem = n.replace(/[аяуюоеиы]$/, '');
+    if (stem && stem !== n) {
+        for (const alias in aliases) {
+            const aliasStem = alias.replace(/[аяуюоеиы]$/, '');
+            if (aliasStem === stem) return aliases[alias];
+        }
+    }
+    return n;
 }
 
 const WORKOUT_BY_ID = {};
@@ -554,7 +571,17 @@ function updateCellView(cell) {
     const trainerName = cell.querySelector('.trainer-name');
     const workoutName = cell.querySelector('.workout-name');
 
-    trainerName.textContent = employeeSelect.value ? employeeSelect.options[employeeSelect.selectedIndex].text : '-';
+    var fullName = employeeSelect.value ? employeeSelect.options[employeeSelect.selectedIndex].text : '-';
+    if (fullName === '-') {
+        trainerName.innerHTML = '<span class="name-line" style="color:#fff;">-</span>';
+    } else {
+        var parts = fullName.split(' ');
+        if (parts.length >= 2) {
+            trainerName.innerHTML = '<span class="name-line" style="color:#fff;">' + parts[0] + '</span><span class="name-gap"></span><span class="name-line" style="color:#fff;">' + parts.slice(1).join(' ') + '</span>';
+        } else {
+            trainerName.innerHTML = '<span class="name-line" style="color:#fff;">' + fullName + '</span>';
+        }
+    }
     workoutName.textContent = workoutSelect.value ? workoutSelect.options[workoutSelect.selectedIndex].text : '-';
 
     const palette = colorForTrainer(employeeSelect.value);

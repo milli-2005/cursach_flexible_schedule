@@ -126,7 +126,7 @@ WORKOUT_CATEGORY_ALIASES = {
     # Кардио-тренировки: русские и английские варианты
     'кардио': 'cardio',
     'cardio': 'cardio',
-    'табата': 'cardio',
+    'табат': 'cardio',
     'hiit': 'cardio',
     # Силовые тренировки: русские и английские варианты
     'силов': 'strength',
@@ -185,10 +185,10 @@ def _parse_distribution_rule_text(text: str):
         return None, 'Введите текст правила.'
 
     # ── Шаблон 1: «Табата не более 1 раза утром и 1 раза вечером в неделю» ──
-    # Ищет: "что-то не более N раз утром M раз вечером в неделю"
+    # Ищет: "что-то не более/только N раз утром M раз вечером в неделю"
     weekly_pattern = re.search(
-        # Регулярное выражение: группа target — название тренировки, далее "не более", число для утра, число для вечера, "недел"
-        r'(?P<target>[а-яa-z0-9 \-_]+?)\s+.*?не более\s+(?P<morning>\d+)\s+раз.*?утр.*?(?P<evening>\d+)\s+раз.*?вечер.*?недел',
+        # Регулярное выражение: группа target — название тренировки, далее "не более" или "только", число для утра, число для вечера, "недел"
+        r'(?P<target>[а-яa-z0-9 \-_]+?)\s+.*?(?:не более|только)\s+(?P<morning>\d+)\s+раз.*?утр.*?(?P<evening>\d+)\s+раз.*?вечер.*?недел',
         src
     )
     # Если шаблон найден — разбираем результат
@@ -211,17 +211,19 @@ def _parse_distribution_rule_text(text: str):
                 {'name': 'evening', 'start': '16:00', 'end': '21:00', 'max': evening_max},
             ],
         }
-        # Если удалось определить категорию — используем режим цели "category"
-        if target_category:
-            # Добавляем целевой режим и категорию в параметры
+        # Определяем, является ли цель broad-категорией или конкретной тренировкой
+        normalized_name = _normalize_workout_name_for_rule(raw_target)
+        # Если нормализованное имя совпадает с названием категории («кардио»→«cardio» → категория,
+        # «табата»→«tabata»≠«cardio» → конкретная тренировка)
+        is_category_keyword = target_category and normalized_name == target_category
+        if is_category_keyword:
+            # Используем режим цели "category"
             params.update({'target_mode': 'category', 'category': target_category})
-            # Формируем название правила с категорией
             title = f'Лимит категории "{target_category}" по неделе'
         else:
-            # Если категория не определена — используем режим цели "workout" и название тренировки
-            params.update({'target_mode': 'workout', 'workout_name': raw_target})
-            # Формируем название правила с названием тренировки
-            title = f'Лимит "{raw_target}" по неделе'
+            # Используем режим цели "workout" с названием тренировки
+            params.update({'target_mode': 'workout', 'workout_name': normalized_name})
+            title = f'Лимит "{normalized_name}" по неделе'
         # Формируем payload — структуру правила для сохранения
         payload = {
             'rule_type': 'weekly_limit',
@@ -248,14 +250,16 @@ def _parse_distribution_rule_text(text: str):
         total_max = int(total_week_pattern.group('count'))
         # Формируем параметры: период — неделя, максимальное количество
         params = {'period': 'week', 'max_total': total_max}
-        # Если категория определена — сохраняем как категорию
-        if target_category:
+        # Определяем, является ли цель broad-категорией или конкретной тренировкой
+        normalized_name = _normalize_workout_name_for_rule(raw_target)
+        is_category_keyword = target_category and normalized_name == target_category
+        if is_category_keyword:
             params.update({'target_mode': 'category', 'category': target_category})
             title = f'Лимит категории "{target_category}" за неделю'
         else:
-            # Иначе сохраняем как конкретную тренировку
-            params.update({'target_mode': 'workout', 'workout_name': raw_target})
-            title = f'Лимит "{raw_target}" за неделю'
+            normalized_name = _normalize_workout_name_for_rule(raw_target)
+            params.update({'target_mode': 'workout', 'workout_name': normalized_name})
+            title = f'Лимит "{normalized_name}" за неделю'
         # Формируем payload правила
         payload = {
             'rule_type': 'weekly_limit',
@@ -469,14 +473,15 @@ def _parse_distribution_rule_text(text: str):
                 {'name': 'morning', 'start': '09:00', 'end': '14:00', 'max': count},
             ],
         }
-        # Если категория определена — используем режим "category"
-        if target_category:
+        # Определяем, является ли цель broad-категорией или конкретной тренировкой
+        normalized_name = _normalize_workout_name_for_rule(raw_target)
+        is_category_keyword = target_category and normalized_name == target_category
+        if is_category_keyword:
             params.update({'target_mode': 'category', 'category': target_category})
             title = f'Лимит категории "{target_category}" утром'
         else:
-            # Иначе — режим "workout" с названием тренировки
-            params.update({'target_mode': 'workout', 'workout_name': raw_target})
-            title = f'Лимит "{raw_target}" утром'
+            params.update({'target_mode': 'workout', 'workout_name': normalized_name})
+            title = f'Лимит "{normalized_name}" утром'
         # Формируем payload правила
         payload = {
             'rule_type': 'weekly_limit',
@@ -1157,6 +1162,7 @@ def _normalize_workout_name_for_rule(name: str) -> str:
     Приводит название тренировки к канонической форме для сравнения.
 
     Нужно, чтобы «табата» и «tabata» считались одним и тем же направлением.
+    Также нормализует грамматические формы: «табату», «табатой» → «табата» → «tabata».
     """
     # Приводим к нижнему регистру, обрезаем пробелы
     n = (name or '').strip().lower()
@@ -1169,8 +1175,22 @@ def _normalize_workout_name_for_rule(name: str) -> str:
         'силовые': 'strength',
         'кардио': 'cardio',
     }
-    # Если имя есть в алиасах — возвращаем английский вариант, иначе — исходное
-    return aliases.get(n, n)
+    # Если имя есть в алиасах — возвращаем английский вариант
+    result = aliases.get(n)
+    if result:
+        return result
+    # Пробуем найти алиас по подстроке
+    for alias, normalized in aliases.items():
+        if alias in n or n in alias:
+            return normalized
+    # Пробуем отбросить окончание: «табату» → «табат» → ищем алиас с тем же корнем
+    stem = re.sub(r'[аяуюоеиы]$', '', n)
+    if stem and stem != n:
+        for alias, normalized in aliases.items():
+            alias_stem = re.sub(r'[аяуюоеиы]$', '', alias)
+            if alias_stem == stem:
+                return normalized
+    return n
 
 
 def _time_in_bucket(start_time, bucket):

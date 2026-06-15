@@ -258,33 +258,31 @@ def api_approve_swap_request(request, swap_id):
                 ),
             })
 
-        missing_workouts = []
-        for swap_shift in swap.shifts.all():
-            shift = swap_shift.shift_assignment
-            workout = shift.workout_type
-            if workout and workout.id not in to_employee_workout_ids:
-                missing_workouts.append(workout.name)
-
-        if missing_workouts:
-            unique_names = sorted(set(missing_workouts))
-            return JsonResponse({
-                'success': False,
-                'error': (
-                    f'Нельзя утвердить обмен: у сотрудника "{to_user.username}" нет нужных направлений '
-                    f'для этих занятий ({", ".join(unique_names)}).'
-                ),
-            })
-
         # Меняем статус
         swap.status = 'approved_by_manager'
         swap.save(update_fields=['status', 'to_employee'])
 
-        # Меняем владельца для всех смен
+        # Меняем владельца для всех смен и подбираем направление
+        emp_workout_ids = set(swap.to_employee.workout_types.values_list('id', flat=True))
+        emp_workouts = list(swap.to_employee.workout_types.all())
         updated_shifts = []
         for swap_shift in swap.shifts.all():
             shift = swap_shift.shift_assignment
             old_owner = shift.employee.user.username if shift.employee else 'None'
             shift.employee = swap.to_employee.user_profile
+            # Подбираем направление: если у нового сотрудника есть исходное — оставляем,
+            # иначе выбираем из той же категории или первое доступное
+            new_wt_id = shift.workout_type_id
+            if new_wt_id and new_wt_id not in emp_workout_ids:
+                orig_wt = shift.workout_type
+                same_category = [wt for wt in emp_workouts if orig_wt and wt.category == orig_wt.category]
+                if same_category:
+                    new_wt_id = same_category[0].id
+                elif emp_workouts:
+                    new_wt_id = emp_workouts[0].id
+                else:
+                    new_wt_id = None
+            shift.workout_type_id = new_wt_id
             shift.save()
             updated_shifts.append(f"{shift.date} {shift.start_time}")
 

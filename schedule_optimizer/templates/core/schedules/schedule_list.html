@@ -242,13 +242,9 @@
                         <td>{{ s.end_date|date:"d E Y" }}</td>
                         <td>{{ s.get_status_display }}</td>
                         <td>
-                            {% if s.status == 'pending' %}
-                                Просмотрено: {{ item.responded_count }} / {{ item.total_employees }}
-                                {% if item.rejected_count > 0 %}
-                                    <br><span class="text-danger">Отказов: {{ item.rejected_count }}</span>
-                                {% endif %}
-                            {% else %}
-                                <em>—</em>
+                            Просмотрено: {{ item.responded_count }} / {{ item.total_employees }}
+                            {% if item.rejected_count > 0 %}
+                                <br><span class="text-danger">Отказов: {{ item.rejected_count }}</span>
                             {% endif %}
                         </td>
                         <td>{{ s.created_by|short_name }}</td>
