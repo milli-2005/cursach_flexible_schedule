@@ -1,450 +1,766 @@
 ﻿{% extends "core/base.html" %}
-
 {% block title %}Правила распределения - {{ block.super }}{% endblock %}
 
 {% block extra_css %}
 <style>
-.rules-actions-cell {
-    background: transparent !important;
+/* ===== Правила распределения — крупный читаемый дизайн ===== */
+:root {
+  --rule-card-bg: linear-gradient(180deg, var(--app-surface-soft) 0%, var(--app-surface) 100%);
+  --rule-shadow: 0 2px 12px rgba(0,0,0,0.15);
 }
-.rules-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    align-items: center;
-    background: transparent !important;
+
+/* Контейнер */
+.rules-page { max-width: 1300px; margin: 0 auto; }
+
+/* ── Заголовок ── */
+.rules-header {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;
+  margin-bottom: 1.5rem;
 }
-.rule-conflict-card {
-    border: 1px solid rgba(220, 53, 69, 0.35);
-    background: rgba(220, 53, 69, 0.08);
-    border-radius: 12px;
-    padding: 0.85rem 1rem;
+.rules-header h2 {
+  margin: 0; font-weight: 800; color: var(--app-heading); font-size: 1.8rem;
+  display: flex; align-items: center; gap: 0.6rem;
 }
-.rule-conflict-card + .rule-conflict-card {
-    margin-top: 0.6rem;
+.rules-header h2 i { color: var(--app-accent); font-size: 1.7rem; }
+.rules-header .rules-count-badge {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  padding: 0.4rem 0.9rem; border-radius: 999px;
+  background: var(--app-accent-soft); color: var(--app-accent);
+  font-size: 0.95rem; font-weight: 700;
 }
-.rule-conflict-card.soft {
-    border-color: rgba(255, 193, 7, 0.4);
-    background: rgba(255, 193, 7, 0.12);
+
+/* ── Карточка распознавания ── */
+.recognize-card {
+  background: var(--rule-card-bg); border: 1px solid var(--app-border);
+  border-radius: 18px; padding: 1.5rem 1.75rem; margin-bottom: 1.5rem;
+  box-shadow: var(--rule-shadow); transition: border-color 0.15s;
 }
-.conflict-row-hard td {
-    background: rgba(220, 53, 69, 0.14) !important;
-    box-shadow: inset 0 0 0 1px rgba(220, 53, 69, 0.35);
+.recognize-card:focus-within { border-color: var(--app-accent); }
+.recognize-card .card-label {
+  display: flex; align-items: center; gap: 0.5rem;
+  font-size: 1rem; font-weight: 700; color: var(--app-accent); margin-bottom: 0.7rem;
 }
-.conflict-row-soft td {
-    background: rgba(255, 193, 7, 0.14) !important;
-    box-shadow: inset 0 0 0 1px rgba(255, 193, 7, 0.38);
+.recognize-card .card-label i { font-size: 1.15rem; }
+.recognize-input-row {
+  display: flex; gap: 0.75rem; align-items: stretch;
+}
+.recognize-input-row textarea {
+  flex: 1; min-height: 54px; resize: vertical;
+  background: var(--app-surface-strong); border: 1px solid var(--app-border);
+  border-radius: 12px; padding: 0.75rem 1rem;
+  color: var(--app-text); font-size: 1rem;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.recognize-input-row textarea:focus {
+  border-color: var(--app-accent); box-shadow: 0 0 0 0.15rem var(--app-accent-soft); outline: none;
+}
+.recognize-input-row textarea::placeholder { color: var(--app-text-muted); opacity: 0.55; }
+.btn-recognize {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  padding: 0.65rem 1.5rem; border: none; border-radius: 12px;
+  background: linear-gradient(135deg, var(--app-accent-strong), var(--app-accent));
+  color: #fff; font-weight: 700; font-size: 1rem; cursor: pointer;
+  white-space: nowrap; transition: all 0.15s;
+}
+.btn-recognize:hover { box-shadow: 0 4px 14px rgba(111,66,193,0.3); transform: translateY(-1px); }
+.btn-recognize:disabled { opacity: 0.45; cursor: not-allowed; transform: none; box-shadow: none; }
+
+/* ── Результат распознавания ── */
+.recognize-result {
+  margin-top: 0.85rem; padding: 1.15rem 1.35rem;
+  border-radius: 14px; display: none;
+  background: rgba(179,157,219,0.06); border: 1px solid rgba(179,157,219,0.12);
+  animation: fadeSlideIn 0.25s ease;
+}
+.recognize-result.visible { display: block; }
+.recognize-result.error {
+  background: var(--app-danger-bg); border-color: var(--app-danger-border);
+}
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.recognize-result .result-body {
+  display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap;
+}
+.recognize-result .result-info { flex: 1; min-width: 0; }
+.recognize-result .result-name { font-weight: 700; color: var(--app-heading); font-size: 1.1rem; }
+.recognize-result .result-desc { color: var(--app-text-muted); font-size: 0.92rem; margin-top: 0.15rem; }
+.recognize-result .result-actions { display: flex; gap: 0.5rem; flex-shrink: 0; }
+.recognize-result .result-tag {
+  display: inline-block; padding: 0.2rem 0.6rem; border-radius: 8px;
+  font-size: 0.82rem; font-weight: 600; margin-right: 0.3rem;
+  background: var(--app-accent-soft); color: var(--app-accent);
+}
+
+/* ── Баннер конфликтов ── */
+.conflict-banner {
+  display: flex; align-items: center; gap: 0.6rem;
+  padding: 0.85rem 1.15rem; border-radius: 14px; margin-bottom: 1rem;
+  background: rgba(255,193,7,0.06); border: 1px solid rgba(255,193,7,0.2);
+  color: #e8c04a; font-size: 0.95rem; animation: fadeSlideIn 0.25s ease;
+}
+.conflict-banner i { font-size: 1.3rem; }
+
+/* ── Поиск и фильтры ── */
+.rules-toolbar {
+  display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+.rules-toolbar .search-wrap {
+  position: relative; flex: 1; min-width: 220px; max-width: 380px;
+}
+.rules-toolbar .search-wrap i {
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  color: var(--app-text-muted); font-size: 1rem;
+}
+.rules-toolbar .search-wrap input {
+  width: 100%; padding: 0.55rem 0.55rem 0.55rem 2.3rem;
+  background: var(--app-surface-strong); border: 1px solid var(--app-border);
+  border-radius: 12px; color: var(--app-text); font-size: 0.95rem;
+  transition: border-color 0.15s;
+}
+.rules-toolbar .search-wrap input:focus { border-color: var(--app-accent); outline: none; }
+.rules-toolbar .toolbar-actions { display: flex; gap: 0.5rem; align-items: center; }
+
+/* ── Таблица правил ── */
+.rules-table-wrap {
+  background: var(--rule-card-bg); border: 1px solid var(--app-border);
+  border-radius: 18px; overflow: hidden; margin-bottom: 1.5rem;
+  box-shadow: var(--rule-shadow);
+}
+.rules-table { margin-bottom: 0; }
+.rules-table thead th {
+  font-weight: 700; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--app-accent); background: var(--app-accent-soft);
+  border-bottom: 1px solid var(--app-border);
+  padding: 0.85rem 1rem; white-space: nowrap; cursor: pointer; user-select: none;
+  transition: background 0.1s;
+}
+.rules-table thead th:hover { background: rgba(138,107,190,0.2); }
+.rules-table thead th .sort-icon { margin-left: 0.3rem; font-size: 0.75rem; opacity: 0.5; }
+.rules-table thead th.sorted-asc .sort-icon { opacity: 1; color: var(--app-accent); }
+.rules-table thead th.sorted-desc .sort-icon { opacity: 1; color: var(--app-accent); }
+.rules-table tbody td {
+  padding: 0.9rem 1rem; vertical-align: middle; font-size: 0.95rem;
+  border-bottom: 1px solid var(--app-border); color: var(--app-text);
+  background: transparent;
+}
+.rules-table tbody tr:last-child td { border-bottom: none; }
+.rules-table tbody tr { transition: background 0.1s; }
+.rules-table tbody tr:hover { background: var(--app-hover); }
+.rules-table tbody tr.conflict-hard {
+  border-left: 4px solid #e65a6e;
+  background: linear-gradient(90deg, rgba(220,53,69,0.05) 0%, transparent 4%);
+}
+.rules-table tbody tr.conflict-soft {
+  border-left: 4px solid #e8c04a;
+  background: linear-gradient(90deg, rgba(255,193,7,0.04) 0%, transparent 4%);
+}
+.rule-name { font-weight: 600; color: var(--app-heading); }
+.rule-source { font-size: 0.82rem; color: var(--app-text-muted); margin-top: 0.15rem; }
+
+/* ── Бейджи ── */
+.badge-rule-type {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  padding: 0.25rem 0.65rem; border-radius: 8px;
+  font-size: 0.82rem; font-weight: 600;
+  background: var(--app-accent-soft); color: var(--app-accent);
+}
+.badge-severity {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  padding: 0.25rem 0.65rem; border-radius: 8px;
+  font-size: 0.82rem; font-weight: 600;
+}
+.badge-severity.hard { background: rgba(220,53,69,0.1); color: #e65a6e; border: 1px solid rgba(220,53,69,0.12); }
+.badge-severity.soft { background: rgba(255,193,7,0.08); color: #e8c04a; border: 1px solid rgba(255,193,7,0.12); }
+
+/* ── Toggle switch (крупный) ── */
+.toggle-switch {
+  position: relative; display: inline-block; width: 46px; height: 26px; cursor: pointer;
+}
+.toggle-switch input { display: none; }
+.toggle-slider {
+  position: absolute; inset: 0; background: var(--app-border); border-radius: 999px;
+  transition: 0.2s;
+}
+.toggle-slider::before {
+  content: ''; position: absolute; left: 3px; top: 3px;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--app-text-muted); transition: 0.2s;
+}
+.toggle-switch input:checked + .toggle-slider { background: rgba(46,204,113,0.25); }
+.toggle-switch input:checked + .toggle-slider::before {
+  background: #2ecc71; transform: translateX(20px);
+}
+
+/* ── Кнопки действий ── */
+.btn-action {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; border: 1px solid var(--app-border);
+  border-radius: 10px; background: transparent; color: var(--app-text-muted);
+  cursor: pointer; transition: all 0.12s; font-size: 1rem; padding: 0;
+}
+.btn-action:hover { border-color: var(--app-accent); color: var(--app-accent); background: var(--app-accent-soft); }
+.btn-action.danger:hover { border-color: #e65a6e; color: #e65a6e; background: rgba(220,53,69,0.08); }
+
+/* ── Сортировка ── */
+#rules-table thead th { cursor: pointer; user-select: none; }
+#rules-table thead th .sort-icon { font-size: 0.75rem; opacity: 0.4; margin-left: 0.25rem; }
+#rules-table thead th.sorted-asc .sort-icon::before { content: "\F286"; }
+#rules-table thead th.sorted-desc .sort-icon::before { content: "\F282"; }
+#rules-table thead th.sorted-asc .sort-icon,
+#rules-table thead th.sorted-desc .sort-icon { opacity: 0.9; }
+
+/* ── Выпадающие фильтры ── */
+.filter-select {
+  background: var(--app-surface-strong); border: 1px solid var(--app-border);
+  border-radius: 10px; padding: 0.5rem 0.8rem; color: var(--app-text); font-size: 0.92rem;
+  cursor: pointer; min-width: 150px;
+}
+.filter-select:focus { border-color: var(--app-accent); outline: none; }
+
+/* ── Модалки ── */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.55); backdrop-filter: blur(4px);
+  display: none; align-items: center; justify-content: center; z-index: 9999;
+}
+.modal-overlay.visible { display: flex; }
+.modal-box {
+  background: var(--app-surface); border: 1px solid var(--app-border);
+  border-radius: 18px; padding: 1.5rem 1.75rem;
+  min-width: 380px; max-width: 480px; box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+  animation: fadeSlideIn 0.15s ease;
+}
+.modal-box h5 { margin: 0 0 0.6rem; color: var(--app-heading); font-weight: 700; font-size: 1.15rem; }
+.modal-box p { margin: 0 0 1rem; color: var(--app-text-muted); font-size: 0.95rem; }
+.modal-box .modal-actions { display: flex; gap: 0.65rem; justify-content: flex-end; margin-top: 1rem; }
+.modal-box .field { margin-bottom: 0.75rem; }
+.modal-box .field label { display: block; font-size: 0.88rem; color: var(--app-text-muted); margin-bottom: 0.25rem; font-weight: 600; }
+.modal-box .field input,
+.modal-box .field select {
+  width: 100%; background: var(--app-surface-strong); border: 1px solid var(--app-border);
+  border-radius: 10px; padding: 0.55rem 0.85rem; color: var(--app-text); font-size: 0.95rem;
+}
+.modal-box .field input:focus,
+.modal-box .field select:focus { border-color: var(--app-accent); outline: none; }
+
+/* ── Пустое состояние ── */
+.empty-state {
+  text-align: center; padding: 3rem 1.5rem;
+}
+.empty-state i { font-size: 3rem; color: var(--app-text-muted); opacity: 0.3; margin-bottom: 0.75rem; }
+.empty-state p { color: var(--app-text-muted); font-size: 1rem; margin: 0; }
+.empty-state p strong { color: var(--app-accent); }
+
+/* ── Адаптивность ── */
+@media (max-width: 768px) {
+  .recognize-input-row { flex-direction: column; }
+  .rules-table-wrap { overflow-x: auto; }
+  .rules-table { min-width: 750px; }
+  .rules-header { flex-direction: column; align-items: flex-start; }
+  .rules-toolbar { flex-direction: column; }
+  .rules-toolbar .search-wrap { max-width: 100%; }
 }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="management-container">
-    <h2 class="mb-3">Правила распределения</h2>
-    {% if rules_conflicts_count > 0 %}
-    <div class="management-table p-3 mb-3">
-        <div class="d-flex justify-content-between align-items-center mb-2">
-            <h5 class="mb-0 text-danger">Конфликты правил</h5>
-            <span class="badge bg-danger">Найдено: {{ rules_conflicts_count }}</span>
+<div class="rules-page">
+
+  {# ── Заголовок ── #}
+  <div class="rules-header">
+    <h2><i class="bi bi-sliders2"></i> Правила распределения</h2>
+    <span class="rules-count-badge"><i class="bi bi-list-check"></i> {{ rules|length }} правил</span>
+  </div>
+
+  {# ── Карточка создания правила через ИИ ── #}
+  <div class="recognize-card">
+    <div class="card-label"><i class="bi bi-magic"></i> Создать правило</div>
+    <div class="recognize-input-row">
+      <textarea id="rule-text-input" rows="2" placeholder="Опишите правило словами, например: «Табата не более 1 раза утром и 1 раза вечером в неделю»"></textarea>
+      <button id="recognize-rule-btn" class="btn-recognize">
+        <i class="bi bi-magic"></i> Распознать
+      </button>
+    </div>
+
+    {# Результат распознавания #}
+    <div id="recognize-result" class="recognize-result">
+      <div class="result-body">
+        <div class="result-info">
+          <div class="result-name" id="recognize-name"></div>
+          <div class="result-desc" id="recognize-desc"></div>
         </div>
-        <div class="small mb-3">Ниже показаны конфликтующие пары правил. Исправьте их, чтобы автозаполнение работало стабильно.</div>
-        {% for c in rules_conflicts %}
-            <div class="rule-conflict-card {% if c.level == 'soft' %}soft{% endif %}">
-                <div class="fw-semibold mb-1">
-                    {% if c.level == 'hard' %}Критично{% else %}Предупреждение{% endif %}: {{ c.title }}
-                </div>
-                <div class="mb-1"><strong>Конфликтуют:</strong> «{{ c.rule_a.name }}» и «{{ c.rule_b.name }}»</div>
-                <div class="mb-1"><strong>Причина:</strong> {{ c.description }}</div>
-                <div><strong>Как исправить:</strong> {{ c.how_to_fix }}</div>
+        <div class="result-actions">
+          <button id="save-rule-btn" class="btn btn-sm btn-success"><i class="bi bi-check-lg"></i> Сохранить</button>
+          <button id="cancel-rule-btn" class="btn btn-sm btn-outline-secondary">Отмена</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# ── Баннер конфликтов ── #}
+  {% if rules_conflicts_count > 0 %}
+  <div class="conflict-banner">
+    <i class="bi bi-exclamation-triangle-fill"></i>
+    Обнаружено <strong>{{ rules_conflicts_count }}</strong> конфликт{{ rules_conflicts_count|pluralize:",а,ов" }} между правилами.
+    Правила с конфликтами выделены в таблице.
+  </div>
+  {% endif %}
+
+  {# ── Панель инструментов ── #}
+  <div class="rules-toolbar">
+    <div class="search-wrap">
+      <i class="bi bi-search"></i>
+      <input type="text" id="rules-search-input" placeholder="Поиск по названию или тексту…">
+    </div>
+    <select id="filter-type" class="filter-select">
+      <option value="">Все типы</option>
+      <option value="weekly_limit">Лимит в неделю</option>
+      <option value="calm_consecutive">Спокойные подряд</option>
+      <option value="alternation">Чередование</option>
+      <option value="daily_duplicate_limit">Дубликаты в день</option>
+    </select>
+    <select id="filter-severity" class="filter-select">
+      <option value="">Любая жёсткость</option>
+      <option value="hard">Только жёсткие</option>
+      <option value="soft">Только мягкие</option>
+    </select>
+    <select id="filter-active" class="filter-select">
+      <option value="">Любая активность</option>
+      <option value="1">Только активные</option>
+      <option value="0">Только неактивные</option>
+    </select>
+  </div>
+
+  {# ── Таблица правил ── #}
+  <div class="rules-table-wrap">
+    <table class="table rules-table" id="rules-table">
+      <thead>
+        <tr>
+          <th onclick="sortTable(0)" data-col="0">Правило <i class="bi bi-arrow-down-up sort-icon"></i></th>
+          <th onclick="sortTable(1)" data-col="1">Тип <i class="bi bi-arrow-down-up sort-icon"></i></th>
+          <th onclick="sortTable(2)" data-col="2">Жёсткость <i class="bi bi-arrow-down-up sort-icon"></i></th>
+          <th onclick="sortTable(3)" data-col="3">Приоритет <i class="bi bi-arrow-down-up sort-icon"></i></th>
+          <th style="text-align:center;">Активно</th>
+          <th style="text-align:center;">Действия</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for rule in rules %}
+        <tr class="{% if rule.id in conflict_rule_hard_ids %}conflict-hard{% elif rule.id in conflict_rule_soft_ids %}conflict-soft{% endif %}"
+            data-rule-id="{{ rule.id }}"
+            data-rule-name="{{ rule.name }}"
+            data-rule-type="{{ rule.rule_type }}"
+            data-severity="{{ rule.severity }}"
+            data-priority="{{ rule.priority }}"
+            data-is-active="{{ rule.is_active|lower }}">
+          <td>
+            <div class="rule-name">{{ rule.name }}</div>
+            {% if rule.source_text %}
+            <div class="rule-source">{{ rule.source_text|truncatechars:70 }}</div>
+            {% endif %}
+          </td>
+          <td><span class="badge-rule-type">{{ rule.get_rule_type_display }}</span></td>
+          <td>
+            {% if rule.severity == 'hard' %}
+              <span class="badge-severity hard"><i class="bi bi-shield-fill-check"></i> Жёсткое</span>
+            {% else %}
+              <span class="badge-severity soft"><i class="bi bi-shield"></i> Мягкое</span>
+            {% endif %}
+          </td>
+          <td style="color:var(--app-text-muted);font-size:0.82rem;">{{ rule.priority }}</td>
+          <td style="text-align:center;">
+            <label class="toggle-switch" onclick="toggleRule({{ rule.id }})">
+              <input type="checkbox" {% if rule.is_active %}checked{% endif %}>
+              <span class="toggle-slider"></span>
+            </label>
+          </td>
+          <td style="text-align:center;">
+            <div style="display:flex;gap:0.35rem;justify-content:center;">
+              <button class="btn-action" onclick="editRule({{ rule.id }})" title="Редактировать">
+                <i class="bi bi-pencil"></i>
+              </button>
+              <button class="btn-action danger" onclick="deleteRule({{ rule.id }})" title="Удалить">
+                <i class="bi bi-trash"></i>
+              </button>
             </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6">
+            <div class="empty-state">
+              <i class="bi bi-inboxes"></i>
+              <p>Правил пока нет. <strong>Введите текст выше</strong> и нажмите «Распознать».</p>
+            </div>
+          </td>
+        </tr>
         {% endfor %}
-    </div>
-    {% endif %}
+      </tbody>
+    </table>
+  </div>
 
-    <div class="management-table p-3 mb-3">
-        <div id="ai-mode-panel">
-            <label for="rule-text" class="form-label">Опишите правило обычным текстом</label>
-            <textarea id="rule-text" class="form-control mb-2" rows="3" placeholder="Например: Табата не более 1 раза утром и 1 раза вечером в неделю"></textarea>
-            <div class="d-flex gap-2 flex-wrap">
-                <button id="parse-rule-btn" class="btn btn-primary" type="button"><i class="bi bi-magic"></i> Распознать</button>
-                <button id="save-rule-btn" class="btn btn-success d-none" type="button">Сохранить правило</button>
-            </div>
-        </div>
 
-        <div id="rule-preview" class="mt-3 d-none">
-            <div class="alert alert-info mb-0">
-                <div class="fw-semibold mb-1">Предпросмотр правила</div>
-                <div id="rule-source-line" class="small mb-1"></div>
-                <div id="rule-confidence-line" class="small mb-2"></div>
-                <div id="rule-explanation-line" class="small mb-2"></div>
-                <div id="rule-human-summary" class="mb-2"></div>
-                <details>
-                    <summary class="small">Показать технические детали (JSON)</summary>
-                    <pre id="rule-preview-text" class="mb-0 mt-2" style="white-space:pre-wrap;"></pre>
-                </details>
-            </div>
-        </div>
-    </div>
 
-    <div class="management-table p-3 mb-3">
-        <h5 class="mb-3">Проверка правил на период</h5>
-        <div class="row g-2 align-items-end">
-            <div class="col-md-4">
-                <label class="form-label" for="test-start-date">Дата начала</label>
-                <input id="test-start-date" type="date" class="form-control">
-            </div>
-            <div class="col-md-4">
-                <label class="form-label" for="test-end-date">Дата окончания</label>
-                <input id="test-end-date" type="date" class="form-control">
-            </div>
-            <div class="col-md-4">
-                <button id="test-rules-btn" class="btn btn-outline-info w-100" type="button">Проверить правила</button>
-            </div>
-        </div>
-        <div id="rules-test-result" class="mt-3 d-none"></div>
+  {# ── Модалка подтверждения удаления ── #}
+  <div id="confirm-modal" class="modal-overlay">
+    <div class="modal-box">
+      <h5 id="confirm-title">Подтверждение</h5>
+      <p id="confirm-text">Вы уверены, что хотите удалить это правило?</p>
+      <div class="modal-actions">
+        <button id="confirm-cancel" class="btn btn-sm btn-outline-secondary">Отмена</button>
+        <button id="confirm-ok" class="btn btn-sm btn-danger"><i class="bi bi-trash"></i> Удалить</button>
+      </div>
     </div>
+  </div>
 
-    <div class="management-table p-3">
-        <h5 class="mb-3">Сохраненные правила</h5>
-        <div class="table-responsive">
-            <table class="table table-dark table-striped align-middle mb-0">
-                <thead>
-                    <tr>
-                        <th>Название</th>
-                        <th>Тип</th>
-                        <th>Жесткость</th>
-                        <th>Статус</th>
-                        <th>Приоритет</th>
-                        <th>Текст</th>
-                        <th>Действия</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for rule in rules %}
-                    <tr data-rule-id="{{ rule.id }}"
-                        class="{% if rule.id in conflict_rule_hard_ids %}conflict-row-hard{% elif rule.id in conflict_rule_soft_ids %}conflict-row-soft{% endif %}">
-                        <td>{{ rule.name }}</td>
-                        <td>{{ rule.get_rule_type_display }}</td>
-                        <td>{{ rule.get_severity_display }}</td>
-                        <td>
-                            <span class="badge {% if rule.is_active %}bg-success{% else %}bg-secondary{% endif %}">
-                                {% if rule.is_active %}Активно{% else %}Выключено{% endif %}
-                            </span>
-                        </td>
-                        <td>{{ rule.priority }}</td>
-                        <td>{{ rule.source_text }}</td>
-                        <td class="rules-actions-cell">
-                            <div class="rules-actions">
-                                <button class="btn btn-sm btn-outline-light edit-rule-btn" type="button">Изменить</button>
-                                <button class="btn btn-sm btn-outline-warning toggle-rule-btn" type="button">
-                                    {% if rule.is_active %}Выключить{% else %}Включить{% endif %}
-                                </button>
-                                <button class="btn btn-sm btn-outline-danger delete-rule-btn" type="button">Удалить</button>
-                            </div>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="7" class="text-center">Правила пока не добавлены.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+  {# ── Модалка редактирования ── #}
+  <div id="edit-modal" class="modal-overlay">
+    <div class="modal-box">
+      <h5>Редактировать правило</h5>
+      <div class="field">
+        <label>Название</label>
+        <input type="text" id="edit-name">
+      </div>
+      <div class="field">
+        <label>Жёсткость</label>
+        <select id="edit-severity">
+          <option value="hard">Жёсткое</option>
+          <option value="soft">Мягкое</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Приоритет</label>
+        <input type="number" id="edit-priority">
+      </div>
+      <div class="modal-actions">
+        <button id="edit-cancel" class="btn btn-sm btn-outline-secondary">Отмена</button>
+        <button id="edit-save" class="btn btn-sm btn-success"><i class="bi bi-check-lg"></i> Сохранить</button>
+      </div>
     </div>
+  </div>
+
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-(() => {
-    const parseBtn = document.getElementById('parse-rule-btn');
-    const saveBtn = document.getElementById('save-rule-btn');
-    const textArea = document.getElementById('rule-text');
-    const previewWrap = document.getElementById('rule-preview');
-    const previewText = document.getElementById('rule-preview-text');
-    const humanSummary = document.getElementById('rule-human-summary');
-    const sourceLine = document.getElementById('rule-source-line');
-    const confidenceLine = document.getElementById('rule-confidence-line');
-    const explanationLine = document.getElementById('rule-explanation-line');
-    const rulesTestResult = document.getElementById('rules-test-result');
-    const testBtn = document.getElementById('test-rules-btn');
+(function () {
+    'use strict';
 
-    let parsedRule = null;
-    let parsedSourceText = '';
-
-    function resetPreview() {
-        parsedRule = null;
-        parsedSourceText = '';
-        previewWrap.classList.add('d-none');
-        saveBtn.classList.add('d-none');
+    function getCSRFToken() {
+        var cookies = document.cookie.split(';');
+        for (var i = 0; i < cookies.length; i++) {
+            var c = cookies[i].trim();
+            if (c.startsWith('csrftoken=')) return c.substring(10);
+        }
+        return '';
     }
+    var csrfToken = getCSRFToken();
 
-    function showPreview(data) {
-        parsedRule = data.parsed;
-        previewWrap.classList.remove('d-none');
-        previewText.textContent = JSON.stringify(parsedRule, null, 2);
-        sourceLine.textContent = data.source === 'ai'
-            ? 'Источник: AI (OpenAI)'
-            : 'Источник: резервный шаблонный парсер';
-        confidenceLine.textContent = `Уверенность: ${Math.round((Number(data.confidence || 0.7)) * 100)}%`;
-        explanationLine.textContent = `Пояснение: ${data.explanation || 'Без пояснения.'}`;
-        humanSummary.innerHTML = buildHumanSummary(parsedRule);
-    }
+    window.showRulesConflictBanner = function (count) {
+        var banner = document.querySelector('.conflict-banner');
+        if (!banner) return;
+        if (count > 0) {
+            banner.innerHTML = '<i class="bi bi-exclamation-triangle-fill"></i> Обнаружено <strong>' + count + '</strong> конфликт' + (count === 1 ? '' : (count < 5 ? 'а' : 'ов')) + ' между правилами. Правила с конфликтами выделены в таблице.';
+            banner.style.display = 'flex';
+        } else {
+            banner.style.display = 'none';
+        }
+    };
 
-    function dayName(i) {
-        return ['понедельник', 'вторник', 'среду', 'четверг', 'пятницу', 'субботу', 'воскресенье'][Number(i)] || `день ${i}`;
-    }
+    var recognizeBtn = document.getElementById('recognize-rule-btn');
+    var ruleTextInput = document.getElementById('rule-text-input');
+    var recognizeResult = document.getElementById('recognize-result');
+    var recognizeName = document.getElementById('recognize-name');
+    var recognizeDesc = document.getElementById('recognize-desc');
+    var saveRuleBtn = document.getElementById('save-rule-btn');
+    var cancelRuleBtn = document.getElementById('cancel-rule-btn');
+    var lastParsedRule = null;
+    var lastSourceText = '';
 
-    function buildHumanSummary(rule) {
-        const p = rule?.params_json || {};
-        const name = rule?.name || 'Без названия';
-        const severity = rule?.severity === 'soft' ? 'мягкое' : 'жесткое';
-
-        if (rule?.rule_type === 'weekly_limit') {
-            const targetMode = p.target_mode || (p.category ? 'category' : 'workout');
-            const catMap = { calm: 'спокойные', strength: 'силовые', cardio: 'кардио', dance: 'танцы', other: 'другие' };
-            const targetLabel = targetMode === 'category'
-                ? `категория «${catMap[p.category] || p.category || 'без категории'}»`
-                : `направление «${p.workout_name || 'без названия'}»`;
-            if (p.max_total !== undefined && p.max_total !== null) {
-                return `
-                    <div class="p-2 rounded" style="background: rgba(138,107,190,0.08); border: 1px solid rgba(138,107,190,0.25);">
-                        <div><strong>${name}</strong></div>
-                        <div>Тип: лимит в неделю (${severity}).</div>
-                        <div>Понятно: ${targetLabel} можно поставить не более <strong>${p.max_total}</strong> раз за неделю.</div>
-                    </div>
-                `;
+    if (recognizeBtn && ruleTextInput) {
+        recognizeBtn.addEventListener('click', function () {
+            var text = ruleTextInput.value.trim();
+            if (!text) {
+                ruleTextInput.style.borderColor = '#e65a6e';
+                setTimeout(function () { ruleTextInput.style.borderColor = ''; }, 1500);
+                return;
             }
-            const buckets = Array.isArray(p.buckets) ? p.buckets : [];
-            const bucketText = buckets.map(b => `${b.name}: максимум ${b.max} (${b.start}–${b.end})`).join('; ');
-            return `
-                <div class="p-2 rounded" style="background: rgba(138,107,190,0.08); border: 1px solid rgba(138,107,190,0.25);">
-                    <div><strong>${name}</strong></div>
-                    <div>Тип: лимит в неделю (${severity}).</div>
-                    <div>Понятно: для ${targetLabel} действуют лимиты: ${bucketText || 'не заданы'}.</div>
-                </div>
-            `;
-        }
+            recognizeBtn.disabled = true;
+            recognizeBtn.innerHTML = '<i class="bi bi-hourglass"></i> Распознаю…';
 
-        if (rule?.rule_type === 'calm_consecutive') {
-            const weekdays = Array.isArray(p.weekdays) ? p.weekdays.map(dayName).join(', ') : 'выбранные дни';
-            const catMap = { calm: 'спокойные', strength: 'силовые', cardio: 'кардио', dance: 'танцы', other: 'другие' };
-            const category = catMap[p.category] || p.category || 'тренировки';
-            return `
-                <div class="p-2 rounded" style="background: rgba(138,107,190,0.08); border: 1px solid rgba(138,107,190,0.25);">
-                    <div><strong>${name}</strong></div>
-                    <div>Тип: ограничение подряд (${severity}).</div>
-                    <div>Понятно: в ${weekdays} можно ставить не более <strong>${p.max_consecutive || 1}</strong> ${category} тренировок подряд.</div>
-                </div>
-            `;
-        }
-
-        if (rule?.rule_type === 'alternation') {
-            const weekdays = Array.isArray(p.weekdays) ? p.weekdays.map(dayName).join(', ') : 'выбранные дни';
-            const categories = Array.isArray(p.categories) ? p.categories.join(' и ') : 'категории';
-            return `
-                <div class="p-2 rounded" style="background: rgba(138,107,190,0.08); border: 1px solid rgba(138,107,190,0.25);">
-                    <div><strong>${name}</strong></div>
-                    <div>Тип: чередование (${severity}).</div>
-                    <div>Понятно: в ${weekdays} категории <strong>${categories}</strong> должны чередоваться.</div>
-                </div>
-            `;
-        }
-
-        if (['daily_duplicate_limit', 'daily_duplicates_limit', 'duplicate_daily_limit'].includes(rule?.rule_type)) {
-            const maxPer = p.max_per_bucket_per_day || 1;
-            const bucketLabels = {
-                morning: 'утреннем окне',
-                evening: 'вечернем окне',
-                day: 'дневном окне',
-            };
-            const buckets = Array.isArray(p.buckets)
-                ? p.buckets.map(b => bucketLabels[b.name] || b.name).join(' и ')
-                : 'утреннем и вечернем окне';
-            return `
-                <div class="p-2 rounded" style="background: rgba(138,107,190,0.08); border: 1px solid rgba(138,107,190,0.25);">
-                    <div><strong>${name}</strong></div>
-                    <div>Тип: запрет дублей в день (${severity}).</div>
-                    <div>Понятно: в рамках одного дня одинаковое направление не может повторяться чаще <strong>${maxPer}</strong> раза в ${buckets}.</div>
-                    <div class="small mt-1" style="opacity:.85;">Пример: если утром уже стоит tabata, в этом же утреннем окне второй tabata в тот же день система не поставит.</div>
-                </div>
-            `;
-        }
-
-        return `
-            <div class="p-2 rounded" style="background: rgba(138,107,190,0.08); border: 1px solid rgba(138,107,190,0.25);">
-                <div><strong>${name}</strong></div>
-                <div>Понятно: правило распознано, но для него пока нет красивой расшифровки. Ниже доступны технические детали.</div>
-            </div>
-        `;
-    }
-
-    function csrfToken() {
-        return document.querySelector('meta[name="csrf-token"]')?.content ||
-            document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
-    }
-
-    parseBtn?.addEventListener('click', async () => {
-        const text = (textArea.value || '').trim();
-        if (!text) {
-            showGlobalNotification('Введите текст правила.', 'error');
-            return;
-        }
-        parseBtn.disabled = true;
-        parseBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Распознаю...';
-        try {
-            const res = await fetch('/api/distribution-rules/parse/', {
+            fetch('/api/distribution-rules/parse/', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken() },
-                body: JSON.stringify({ text })
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                body: JSON.stringify({ text: text })
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.success && data.parsed) {
+                    lastParsedRule = data.parsed;
+                    lastSourceText = text;
+                    recognizeName.textContent = data.parsed.name || 'Без названия';
+                    var tagHtml = '';
+                    if (data.parsed.rule_type) tagHtml += '<span class="result-tag">' + data.parsed.rule_type + '</span>';
+                    if (data.parsed.severity) tagHtml += '<span class="result-tag">' + (data.parsed.severity === 'hard' ? 'Жёсткое' : 'Мягкое') + '</span>';
+                    recognizeDesc.innerHTML = tagHtml + ' ' + (data.explanation || 'Распознано.');
+                    recognizeResult.classList.remove('error');
+                    recognizeResult.classList.add('visible');
+                    ruleTextInput.value = '';
+                } else {
+                    recognizeName.textContent = 'Ошибка';
+                    recognizeDesc.textContent = data.error || 'Не удалось распознать текст.';
+                    recognizeResult.classList.add('error');
+                    recognizeResult.classList.add('visible');
+                    lastParsedRule = null;
+                }
+            })
+            .catch(function () {
+                recognizeName.textContent = 'Ошибка сети';
+                recognizeDesc.textContent = 'Проверьте подключение.';
+                recognizeResult.classList.add('error');
+                recognizeResult.classList.add('visible');
+            })
+            .finally(function () {
+                recognizeBtn.disabled = false;
+                recognizeBtn.innerHTML = '<i class="bi bi-magic"></i> Распознать';
             });
-            const data = await res.json();
-            if (!res.ok || data.success === false) {
-                throw new Error(data.error || 'Не удалось распознать правило.');
-            }
-            parsedSourceText = text;
-            showPreview(data);
-            saveBtn.classList.remove('d-none');
-            showGlobalNotification('Правило распознано. Проверьте и сохраните.', 'success');
-        } catch (e) {
-            showGlobalNotification(e.message || 'Ошибка распознавания.', 'error');
-        } finally {
-            parseBtn.disabled = false;
-            parseBtn.innerHTML = '<i class="bi bi-magic"></i> Распознать';
-        }
+        });
+    }
+
+    if (saveRuleBtn) {
+        saveRuleBtn.addEventListener('click', function () {
+            if (!lastParsedRule) return;
+            saveRuleBtn.disabled = true;
+            saveRuleBtn.innerHTML = '<i class="bi bi-hourglass"></i> Сохранение…';
+
+            fetch('/api/distribution-rules/save/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                body: JSON.stringify({ source_text: lastSourceText, parsed: lastParsedRule })
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.success) {
+                    if (data.conflicts_count > 0) window.showRulesConflictBanner(data.conflicts_count);
+                    window.location.reload();
+                } else {
+                    alert('Ошибка: ' + (data.error || 'Не удалось сохранить.'));
+                }
+            })
+            .catch(function () { alert('Ошибка сети.'); })
+            .finally(function () {
+                saveRuleBtn.disabled = false;
+                saveRuleBtn.innerHTML = '<i class="bi bi-check-lg"></i> Сохранить';
+            });
+        });
+    }
+
+    if (cancelRuleBtn) {
+        cancelRuleBtn.addEventListener('click', function () {
+            recognizeResult.classList.remove('visible');
+            lastParsedRule = null;
+            lastSourceText = '';
+        });
+    }
+
+    var sortState = { col: -1, asc: true };
+
+    window.sortTable = function (col) {
+        var tbody = document.querySelector('#rules-table tbody');
+        var rows = Array.from(tbody.querySelectorAll('tr'));
+        var headerCells = document.querySelectorAll('#rules-table thead th');
+        if (!rows.length || rows[0].querySelector('.empty-state')) return;
+
+        if (sortState.col === col) sortState.asc = !sortState.asc;
+        else { sortState.col = col; sortState.asc = true; }
+
+        headerCells.forEach(function (th) {
+            th.classList.remove('sorted-asc', 'sorted-desc');
+        });
+        headerCells[col].classList.add(sortState.asc ? 'sorted-asc' : 'sorted-desc');
+
+        rows.sort(function (a, b) {
+            var va = (a.cells[col] ? a.cells[col].textContent.trim() : '');
+            var vb = (b.cells[col] ? b.cells[col].textContent.trim() : '');
+            if (col === 3) { va = parseInt(va) || 0; vb = parseInt(vb) || 0; }
+            else { va = va.toLowerCase(); vb = vb.toLowerCase(); }
+            return va < vb ? (sortState.asc ? -1 : 1) : va > vb ? (sortState.asc ? 1 : -1) : 0;
+        });
+        rows.forEach(function (r) { tbody.appendChild(r); });
+        applyFilters();
+    };
+
+    function applyFilters() {
+        var q = (document.getElementById('rules-search-input').value || '').toLowerCase().trim();
+        var typeFilter = (document.getElementById('filter-type').value || '');
+        var severityFilter = (document.getElementById('filter-severity').value || '');
+        var activeFilter = (document.getElementById('filter-active').value || '');
+        var rows = document.querySelectorAll('#rules-table tbody tr');
+        var count = 0;
+        rows.forEach(function (row) {
+            if (row.querySelector('.empty-state')) { row.style.display = ''; return; }
+            var name = (row.getAttribute('data-rule-name') || '').toLowerCase();
+            var textEl = row.querySelector('.rule-source');
+            var source = textEl ? textEl.textContent.toLowerCase() : '';
+            var textMatch = name.indexOf(q) !== -1 || source.indexOf(q) !== -1;
+            var typeMatch = !typeFilter || row.getAttribute('data-rule-type') === typeFilter;
+            var severityMatch = !severityFilter || row.getAttribute('data-severity') === severityFilter;
+            var isActive = row.getAttribute('data-is-active') === 'true';
+            var activeMatch = !activeFilter || String(Number(isActive)) === activeFilter;
+            var match = textMatch && typeMatch && severityMatch && activeMatch;
+            row.style.display = match ? '' : 'none';
+            if (match) count++;
+        });
+        var badge = document.querySelector('.rules-count-badge');
+        if (badge) badge.innerHTML = '<i class="bi bi-list-check"></i> ' + count + ' правил';
+    }
+
+    var searchInput = document.getElementById('rules-search-input');
+    var filterType = document.getElementById('filter-type');
+    var filterSeverity = document.getElementById('filter-severity');
+    var filterActive = document.getElementById('filter-active');
+    [searchInput, filterType, filterSeverity, filterActive].forEach(function (el) {
+        if (el) el.addEventListener('change', applyFilters);
     });
+    if (searchInput) searchInput.addEventListener('input', applyFilters);
 
-    async function saveParsedRule() {
-        if (!parsedRule || !parsedSourceText) {
-            showGlobalNotification('Сначала сформируйте или распознайте правило.', 'error');
-            return;
-        }
-        try {
-            const res = await fetch('/api/distribution-rules/save/', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken() },
-                body: JSON.stringify({
-                    source_text: parsedSourceText,
-                    parsed: parsedRule
-                })
-            });
-            const data = await res.json();
-            if (!res.ok || data.success === false) {
-                throw new Error(data.error || 'Не удалось сохранить правило.');
+    window.toggleRule = function (ruleId) {
+        fetch('/api/distribution-rules/' + ruleId + '/toggle/', {
+            method: 'POST', headers: { 'X-CSRFToken': csrfToken }
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (data.success) {
+                var row = document.querySelector('[data-rule-id="' + ruleId + '"]');
+                if (row) row.setAttribute('data-is-active', String(data.is_active));
+                var cb = row ? row.querySelector('.toggle-switch input') : null;
+                if (cb) cb.checked = data.is_active;
+            } else {
+                alert('Ошибка: ' + (data.error || 'Не удалось переключить.'));
             }
-            showGlobalNotification('Правило сохранено.', 'success');
-            window.location.reload();
-        } catch (e) {
-            showGlobalNotification(e.message || 'Ошибка сохранения.', 'error');
-        }
+        })
+        .catch(function () { alert('Ошибка сети.'); });
+    };
+
+    var confirmModal = document.getElementById('confirm-modal');
+    var confirmTitle = document.getElementById('confirm-title');
+    var confirmText = document.getElementById('confirm-text');
+    var confirmOk = document.getElementById('confirm-ok');
+    var confirmCancel = document.getElementById('confirm-cancel');
+    var pendingDeleteId = null;
+
+    window.deleteRule = function (ruleId) {
+        pendingDeleteId = ruleId;
+        confirmTitle.textContent = 'Удаление правила';
+        confirmText.textContent = 'Вы уверены, что хотите удалить это правило? Действие необратимо.';
+        confirmModal.classList.add('visible');
+    };
+
+    if (confirmOk) {
+        confirmOk.addEventListener('click', function () {
+            if (pendingDeleteId === null) return;
+            var id = pendingDeleteId;
+            pendingDeleteId = null;
+            confirmModal.classList.remove('visible');
+            fetch('/api/distribution-rules/' + id + '/delete/', {
+                method: 'POST', headers: { 'X-CSRFToken': csrfToken }
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.success) {
+                    var row = document.querySelector('[data-rule-id="' + id + '"]');
+                    if (row) { row.remove(); }
+                    var remaining = document.querySelectorAll('#rules-table tbody tr:not([style*="display: none"])').length;
+                    var badge = document.querySelector('.rules-count-badge');
+                    if (badge) badge.innerHTML = '<i class="bi bi-list-check"></i> ' + remaining + ' правил';
+                } else {
+                    alert('Ошибка: ' + (data.error || 'Не удалось удалить.'));
+                }
+            })
+            .catch(function () { alert('Ошибка сети.'); });
+        });
     }
 
-    saveBtn?.addEventListener('click', saveParsedRule);
+    if (confirmCancel) {
+        confirmCancel.addEventListener('click', function () {
+            confirmModal.classList.remove('visible');
+            pendingDeleteId = null;
+        });
+    }
 
-    document.addEventListener('click', async (event) => {
-        const editBtn = event.target.closest('.edit-rule-btn');
-        const toggleBtn = event.target.closest('.toggle-rule-btn');
-        const deleteBtn = event.target.closest('.delete-rule-btn');
-        if (!editBtn && !toggleBtn && !deleteBtn) return;
+    var editModal = document.getElementById('edit-modal');
+    var editName = document.getElementById('edit-name');
+    var editSeverity = document.getElementById('edit-severity');
+    var editPriority = document.getElementById('edit-priority');
+    var editSave = document.getElementById('edit-save');
+    var editCancel = document.getElementById('edit-cancel');
+    var editingRuleId = null;
 
-        const row = event.target.closest('tr[data-rule-id]');
+    window.editRule = function (ruleId) {
+        var row = document.querySelector('[data-rule-id="' + ruleId + '"]');
         if (!row) return;
-        const ruleId = row.dataset.ruleId;
+        editingRuleId = ruleId;
+        editName.value = row.getAttribute('data-rule-name') || '';
+        editSeverity.value = row.getAttribute('data-severity') || 'hard';
+        editPriority.value = row.getAttribute('data-priority') || '100';
+        editModal.classList.add('visible');
+    };
 
-        if (editBtn) {
-            const currentName = row.children[0]?.textContent?.trim() || '';
-            const currentPriority = row.children[4]?.textContent?.trim() || '100';
-            const name = await window.showAppPrompt('Название правила:', currentName, 'Редактирование правила');
-            if (name === null) return;
-            const priority = await window.showAppPrompt('Приоритет (меньше = важнее):', currentPriority, 'Редактирование правила');
-            if (priority === null) return;
-            const severityLabel = row.children[2]?.textContent?.trim()?.toLowerCase() || 'жесткое';
-            const severityDefault = severityLabel.includes('мяг') ? 'soft' : 'hard';
-            const severity = await window.showAppPrompt('Жесткость (hard или soft):', severityDefault, 'Редактирование правила');
-            if (severity === null) return;
-            const res = await fetch(`/api/distribution-rules/${ruleId}/update/`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken() },
-                body: JSON.stringify({ name: name.trim(), priority, severity: severity.trim().toLowerCase() })
-            });
-            const data = await res.json();
-            if (!res.ok || data.success === false) {
-                showGlobalNotification(data.error || 'Ошибка обновления правила.', 'error');
-                return;
-            }
-            showGlobalNotification('Правило обновлено.', 'success');
-            window.location.reload();
-            return;
-        }
+    if (editSave) {
+        editSave.addEventListener('click', function () {
+            if (editingRuleId === null) return;
+            var id = editingRuleId;
+            var name = editName.value.trim();
+            var severity = editSeverity.value;
+            var priority = parseInt(editPriority.value, 10) || 100;
+            editSave.disabled = true;
+            editSave.innerHTML = '<i class="bi bi-hourglass"></i> Сохранение…';
 
-        if (toggleBtn) {
-            const res = await fetch(`/api/distribution-rules/${ruleId}/toggle/`, {
+            fetch('/api/distribution-rules/' + id + '/update/', {
                 method: 'POST',
-                headers: { 'X-CSRFToken': csrfToken() }
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                body: JSON.stringify({ name: name, severity: severity, priority: priority })
+            })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.success) {
+                    var row = document.querySelector('[data-rule-id="' + id + '"]');
+                    if (row) {
+                        row.setAttribute('data-rule-name', data.rule.name);
+                        row.setAttribute('data-severity', data.rule.severity);
+                        row.setAttribute('data-priority', String(data.rule.priority));
+                        var nameEl = row.querySelector('.rule-name');
+                        if (nameEl) nameEl.textContent = data.rule.name;
+                    }
+                    editModal.classList.remove('visible');
+                    editingRuleId = null;
+                } else {
+                    alert('Ошибка: ' + (data.error || 'Не удалось обновить.'));
+                }
+            })
+            .catch(function () { alert('Ошибка сети.'); })
+            .finally(function () {
+                editSave.disabled = false;
+                editSave.innerHTML = '<i class="bi bi-check-lg"></i> Сохранить';
             });
-            const data = await res.json();
-            if (!res.ok || data.success === false) {
-                showGlobalNotification(data.error || 'Ошибка переключения.', 'error');
-                return;
-            }
-            window.location.reload();
-        }
+        });
+    }
 
-        if (deleteBtn) {
-            const ok = await window.showAppConfirm('Удалить правило?', 'Удаление правила');
-            if (!ok) return;
-            const res = await fetch(`/api/distribution-rules/${ruleId}/delete/`, {
-                method: 'POST',
-                headers: { 'X-CSRFToken': csrfToken() }
-            });
-            const data = await res.json();
-            if (!res.ok || data.success === false) {
-                showGlobalNotification(data.error || 'Ошибка удаления.', 'error');
-                return;
-            }
-            window.location.reload();
+    if (editCancel) {
+        editCancel.addEventListener('click', function () {
+            editModal.classList.remove('visible');
+            editingRuleId = null;
+        });
+    }
+
+    document.addEventListener('click', function (e) {
+        if (e.target.classList.contains('modal-overlay')) {
+            e.target.classList.remove('visible');
         }
     });
-
-    testBtn?.addEventListener('click', async () => {
-        const startDate = document.getElementById('test-start-date')?.value;
-        const endDate = document.getElementById('test-end-date')?.value;
-        if (!startDate || !endDate) {
-            showGlobalNotification('Выберите дату начала и окончания.', 'error');
-            return;
-        }
-        try {
-            const res = await fetch('/api/distribution-rules/test/', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken() },
-                body: JSON.stringify({ start_date: startDate, end_date: endDate })
-            });
-            const data = await res.json();
-            if (!res.ok || data.success === false) {
-                throw new Error(data.error || 'Ошибка проверки правил.');
-            }
-            rulesTestResult.classList.remove('d-none');
-            if (!data.violations_count) {
-                rulesTestResult.innerHTML = '<div class="alert alert-success mb-0">Нарушений за выбранный период не найдено.</div>';
-                return;
-            }
-            const items = data.violations.slice(0, 20).map(v =>
-                `<li><strong>${v.date} ${v.time}</strong> — ${v.rule}: ${v.reason} (${v.workout}, ${v.employee})</li>`
-            ).join('');
-            rulesTestResult.innerHTML = `
-                <div class="alert alert-warning mb-0">
-                    <div class="fw-semibold mb-2">Найдено нарушений: ${data.violations_count}</div>
-                    <ul class="mb-0">${items}</ul>
-                </div>
-            `;
-        } catch (e) {
-            showGlobalNotification(e.message || 'Ошибка проверки.', 'error');
-        }
-    });
-
-    textArea?.addEventListener('input', resetPreview);
 })();
 </script>
 {% endblock %}
-

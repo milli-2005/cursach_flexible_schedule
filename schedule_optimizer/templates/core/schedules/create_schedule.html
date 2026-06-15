@@ -43,7 +43,6 @@
 }
 .save-wrap { margin-top: 1rem; }
 .shift-cell.assigned {
-    box-shadow: inset 0 0 0 9999px var(--trainer-tint, rgba(179, 157, 219, 0.08));
     border-color: var(--trainer-border, rgba(179, 157, 219, 0.45));
 }
 
@@ -562,8 +561,6 @@ function updateCellView(cell) {
     if (palette) {
         trainerName.style.backgroundColor = palette.bg;
         trainerName.style.borderColor = palette.border;
-        cell.style.setProperty('--trainer-tint', palette.tint);
-        cell.style.setProperty('--trainer-border', palette.border);
         cell.classList.add('assigned');
     } else {
         trainerName.style.backgroundColor = 'transparent';
@@ -666,10 +663,17 @@ function buildAutoFillPlan(seed = 1) {
             if (rule.rule_type === 'daily_duplicate_limit') {
                 const buckets = Array.isArray(params.buckets) ? params.buckets : [];
                 const maxPer = Number(params.max_per_bucket_per_day || 1);
-                const workoutNorm = normalizeWorkoutNameForRule(workoutObj.name || '');
+                const ruleCategory = (params.category || '').trim();
                 for (const b of buckets) {
                     if (!bucketMatch(startTime, b)) continue;
-                    const key = `${rule.id || formatRuleLabel(rule)}|${dayStr}|${b.name}|${workoutNorm}`;
+                    let key;
+                    if (ruleCategory) {
+                        if (workoutObj.category !== ruleCategory) continue;
+                        key = `${rule.id || formatRuleLabel(rule)}|${dayStr}|${b.name}|cat:${ruleCategory}`;
+                    } else {
+                        const workoutNorm = normalizeWorkoutNameForRule(workoutObj.name || '');
+                        key = `${rule.id || formatRuleLabel(rule)}|${dayStr}|${b.name}|${workoutNorm}`;
+                    }
                     const used = Number(state.dailyBucketWorkoutCount[key] || 0);
                     if (used >= maxPer) reasons.push(formatRuleLabel(rule));
                 }
@@ -723,10 +727,17 @@ function buildAutoFillPlan(seed = 1) {
             }
             if (rule.rule_type === 'daily_duplicate_limit') {
                 const buckets = Array.isArray(params.buckets) ? params.buckets : [];
-                const workoutNorm = normalizeWorkoutNameForRule(workoutObj.name || '');
+                const ruleCategory = (params.category || '').trim();
                 for (const b of buckets) {
                     if (!bucketMatch(startTime, b)) continue;
-                    const key = `${rule.id || formatRuleLabel(rule)}|${dayStr}|${b.name}|${workoutNorm}`;
+                    let key;
+                    if (ruleCategory) {
+                        if (workoutObj.category !== ruleCategory) continue;
+                        key = `${rule.id || formatRuleLabel(rule)}|${dayStr}|${b.name}|cat:${ruleCategory}`;
+                    } else {
+                        const workoutNorm = normalizeWorkoutNameForRule(workoutObj.name || '');
+                        key = `${rule.id || formatRuleLabel(rule)}|${dayStr}|${b.name}|${workoutNorm}`;
+                    }
                     state.dailyBucketWorkoutCount[key] = (state.dailyBucketWorkoutCount[key] || 0) + 1;
                 }
             }

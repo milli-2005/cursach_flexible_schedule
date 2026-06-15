@@ -1252,7 +1252,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 'Точно изменить часовую ставку? После сохранения новые смены будут рассчитываться по новой ставке.',
                 'Изменение ставки'
             );
-            if (ok) hourRateForm.submit();
+            if (ok) {
+                const hidden = document.createElement('input');
+                hidden.type = 'hidden';
+                hidden.name = 'set_hour_rate';
+                hidden.value = '1';
+                this.appendChild(hidden);
+                HTMLFormElement.prototype.submit.call(this);
+            }
         });
     }
 
