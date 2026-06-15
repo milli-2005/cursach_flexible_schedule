@@ -1277,8 +1277,8 @@ html[data-theme='light'] .approved-edit-body { color: #2f1d5d; }
                     <div>
                         <div class="panel-title-wrap">
                             <h3 class="availability-quick-title">Быстрый просмотр доступности</h3>
-                            <button id="availability-toggle-btn" type="button" class="panel-arrow-btn" aria-label="Свернуть блок доступности">
-                                <i class="bi bi-chevron-up"></i>
+                            <button id="availability-toggle-btn" type="button" class="panel-arrow-btn" aria-label="Развернуть блок доступности">
+                                <i class="bi bi-chevron-down"></i>
                             </button>
                         </div>
                         <p class="availability-quick-subtitle">Выберите сотрудника и посмотрите его доступные слоты прямо в таблице.</p>
@@ -1293,7 +1293,7 @@ html[data-theme='light'] .approved-edit-body { color: #2f1d5d; }
                         <button id="availability-clear-btn" type="button" class="btn btn-sm btn-outline-light">Сбросить</button>
                     </div>
                 </div>
-                <div id="availability-panel-body" class="panel-body">
+                <div id="availability-panel-body" class="panel-body is-collapsed">
                     <div id="availability-day-grid" class="availability-day-grid"></div>
                 </div>
             </div>
@@ -1303,8 +1303,8 @@ html[data-theme='light'] .approved-edit-body { color: #2f1d5d; }
                     <div class="panel-title-wrap">
                         <i class="bi bi-clock-history" style="font-size:1.15rem;color:var(--app-accent);"></i>
                         <h3 class="panel-title" style="margin:0;">История версий</h3>
-                        <button id="versions-toggle-btn" type="button" class="panel-arrow-btn" aria-label="Свернуть блок версий">
-                            <i class="bi bi-chevron-up"></i>
+                        <button id="versions-toggle-btn" type="button" class="panel-arrow-btn" aria-label="Развернуть блок версий">
+                            <i class="bi bi-chevron-down"></i>
                         </button>
                     </div>
                     <div class="d-flex align-items-center gap-2">
@@ -1315,7 +1315,7 @@ html[data-theme='light'] .approved-edit-body { color: #2f1d5d; }
                     </div>
                 </div>
 
-                <div id="versions-panel-body" class="panel-body">
+                <div id="versions-panel-body" class="panel-body is-collapsed">
 
                     <!-- Блок сравнения версий -->
                     <div id="version-compare-area" class="version-compare-box d-none mb-3">
@@ -1495,8 +1495,8 @@ html[data-theme='light'] .approved-edit-body { color: #2f1d5d; }
             <div class="panel-title-wrap">
                 <i class="bi bi-chat-square-text" style="font-size:1.15rem;color:var(--app-accent);"></i>
                 <h3 class="panel-title" style="margin:0;">Замечания и замены</h3>
-                <button id="remarks-toggle-btn" type="button" class="panel-arrow-btn" aria-label="Свернуть блок замечаний">
-                    <i class="bi bi-chevron-up"></i>
+                <button id="remarks-toggle-btn" type="button" class="panel-arrow-btn" aria-label="Развернуть блок замечаний">
+                    <i class="bi bi-chevron-down"></i>
                 </button>
             </div>
             {% if manager_rejections %}
@@ -1508,7 +1508,7 @@ html[data-theme='light'] .approved-edit-body { color: #2f1d5d; }
                 </div>
             {% endif %}
         </div>
-        <div id="remarks-panel-body" class="panel-body">
+        <div id="remarks-panel-body" class="panel-body is-collapsed">
             {% if manager_rejections %}
                 {% for item in manager_rejections %}
                     <div class="remark-card">

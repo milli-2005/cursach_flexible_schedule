@@ -1100,3 +1100,26 @@ def api_set_schedule_status(request, schedule_id):
         })
     except Exception as exc:
         return api_error_response(exc, status=400)
+
+
+@login_required
+@user_passes_test(is_manager)
+def api_dismiss_manager_feedback(request):
+    """
+    POST-эндпоинт: руководитель просмотрел ответы сотрудников — проставляем manager_read_at.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Метод не поддерживается.'}, status=405)
+    try:
+        today = timezone.localdate()
+        updated = ScheduleApproval.objects.filter(
+            schedule__status='pending',
+            responded_at__isnull=False,
+            approved__isnull=False,
+            schedule__end_date__gte=today,
+            schedule__created_by=request.user,
+            manager_read_at__isnull=True,
+        ).update(manager_read_at=timezone.now())
+        return JsonResponse({'success': True, 'dismissed_count': updated})
+    except Exception as exc:
+        return api_error_response(exc, status=400)

@@ -86,6 +86,7 @@ urlpatterns = [
     path('api/schedule/<int:schedule_id>/approve/', schedule_views.api_approve_schedule, name='api_approve_schedule'),
     path('api/schedule/<int:schedule_id>/simulate-variants/', schedule_views.api_simulate_schedule_variants, name='api_simulate_schedule_variants'),
     path('api/schedule/<int:schedule_id>/status/', schedule_views.api_set_schedule_status, name='api_set_schedule_status'),
+    path('api/notifications/dismiss-manager-feedback/', schedule_views.api_dismiss_manager_feedback, name='api_dismiss_manager_feedback'),
 
     # Правила распределения занятий
     path('api/distribution-rules/parse/', views.api_parse_distribution_rule, name='api_parse_distribution_rule'),

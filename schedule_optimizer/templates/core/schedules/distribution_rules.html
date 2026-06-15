@@ -66,7 +66,7 @@
             <label for="rule-text" class="form-label">Опишите правило обычным текстом</label>
             <textarea id="rule-text" class="form-control mb-2" rows="3" placeholder="Например: Табата не более 1 раза утром и 1 раза вечером в неделю"></textarea>
             <div class="d-flex gap-2 flex-wrap">
-                <button id="parse-rule-btn" class="btn btn-primary" type="button">Распознать через ИИ</button>
+                <button id="parse-rule-btn" class="btn btn-primary" type="button"><i class="bi bi-magic"></i> Распознать</button>
                 <button id="save-rule-btn" class="btn btn-success d-none" type="button">Сохранить правило</button>
             </div>
         </div>
@@ -291,6 +291,8 @@
             showGlobalNotification('Введите текст правила.', 'error');
             return;
         }
+        parseBtn.disabled = true;
+        parseBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Распознаю...';
         try {
             const res = await fetch('/api/distribution-rules/parse/', {
                 method: 'POST',
@@ -307,6 +309,9 @@
             showGlobalNotification('Правило распознано. Проверьте и сохраните.', 'success');
         } catch (e) {
             showGlobalNotification(e.message || 'Ошибка распознавания.', 'error');
+        } finally {
+            parseBtn.disabled = false;
+            parseBtn.innerHTML = '<i class="bi bi-magic"></i> Распознать';
         }
     });
 

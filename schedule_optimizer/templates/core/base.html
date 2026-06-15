@@ -71,7 +71,7 @@
     {% if manager_feedback_total_count > 0 and manager_feedback_target_url and request.resolver_match.view_name != 'schedule_detail' %}
         <div id="managerFeedbackNudge" class="schedule-approval-nudge" role="status" aria-live="polite" style="top: 8.7rem;">
             <button type="button" class="schedule-approval-nudge-close" aria-label="Закрыть"
-                    onclick="document.getElementById('managerFeedbackNudge')?.remove()">
+                    onclick="dismissManagerFeedback(this)">
                 <i class="bi bi-x-lg"></i>
             </button>
             <div class="schedule-approval-nudge-title">
@@ -95,7 +95,8 @@
                     {% endfor %}
                 </div>
             {% endif %}
-            <a href="{{ manager_feedback_target_url }}" class="schedule-approval-nudge-btn" data-dismiss="managerFeedbackNudge">
+            <a href="{{ manager_feedback_target_url }}" class="schedule-approval-nudge-btn"
+               onclick="dismissManagerFeedback(this, event)">
                 Открыть и отреагировать
             </a>
         </div>
@@ -258,6 +259,32 @@
         var el = document.getElementById(btn.getAttribute('data-dismiss'));
         if (el) el.remove();
     });
+
+    function csrfToken() {
+        return document.querySelector('meta[name="csrf-token"]')?.content || '';
+    }
+
+    function dismissManagerFeedback(btn, event) {
+        if (event) event.preventDefault();
+        var href = btn.getAttribute('href');
+        if (btn.tagName === 'A' && href) {
+            fetch('/api/notifications/dismiss-manager-feedback/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken() },
+                body: '{}'
+            }).catch(function() {}).finally(function() {
+                window.location.href = href;
+            });
+        } else {
+            fetch('/api/notifications/dismiss-manager-feedback/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken() },
+                body: '{}'
+            }).catch(function() {});
+            var nudge = document.getElementById('managerFeedbackNudge');
+            if (nudge) nudge.remove();
+        }
+    }
     </script>
 </body>
 </html>

@@ -1,72 +1,68 @@
-{% extends "core/base.html" %} {% block title %}Моя доступность - {{ block.super
-}}{% endblock %} {% block content %}
+{% extends "core/base.html" %}
+{% block title %}Моя доступность - {{ block.super }}{% endblock %}
 
-<!-- В шапке формы -->
-
-<div class="management-container">
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2>Моя доступность</h2>
-    <div>
-      <a href="?week={{ prev_week }}" class="btn btn-sm btn-outline-light me-2"
-        >← Неделя назад</a
-      >
-      <span class="text-white"
-        >{{ week_start|date:"d E Y" }} – {{ week_end|date:"d E Y" }}</span
-      >
-      <a href="?week={{ next_week }}" class="btn btn-sm btn-outline-light ms-2"
-        >Неделя вперёд →</a
-      >
+{% block content %}
+<div class="av-container">
+  <div class="av-header">
+    <div class="av-header-left">
+      <h2><i class="bi bi-calendar-check"></i> Моя доступность</h2>
+      <p class="av-subtitle">Отметьте слоты, в которые вы готовы работать</p>
+    </div>
+    <div class="av-header-right">
+      <button type="button" id="copy-prev-week" class="av-btn-outline">
+        <i class="bi bi-arrow-repeat"></i> Копировать с прошлой недели
+      </button>
     </div>
   </div>
 
+  <div class="av-nav">
+    <a href="?week={{ prev_week }}" class="av-nav-btn">
+      <i class="bi bi-chevron-left"></i> <span>Назад</span>
+    </a>
+    <span class="av-nav-date">
+      <i class="bi bi-calendar3"></i> {{ week_start|date:"d E" }} — {{ week_end|date:"d E Y" }}
+    </span>
+    <a href="?week={{ next_week }}" class="av-nav-btn">
+      <span>Вперёд</span> <i class="bi bi-chevron-right"></i>
+    </a>
+  </div>
+
   {% if last_updated %}
-  <div class="alert alert-info">
-    <i class="bi bi-check-circle"></i>
-    Ваша доступность сохранена {{ last_updated.updated_at|date:"d E Y" }} в {{ last_updated.updated_at|date:"H:i" }}
+  <div class="av-toast">
+    <i class="bi bi-check-circle-fill"></i>
+    Доступность сохранена {{ last_updated.updated_at|date:"d E Y" }} в {{ last_updated.updated_at|date:"H:i" }}
   </div>
   {% endif %}
 
-  <div class="mb-3">
-    <button type="button" id="copy-prev-week" class="btn btn-outline-light">
-      <i class="bi bi-arrow-repeat"></i> Взять данные с прошлой недели
-    </button>
-  </div>
-
-  <form method="post">
+  <form method="post" id="av-form">
     {% csrf_token %}
+    <input type="hidden" name="selected_week" value="{{ week_start|date:'Y-m-d' }}" />
 
-    <!-- СКРЫТОЕ ПОЛЕ: передаёт выбранную неделю при сохранении -->
-    <input
-      type="hidden"
-      name="selected_week"
-      value="{{ week_start|date:'Y-m-d' }}"
-    />
-
-    <div class="table-responsive">
-      <table class="table table-bordered table-dark">
+    <div class="av-table-wrap">
+      <table class="av-table">
         <thead>
           <tr>
-            <th>Время</th>
+            <th class="av-th-time"><i class="bi bi-clock"></i></th>
             {% for day in days %}
-            <th>{{ day|date:"D, d M" }}</th>
+            <th class="av-th-day">
+              <span class="av-day-name">{{ day|date:"D"|upper }}</span>
+              <span class="av-day-num">{{ day|date:"d" }}</span>
+              <span class="av-day-month">{{ day|date:"M" }}</span>
+            </th>
             {% endfor %}
           </tr>
         </thead>
         <tbody>
           {% for start_str, end_str in slots %}
           <tr>
-            <td>{{ start_str }} – {{ end_str }}</td>
+            <td class="av-td-time">{{ start_str }}<span class="av-sep">–</span>{{ end_str }}</td>
             {% for day_str in date_strings %}
-            {% with checkbox_id=day_str|add:"_"|add:start_str %}
-            <td class="text-center">
-              {% with key=day_str|add:"_"|add:start_str %}
-              <input
-                type="checkbox"
-                name="{{ key }}"
-                id="slot_{{ key }}"
-                {% if key in checked_keys %}checked{% endif %}
-              />
-              {% endwith %}
+            {% with key=day_str|add:"_"|add:start_str %}
+            <td class="av-td-slot">
+              <label class="av-toggle" for="slot_{{ key }}">
+                <input type="checkbox" name="{{ key }}" id="slot_{{ key }}" {% if key in checked_keys %}checked{% endif %} />
+                <span class="av-toggle-slider"></span>
+              </label>
             </td>
             {% endwith %}
             {% endfor %}
@@ -75,30 +71,52 @@
         </tbody>
       </table>
     </div>
-    <button type="submit" class="btn btn-primary mt-3">
-      Сохранить доступность
-    </button>
+
+    <div class="av-footer">
+      <div class="av-stats">
+        <span class="av-stat">
+          <i class="bi bi-check-lg"></i> <span id="filled-count">0</span> слотов отмечено
+        </span>
+        <span class="av-stat-divider">|</span>
+        <span class="av-stat">
+          <i class="bi bi-grid-3x3-gap"></i> <span id="total-count"></span> всего
+        </span>
+      </div>
+      <button type="submit" class="av-btn-save">
+        <i class="bi bi-floppy"></i> Сохранить
+      </button>
+    </div>
   </form>
 </div>
 
 <script>
-  // prevData — JSON-массив объектов { date: "2026-06-15", time: "09:00" },
-  // полученный из availability.py: он содержит доступность сотрудника за прошлую
-  // неделю, но с датами, сдвинутыми на 7 дней вперёд (текущая неделя).
   const prevData = {{ prev_avail_json|safe }};
 
-  // Обработчик кнопки «Взять данные с прошлой недели»
+  function updateStats() {
+    const checked = document.querySelectorAll('.av-toggle input:checked').length;
+    const total = document.querySelectorAll('.av-toggle input').length;
+    document.getElementById('filled-count').textContent = checked;
+    document.getElementById('total-count').textContent = total;
+  }
+  document.querySelectorAll('.av-toggle input').forEach(cb => {
+    cb.addEventListener('change', updateStats);
+  });
+  updateStats();
+
   document.getElementById('copy-prev-week').addEventListener('click', function () {
-      // 1. Сбрасываем ВСЕ чекбоксы на странице (на всякий случай)
-      document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
-      // 2. Проходим по каждой записи из prevData
-      prevData.forEach(item => {
-          // Имя чекбокса хранится в формате "ГГГГ-ММ-ДД_ЧЧ:ММ" (например "2026-06-15_09:00").
-          // Такое же имя генерируется в шаблоне через day_str|add:"_"|add:start_str.
-          const checkbox = document.querySelector(`input[name="${item.date}_${item.time}"]`);
-          if (checkbox) checkbox.checked = true;  // если чекбокс найден — отмечаем его
-      });
-      showGlobalNotification('Данные с прошлой недели загружены.', 'succes');
+    document.querySelectorAll('.av-toggle input').forEach(cb => cb.checked = false);
+    prevData.forEach(item => {
+      const checkbox = document.querySelector(`input[name="${item.date}_${item.time}"]`);
+      if (checkbox) checkbox.checked = true;
+    });
+    updateStats();
+    const existing = document.querySelector('.av-copy-toast');
+    if (existing) existing.remove();
+    const div = document.createElement('div');
+    div.className = 'av-toast av-copy-toast';
+    div.innerHTML = '<i class="bi bi-arrow-repeat"></i> Данные с прошлой недели загружены';
+    document.querySelector('.av-nav').after(div);
+    setTimeout(() => div.remove(), 3000);
   });
 </script>
 {% endblock %}

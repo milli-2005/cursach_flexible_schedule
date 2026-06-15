@@ -354,6 +354,27 @@ def _parse_distribution_rule_text(text: str):
         }
         return payload, None
 
+    # ── Шаблон 8: «не ставь N одинаковых категорий подряд» ──
+    cat_consecutive = re.search(
+        r'(?:не\s+став\S*|запрет|нельзя)\s+(?P<count>\d+)\s+одинаковы[ех]\s+категор',
+        src
+    )
+    if cat_consecutive:
+        count = int(cat_consecutive.group('count'))
+        payload = {
+            'rule_type': 'daily_duplicate_limit',
+            'severity': 'hard',
+            'name': f'Запрет одинаковых категорий подряд (не более {count - 1})',
+            'params_json': {
+                'scope': 'trainer',
+                'max_per_bucket_per_day': count - 1,
+                'buckets': [
+                    {'name': 'full_day', 'start': '09:00', 'end': '21:00'},
+                ],
+            }
+        }
+        return payload, None
+
     return None, 'Не удалось распознать правило. Сейчас поддерживаются шаблоны: лимит в неделю, чередование, запрет дублей в день, ограничение подряд.'
 
 
@@ -624,7 +645,18 @@ def api_parse_distribution_rule(request):
     if not text:
         return JsonResponse({'success': False, 'error': 'Введите текст правила.'}, status=400)
 
-    # Шаг 1: AI
+    # Шаг 1: regex (мгновенно)
+    parsed, error = _parse_distribution_rule_text(text)
+    if not error:
+        return JsonResponse({
+            'success': True,
+            'parsed': parsed,
+            'source': 'regex',
+            'explanation': 'Распознано шаблонным парсером.',
+            'confidence': 0.92,
+        })
+
+    # Шаг 2: AI (медленно) — только если regex не справился
     ai_result = try_parse_rule_with_ai(text)
     if ai_result.get('success'):
         return JsonResponse({
@@ -635,18 +667,7 @@ def api_parse_distribution_rule(request):
             'confidence': ai_result.get('confidence', 0.85),
         })
 
-    # Шаг 2: fallback-regex
-    parsed, error = _parse_distribution_rule_text(text)
-    if error:
-        return JsonResponse({'success': False, 'error': error}, status=400)
-
-    return JsonResponse({
-        'success': True,
-        'parsed': parsed,
-        'source': 'fallback_regex',
-        'explanation': 'Распознано резервным шаблонным парсером.',
-        'confidence': 0.92,
-    })
+    return JsonResponse({'success': False, 'error': error}, status=400)
 
 
 # ═══════════════════════════════════════════════════════════

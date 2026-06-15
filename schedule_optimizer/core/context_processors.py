@@ -69,6 +69,8 @@ def manager_schedule_feedback_notice(request):
             responded_at__isnull=False,
             schedule__end_date__gte=today,
             approved__isnull=False,
+            schedule__created_by=request.user,
+            manager_read_at__isnull=True,
         )
         .select_related("schedule", "employee__user")
         .order_by("-responded_at")

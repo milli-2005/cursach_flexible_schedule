@@ -7,8 +7,8 @@ from .distribution_rules import _generate_studio_slots
 def my_availability(request):
     """Позволяет сотруднику указать доступность по слотам на выбранную неделю."""
     user_profile = request.user.profile
-    if user_profile.role != 'employee':
-        messages.error(request, "Доступно только для сотрудников.")
+    if user_profile.role not in ('employee', 'manager'):
+        messages.error(request, "Доступно только для сотрудников и руководителей.")
         return redirect('dashboard')
 
     # === POST handling: save data ===
